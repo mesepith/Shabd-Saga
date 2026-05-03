@@ -1,10 +1,12 @@
 import Phaser from 'phaser';
+import { Howl } from 'howler';
 
 interface DialogueNode {
   id: string;
   speaker: string;
   text: string;
   textEnglish: string;
+  audioPath?: string;
   choices?: Array<{ text: string; nextNodeId: string }>;
   nextNodeId?: string;
 }
@@ -102,6 +104,13 @@ export class DialogueScene extends Phaser.Scene {
     this.currentNode = node;
     this.speakerText.setText(node.speaker);
     this.englishText.setText(node.textEnglish);
+
+    // Play dialogue audio via Howler
+    if ((node as any).audioPath) {
+      try {
+        new Howl({ src: [(node as any).audioPath], format: ['mp3'], volume: 0.8 }).play();
+      } catch {}
+    }
 
     // Typewriter effect for body text
     this.fullText = node.text;

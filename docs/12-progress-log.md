@@ -90,12 +90,51 @@
 - Boss fights: not yet wired to level flow (Phase 4)
 - Tiled level maps: not yet created (Phase 5)
 
-### Next Phase (Phase 3: Enemies & NPCs)
-1. Wire up NPC dialogue triggers
-2. Add Shadow Creeper enemies (patrol, steal letters)
-3. Create real player sprite animations
-4. Add checkpoint/respawn system
-5. Make music/SFX play (actual audio files)
+## 2026-05-03 — Phase 3 Complete: Enemies, NPCs & Polish
+
+### Completed
+- [x] NPC dialogue triggers: Walk near NPC → 💬 prompt → press E/tap to launch DialogueScene
+- [x] 3 NPC sprites loaded: owl, monkey, deer (individual keys, not just placeholder)
+- [x] Touch interact button (💬) on mobile controls
+- [x] DialogueScene auto-resumes GameScene on complete
+- [x] Shadow Creeper enemies: purple sprites patrol left/right in defined zones
+- [x] Enemy-player contact: steals a collected letter (drops it back), or damages if none
+- [x] Stolen letter drops with gravity as re-collectible, despawns after 8s
+- [x] Enemy attack cooldown: 2s invincibility frames with blinking red tint
+- [x] Player death at 0 HP: death animation → respawn at last checkpoint
+- [x] Checkpoint flags: gold rectangles, turn green on activate, save position
+- [x] Respawn: restores 3 HP, clears invincibility, cancels open dialogues
+- [x] Player spritesheet animations: idle (2-frame, 128x64) and run (4-frame, 256x64)
+- [x] Player animation plays idle when standing, run when moving, static frame when airborne
+- [x] SFX hooks: jump, collect, door-open, hurt, success play at appropriate events
+- [x] Level music: auto-plays correct world-N.mp3 on level start, stops previous
+- [x] PreloadScene now loads: player spritesheets, shadow-creeper, npc-owl/monkey/deer, all 3 music tracks
+- [x] generate-sprites.ts extended: produces run-frame-0..3, run-sheet.png, idle-sheet.png
+- [x] LanguageManager LevelData interface updated with optional enemies field
+- [x] UIScene handles letterStolen event: removes last tile from WordBar
+- [x] Zero TypeScript errors, clean Vite build
+
+### Architecture Notes
+- `GameScene.ts` grew from 627 to ~1100 lines — modular extraction planned for Phase 4
+- `handleMovement()` now accepts optional `custom` params for programmatic control
+- Enemy defaults per level are hardcoded in `spawnEnemies()` when hindi.json lacks enemy data
+- Invincibility after damage: 2s with blinking white/red tint
+- Music stops on NPC dialogue, resumes on dialogue complete
+- Stolen letter text follows the falling sprite (updated in `updateEnemies()`)
+
+### Decisions Made
+1. Enemy data defaults in spawnEnemies() rather than requiring hindi.json changes — keeps JSON simple
+2. Touch interact button (💬) placed at bottom-left of screen, separate from movement buttons
+3. Spritesheets composed from individual SVG frames using sharp raw buffer compositing
+4. SFX and music use Phaser's built-in sound manager for simplicity
+5. Player animations only swap on ground state change to avoid jitter
+
+### Pending (Phase 4)
+- Wire boss fights to level completion flow
+- Add collectible gems for bonus stars
+- Create health pickup items
+- Add world-2 and world-3 background parallax layers
+- Balance enemy difficulty per level
 
 ---
 

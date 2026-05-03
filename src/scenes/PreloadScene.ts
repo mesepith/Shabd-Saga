@@ -79,7 +79,7 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('map-node-locked', 'assets/ui/map-node-locked.png');
     this.load.image('map-connector', 'assets/ui/map-connector.png');
 
-    // Placeholder sprites
+    // Sprites
     this.load.image('bg-placeholder', 'assets/backgrounds/world-1/sky.png');
     this.load.image('player-placeholder', 'assets/sprites/player/idle.png');
     this.load.image('platform-placeholder', 'assets/tilesets/platform-grass.png');
@@ -87,14 +87,37 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('door-placeholder', 'assets/sprites/props/door.png');
     this.load.image('npc-placeholder', 'assets/sprites/npcs/owl.png');
 
-    // Audio
+    // Player spritesheets
+    this.load.spritesheet('player-idle-sheet', 'assets/sprites/player/idle-sheet.png', {
+      frameWidth: 64, frameHeight: 64,
+    });
+    this.load.spritesheet('player-run-sheet', 'assets/sprites/player/run-sheet.png', {
+      frameWidth: 64, frameHeight: 64,
+    });
+
+    // Enemy sprites
+    this.load.image('shadow-creeper', 'assets/sprites/enemies/shadow-creeper.png');
+    this.load.image('enemy-placeholder', 'assets/sprites/enemies/shadow-creeper.png');
+
+    // NPC sprites
+    this.load.image('npc-owl', 'assets/sprites/npcs/owl.png');
+    this.load.image('npc-monkey', 'assets/sprites/npcs/monkey.png');
+    this.load.image('npc-deer', 'assets/sprites/npcs/deer.png');
+
+    // Checkpoint flag
+    this.load.image('gem-icon', 'assets/ui/gem-icon.png');
+
+    // Audio — SFX
     this.load.audio('sfx-jump', 'assets/audio/sfx/jump.mp3');
     this.load.audio('sfx-collect', 'assets/audio/sfx/collect.mp3');
     this.load.audio('sfx-door-open', 'assets/audio/sfx/door-open.mp3');
     this.load.audio('sfx-hurt', 'assets/audio/sfx/hurt.mp3');
     this.load.audio('sfx-success', 'assets/audio/sfx/success.mp3');
+    // Audio — Music
     this.load.audio('music-menu', 'assets/audio/music/menu.mp3');
     this.load.audio('music-world-1', 'assets/audio/music/world-1.mp3');
+    this.load.audio('music-world-2', 'assets/audio/music/world-2.mp3');
+    this.load.audio('music-world-3', 'assets/audio/music/world-3.mp3');
   }
 
   private updateProgressBar(value: number): void {

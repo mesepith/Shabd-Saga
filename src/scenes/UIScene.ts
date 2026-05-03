@@ -65,8 +65,9 @@ export class UIScene extends Phaser.Scene {
     // WordBar background (bottom of screen)
     this.createWordBar();
 
-    // Listen for letter collection
+    // Listen for letter collection and steal
     this.gameScene.events.on('letterCollected', this.onLetterCollected, this);
+    this.gameScene.events.on('letterStolen', this.onLetterStolen, this);
   }
 
   private createWordBar(): void {
@@ -103,6 +104,25 @@ export class UIScene extends Phaser.Scene {
       scaleX: 1.3, scaleY: 1.3,
       duration: 100, yoyo: true, ease: 'Quad.easeOut',
     });
+  }
+
+  private onLetterStolen(data: {
+    letter: string;
+    totalLetters: number;
+  }): void {
+    this.letterCountText.setText(`Letters: ${data.totalLetters}`);
+
+    // Remove last tile from WordBar
+    if (this.wordBarTiles.length > 0) {
+      const tile = this.wordBarTiles.pop()!;
+      this.tweens.add({
+        targets: tile,
+        alpha: 0, scaleX: 0, scaleY: 0,
+        duration: 300,
+        ease: 'Quad.easeIn',
+        onComplete: () => tile.destroy(),
+      });
+    }
   }
 
   private addWordBarTile(letter: string, wordHint: string): void {

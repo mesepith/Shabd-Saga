@@ -62,6 +62,7 @@ interface LevelData {
   difficulty: 1 | 2 | 3;
   words: WordEntry[];
   npcs: NPCData[];
+  enemies?: any[];
   boss: BossData | null;
   checkpoints: any[];
 }

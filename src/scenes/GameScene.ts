@@ -7,30 +7,52 @@ export class GameScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
   private spaceBar!: Phaser.Input.Keyboard.Key;
+  private eKey!: Phaser.Input.Keyboard.Key;
 
   private touchLeft: boolean = false;
   private touchRight: boolean = false;
   private touchJump: boolean = false;
+  private touchInteract: boolean = false;
 
   private playerSpeed: number = 280;
   private jumpForce: number = -460;
   private canJump: boolean = true;
+  private canDoubleJump: boolean = false;
   private health: number = 3;
+  private isInvincible: boolean = false;
 
   // Level data
   private levelId: string = 'world-1-level-1';
   private languageId: string = 'hindi';
+  private levelMusicKey: string = 'music-world-1';
   private levelWords: any[] = [];
-  private collectedLetters: Array<{ letter: string; wordId: string }> = [];
+  private collectedLetters: Array<{ letter: string; wordId: string; wordScript: string; audioPath: string }> = [];
   private activeDoors: Array<{ wordId: string; door: Phaser.Physics.Arcade.Sprite }> = [];
   private lettersGroup!: Phaser.Physics.Arcade.Group;
   private doorsGroup!: Phaser.Physics.Arcade.StaticGroup;
+
+  // NPC interaction
+  private nearNPC: any = null;
+  private npcPrompt!: Phaser.GameObjects.Text;
+  private currentDialogue: Phaser.Scene | null = null;
+
+  // Enemy system
+  private enemiesGroup!: Phaser.Physics.Arcade.Group;
+  private enemyPatrolZones: Map<string, { left: number; right: number }> = new Map();
+
+  // Checkpoint system
+  private checkpointsGroup!: Phaser.Physics.Arcade.StaticGroup;
+  private lastCheckpoint: { x: number; y: number } = { x: 100, y: 450 };
+  private checkpointActive: Map<string, boolean> = new Map();
 
   // Door interaction
   private nearDoor: string | null = null;
   private doorPrompt!: Phaser.GameObjects.Text;
   private doorsOverlapRegistered: boolean = false;
   private lettersOverlapRegistered: boolean = false;
+
+  // Player animations
+  private currentAnim: string = '';
 
   constructor() {
     super({ key: 'GameScene' });
@@ -79,9 +101,17 @@ export class GameScene extends Phaser.Scene {
     // Groups
     this.lettersGroup = this.physics.add.group({ allowGravity: false, immovable: true });
     this.doorsGroup = this.physics.add.staticGroup();
+    this.enemiesGroup = this.physics.add.group();
+    this.checkpointsGroup = this.physics.add.staticGroup();
 
     this.setupInput();
     this.scene.launch('UIScene', { gameScene: this });
+
+    // Create player animations
+    this.createPlayerAnimations();
+
+    // Play level music
+    this.playLevelMusic();
 
     // Init door prompt as hidden (populated later by spawnDoors)
     this.doorPrompt = this.add.text(0, 0, '🔑 Press E to unlock!', {
@@ -91,6 +121,17 @@ export class GameScene extends Phaser.Scene {
       backgroundColor: '#000000cc',
       padding: { x: 12, y: 6 },
       stroke: '#FF6600',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(150).setVisible(false);
+
+    // NPC interaction prompt
+    this.npcPrompt = this.add.text(0, 0, '💬 Press E to talk', {
+      fontFamily: 'Noto Sans, system-ui, sans-serif',
+      fontSize: '18px',
+      color: '#FFFFFF',
+      backgroundColor: '#000000cc',
+      padding: { x: 10, y: 5 },
+      stroke: '#4488FF',
       strokeThickness: 3,
     }).setOrigin(0.5).setDepth(150).setVisible(false);
 
@@ -130,6 +171,12 @@ export class GameScene extends Phaser.Scene {
         this.spawnLetters(level.words);
         this.spawnDoors(level.words);
         this.spawnNPCs(level.npcs || []);
+        this.spawnEnemies(level.enemies || []);
+        this.spawnCheckpoints(level.checkpoints || []);
+        this.levelMusicKey = level.musicTrack
+          ? level.musicTrack.replace('assets/audio/music/', '').replace('.mp3', '')
+          : 'music-world-1';
+        this.playLevelMusic();
         console.log('[GameScene] Doors spawned:', this.activeDoors.length);
         this.showMessage(`World: ${level.name} — ${level.words.length} words to learn!`);
       }
@@ -205,8 +252,12 @@ export class GameScene extends Phaser.Scene {
           wordScript: string; wordTranslation: string;
           charText: Phaser.GameObjects.Text; glow: Phaser.GameObjects.Arc;
           floatTween: Phaser.Tweens.Tween;
+          _stolenAt?: number;
         };
         if (!l.active) return;
+
+        // Don't re-collect stolen letters for 600ms after ejection
+        if (l._stolenAt && this.time.now - l._stolenAt < 600) return;
 
         l.floatTween?.stop();
         l.glow?.destroy();
@@ -225,9 +276,12 @@ export class GameScene extends Phaser.Scene {
     const { height } = this.cameras.main;
 
     const doorPositions = [
-      { x: 420, y: height - 95 },
-      { x: 550, y: height - 95 },
-      { x: 680, y: height - 95 },
+      { x: 350, y: height - 95 },
+      { x: 470, y: height - 95 },
+      { x: 590, y: height - 95 },
+      { x: 710, y: height - 95 },
+      { x: 830, y: height - 95 },
+      { x: 950, y: height - 95 },
     ];
 
     words.forEach((word, i) => {
@@ -283,21 +337,42 @@ export class GameScene extends Phaser.Scene {
   private spawnNPCs(npcs: any[]): void {
     npcs.forEach((npc) => {
       const { x, y } = npc.position;
-      const npcSprite = this.physics.add.sprite(x, y, npc.spriteKey || 'npc-placeholder');
+      const spriteKey = npc.spriteKey === 'npc-placeholder'
+        ? this.getNPCKey(npc.id)
+        : npc.spriteKey;
+      const npcSprite = this.physics.add.sprite(x, y, spriteKey);
       npcSprite.setDisplaySize(48, 48);
       (npcSprite.body as Phaser.Physics.Arcade.Body).allowGravity = false;
       (npcSprite.body as Phaser.Physics.Arcade.Body).setImmovable(true);
       npcSprite.setDepth(9);
 
-      // Store NPC data
       (npcSprite as any).npcData = npc;
 
-      // Interaction via overlap
+      // Name label above NPC
+      const nameLabel = this.add.text(x, y - 34, npc.name, {
+        fontFamily: 'Noto Sans Devanagari, system-ui, sans-serif',
+        fontSize: '12px',
+        color: '#FFD700',
+        stroke: '#000000',
+        strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(9);
+
+      // Show prompt + allow dialogue on overlap
       this.physics.add.overlap(this.player, npcSprite, () => {
-        // Show interaction prompt
-        // In the real version, this launches DialogueScene
+        if (this.currentDialogue) return;
+        const d = npcSprite as any;
+        this.nearNPC = d.npcData;
+        this.npcPrompt.setPosition(d.x, d.y - 54);
+        this.npcPrompt.setVisible(true);
       });
     });
+  }
+
+  private getNPCKey(npcId: string): string {
+    if (npcId.includes('owl')) return 'npc-owl';
+    if (npcId.includes('monkey')) return 'npc-monkey';
+    if (npcId.includes('deer')) return 'npc-deer';
+    return 'npc-owl';
   }
 
   private spawnFallbackLetters(): void {
@@ -341,6 +416,7 @@ export class GameScene extends Phaser.Scene {
       this.physics.add.overlap(this.player, this.lettersGroup, (_, letterObj) => {
         const l = letterObj as any;
         if (!l.active) return;
+        if (l._stolenAt && this.time.now - l._stolenAt < 600) return;
         l.floatTween?.stop();
         l.glow?.destroy();
         l.charText?.destroy();
@@ -357,7 +433,7 @@ export class GameScene extends Phaser.Scene {
     char: string, wordId: string, audioPath: string,
     wordScript: string, translation: string
   ): void {
-    this.collectedLetters.push({ letter: char, wordId });
+    this.collectedLetters.push({ letter: char, wordId, wordScript, audioPath });
 
     const uiScene = this.scene.get('UIScene');
     if (uiScene) {
@@ -367,7 +443,8 @@ export class GameScene extends Phaser.Scene {
       });
     }
 
-    // Play pronunciation audio via Howler
+    this.playSFX('sfx-collect');
+
     if (audioPath) {
       try {
         new Howl({ src: [audioPath], format: ['mp3'], volume: 0.7 }).play();
@@ -398,7 +475,8 @@ export class GameScene extends Phaser.Scene {
   update(): void {
     if (!this.player || !this.player.body) return;
     this.handleMovement();
-    // Doors now auto-trigger on overlap (no E key needed)
+    this.handleNPCInteraction();
+    this.updateEnemies();
   }
 
   private checkDoorInteraction(): void {
@@ -443,6 +521,7 @@ export class GameScene extends Phaser.Scene {
         this.activeDoors = this.activeDoors.filter((d) => d.wordId !== wordId);
       }
 
+      this.playSFX('sfx-door-open');
       this.showMessage(`Correct! "${data.word}" means "${data.translation}"`);
 
       if (this.activeDoors.length === 0) {
@@ -488,7 +567,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private levelComplete(): void {
-    // Save progress
+    this.playSFX('sfx-success');
+
     import('../systems/SaveManager').then(({ SaveManager }) => {
       SaveManager.getInstance().completeLevel(
         this.languageId,
@@ -578,6 +658,7 @@ export class GameScene extends Phaser.Scene {
       D: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D),
     };
     this.spaceBar = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.eKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.E);
     this.createTouchControls();
   }
 
@@ -598,26 +679,453 @@ export class GameScene extends Phaser.Scene {
     makeBtn(80, '◀', () => { this.touchLeft = true; }, () => { this.touchLeft = false; });
     makeBtn(200, '▶', () => { this.touchRight = true; }, () => { this.touchRight = false; });
     makeBtn(width - 80, '▲', () => { this.touchJump = true; }, () => { this.touchJump = false; });
+    makeBtn(width - 200, '💬', () => { this.touchInteract = true; }, () => { this.touchInteract = false; });
   }
 
-  private handleMovement(): void {
+  handleMovement(custom?: { left: boolean; right: boolean; jump: boolean }): void {
     const body = this.player.body as Phaser.Physics.Arcade.Body;
     const onGround = body.blocked.down || body.touching.down;
     if (onGround) this.canJump = true;
 
-    const left = this.cursors.left?.isDown || this.wasd.A.isDown || this.touchLeft;
-    const right = this.cursors.right?.isDown || this.wasd.D.isDown || this.touchRight;
+    const left = custom?.left ?? (this.cursors.left?.isDown || this.wasd.A.isDown || this.touchLeft);
+    const right = custom?.right ?? (this.cursors.right?.isDown || this.wasd.D.isDown || this.touchRight);
 
     if (left) { this.player.setVelocityX(-this.playerSpeed); this.player.setFlipX(true); }
     else if (right) { this.player.setVelocityX(this.playerSpeed); this.player.setFlipX(false); }
     else { this.player.setVelocityX(0); }
 
-    const jump = this.cursors.up?.isDown || this.wasd.W.isDown || this.spaceBar.isDown || this.touchJump;
+    const jump = custom?.jump ?? (this.cursors.up?.isDown || this.wasd.W.isDown || this.spaceBar.isDown || this.touchJump);
     if (jump && onGround && this.canJump) {
       body.velocity.y = this.jumpForce;
       this.canJump = false;
+      this.playSFX('sfx-jump');
     }
     if (!jump && body.velocity.y < -150) body.velocity.y *= 0.5;
+
+    this.updatePlayerAnimation(onGround, left || right);
+  }
+
+  // ── Enemy System ──
+
+  private spawnEnemies(enemies: any[]): void {
+    const { height } = this.cameras.main;
+    if (!enemies || enemies.length === 0) {
+      if (this.levelId === 'world-1-level-1') {
+        enemies = [
+          { id: 'creeper_1', type: 'shadow-creeper', position: { x: 550, y: height - 90 }, patrolRange: 200 },
+          { id: 'creeper_2', type: 'shadow-creeper', position: { x: 720, y: 410 }, patrolRange: 140 },
+        ];
+      } else if (this.levelId === 'world-1-level-2') {
+        enemies = [
+          { id: 'creeper_1', type: 'shadow-creeper', position: { x: 400, y: height - 90 }, patrolRange: 220 },
+          { id: 'creeper_2', type: 'shadow-creeper', position: { x: 750, y: 410 }, patrolRange: 180 },
+          { id: 'creeper_3', type: 'shadow-creeper', position: { x: 1000, y: 330 }, patrolRange: 160 },
+        ];
+      } else {
+        enemies = [
+          { id: 'creeper_1', type: 'shadow-creeper', position: { x: 500, y: height - 90 }, patrolRange: 200 },
+          { id: 'creeper_2', type: 'shadow-creeper', position: { x: 800, y: 410 }, patrolRange: 160 },
+        ];
+      }
+    }
+
+    enemies.forEach((enemy: any) => {
+      const { x, y } = enemy.position;
+      const range = enemy.patrolRange || 150;
+
+      const enemySprite = this.physics.add.sprite(x, y, enemy.type || 'shadow-creeper');
+      enemySprite.setDisplaySize(40, 40);
+      enemySprite.setCircle(20);
+      (enemySprite.body as Phaser.Physics.Arcade.Body).setOffset(12, 12);
+      (enemySprite.body as Phaser.Physics.Arcade.Body).allowGravity = false;
+      enemySprite.setDepth(8);
+      enemySprite.setTint(0x9922AA);
+
+      (enemySprite as any).enemyData = enemy;
+      (enemySprite as any).patrolLeft = x - range;
+      (enemySprite as any).patrolRight = x + range;
+      (enemySprite as any).speed = 60 + Math.random() * 40;
+      (enemySprite as any).direction = 1;
+
+      this.enemiesGroup.add(enemySprite);
+
+      this.tweens.add({
+        targets: enemySprite,
+        y: y - 6,
+        duration: 800 + Math.random() * 400,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+
+      const zone = this.add.rectangle(x, y + 30, range * 2, 4, 0x9922AA, 0.2);
+      zone.setDepth(4);
+      this.enemyPatrolZones.set(enemy.id, { left: x - range, right: x + range });
+    });
+
+    if (this.enemiesGroup.getLength() > 0) {
+      this.physics.add.overlap(this.player, this.enemiesGroup, (_, enemyObj) => {
+        const e = enemyObj as any;
+        if (!e.active || this.isInvincible) return;
+        this.handleEnemyContact(e);
+      }, undefined, this);
+    }
+  }
+
+  private handleEnemyContact(enemy: Phaser.Physics.Arcade.Sprite): void {
+    const e = enemy as any;
+    const now = this.time.now;
+
+    // 1.5s cooldown per enemy
+    if (e._lastContact && now - e._lastContact < 1500) return;
+    e._lastContact = now;
+
+    // Knockback first so player can't get multi-hit in one frame
+    const knockback = this.player.x < enemy.x ? -250 : 250;
+    this.player.setVelocityX(knockback);
+    this.player.setVelocityY(-280);
+
+    // Steal a letter if player has any
+    if (this.collectedLetters.length > 0) {
+      this.stealLetter();
+    }
+
+    // Always deal 1 damage (with invincibility frames)
+    this.damagePlayer();
+
+    enemy.setTint(0xFF0000);
+    this.time.delayedCall(150, () => enemy.setTint(0x9922AA));
+  }
+
+  private stealLetter(): void {
+    if (this.collectedLetters.length === 0) return;
+
+    const stolen = this.collectedLetters.pop()!;
+
+    const uiScene = this.scene.get('UIScene');
+    if (uiScene) {
+      uiScene.events.emit('letterStolen', {
+        letter: stolen.letter,
+        totalLetters: this.collectedLetters.length,
+      });
+    }
+
+    this.playSFX('sfx-hurt');
+
+    const stealText = this.add.text(this.player.x, this.player.y - 30, `${stolen.letter} ✖`, {
+      fontFamily: 'Noto Sans Devanagari, system-ui, sans-serif',
+      fontSize: '22px',
+      color: '#FF4444',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(200);
+
+    this.tweens.add({
+      targets: stealText,
+      y: stealText.y - 60,
+      alpha: 0,
+      duration: 1200,
+      onComplete: () => stealText.destroy(),
+    });
+
+    const droppedLetter = this.physics.add.sprite(this.player.x + Phaser.Math.Between(-40, 40), this.player.y - 50, 'letter-placeholder');
+    droppedLetter.setScale(1.1);
+    droppedLetter.setDepth(8);
+    droppedLetter.setBounce(0.4);
+    (droppedLetter.body as Phaser.Physics.Arcade.Body).allowGravity = true;
+    (droppedLetter as any).charValue = stolen.letter;
+    (droppedLetter as any).wordId = stolen.wordId;
+    (droppedLetter as any).wordScript = stolen.wordScript;
+    (droppedLetter as any).audioPath = stolen.audioPath;
+    (droppedLetter as any).stolen = true;
+    (droppedLetter as any)._stolenAt = this.time.now;
+    (droppedLetter as any).lifespan = this.time.now + 8000;
+    const spreadX = Phaser.Math.Between(-250, 250);
+    const spreadY = -250 - Phaser.Math.Between(0, 150);
+    droppedLetter.setVelocity(spreadX, spreadY);
+
+    const charText = this.add.text(droppedLetter.x, droppedLetter.y, stolen.letter, {
+      fontFamily: 'Noto Sans Devanagari, system-ui, sans-serif',
+      fontSize: '16px',
+      color: '#FFFFFF',
+      stroke: '#000000',
+      strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(9);
+    (droppedLetter as any).charText = charText;
+
+    this.lettersGroup.add(droppedLetter);
+
+    this.showMessage(`A shadow stole "${stolen.letter}"! Grab it back!`);
+  }
+
+  private spawnCheckpoints(checkpoints: any[]): void {
+    if (!checkpoints || checkpoints.length === 0) {
+      checkpoints = [{ id: 'start', x: 100, y: 450, activated: true }];
+    }
+
+    checkpoints.forEach((cp: any) => {
+      const flag = this.add.rectangle(cp.x, cp.y - 20, 6, 40, 0xFFD700, 0.9);
+      flag.setDepth(7);
+      this.physics.add.existing(flag, true);
+      this.checkpointsGroup.add(flag);
+
+      const pole = this.add.rectangle(cp.x, cp.y - 50, 4, 20, 0xDDDDDD, 0.9);
+      pole.setDepth(7);
+      this.physics.add.existing(pole, true);
+      this.checkpointsGroup.add(pole);
+
+      const base = this.add.rectangle(cp.x, cp.y, 16, 6, 0x888888, 0.9);
+      base.setDepth(7);
+      this.physics.add.existing(base, true);
+      this.checkpointsGroup.add(base);
+
+      (flag as any).checkpointId = cp.id;
+      this.checkpointActive.set(cp.id, cp.activated || false);
+
+      if (cp.activated) {
+        flag.setFillStyle(0x00FF44, 0.9);
+        this.lastCheckpoint = { x: cp.x, y: cp.y - 60 };
+      }
+    });
+
+    this.physics.add.overlap(this.player, this.checkpointsGroup, (_, cpObj) => {
+      const cp = cpObj as any;
+      const cpId = cp.checkpointId;
+      if (!cpId || this.checkpointActive.get(cpId)) return;
+
+      this.checkpointActive.set(cpId, true);
+      this.lastCheckpoint = { x: cp.x, y: cp.y - 80 };
+
+      cp.setFillStyle(0x00FF44, 0.9);
+      this.playSFX('sfx-collect');
+
+      const glow = this.add.circle(cp.x, cp.y - 20, 30, 0x00FF44, 0.3);
+      glow.setDepth(6);
+      this.tweens.add({
+        targets: glow,
+        scaleX: 2, scaleY: 2, alpha: 0,
+        duration: 800,
+        onComplete: () => glow.destroy(),
+      });
+
+      this.showMessage('Checkpoint reached!');
+    });
+  }
+
+  private invincibleTimer?: Phaser.Time.TimerEvent;
+
+  private damagePlayer(): void {
+    if (this.isInvincible) return;
+
+    this.health--;
+    this.isInvincible = true;
+
+    this.playSFX('sfx-hurt');
+    this.cameras.main.shake(200, 0.015);
+    this.cameras.main.flash(200, 255, 0, 0);
+
+    // Blink: toggle tint every 120ms
+    let blinkOn = true;
+    this.player.setTint(0xFF0000);
+    const blinkEvent = this.time.addEvent({
+      delay: 120,
+      repeat: 17, // 18 toggles × 120ms = ~2160ms
+      callback: () => {
+        blinkOn = !blinkOn;
+        this.player.setTint(blinkOn ? 0xFF0000 : 0xFFFFFF);
+      },
+    });
+    (this.player as any)._blinkTimer = blinkEvent;
+
+    this.invincibleTimer = this.time.delayedCall(2000, () => {
+      if ((this.player as any)._blinkTimer) {
+        (this.player as any)._blinkTimer.remove();
+        (this.player as any)._blinkTimer = null;
+      }
+      this.player.clearTint();
+      this.isInvincible = false;
+    });
+
+    if (this.health <= 0) {
+      if (blinkEvent) blinkEvent.remove();
+      this.player.clearTint();
+      this.playerDeath();
+    }
+  }
+
+  private playerDeath(): void {
+    // Cancel any active blink timer
+    if ((this.player as any)._blinkTimer) {
+      (this.player as any)._blinkTimer.remove();
+      (this.player as any)._blinkTimer = null;
+    }
+    this.player.clearTint();
+    this.player.setVelocity(0, -300);
+    (this.player.body as Phaser.Physics.Arcade.Body).allowGravity = true;
+
+    this.time.delayedCall(800, () => {
+      this.respawnAtCheckpoint();
+    });
+  }
+
+  private respawnAtCheckpoint(): void {
+    this.health = 3;
+    this.isInvincible = false;
+    this.player.clearTint();
+
+    this.player.setPosition(this.lastCheckpoint.x, this.lastCheckpoint.y);
+    this.player.setVelocity(0, 0);
+
+    this.cameras.main.fadeIn(500);
+
+    if (this.currentDialogue) {
+      this.scene.stop('DialogueScene');
+      this.currentDialogue = null;
+      this.scene.resume('GameScene');
+      this.scene.resume('UIScene');
+    }
+
+    this.enemiesGroup.getChildren().forEach((enemy: any) => {
+      enemy.setVelocity(0, 0);
+    });
+
+    this.showMessage('Respawned! Stay alert!');
+
+    // If all doors are already opened, trigger level completion
+    if (this.activeDoors.length === 0 && this.levelWords.length > 0) {
+      this.time.delayedCall(1500, () => this.levelComplete());
+      return;
+    }
+
+    const uiScene = this.scene.get('UIScene');
+    if (uiScene) {
+      uiScene.events.emit('letterStolen', {
+        letter: '',
+        totalLetters: this.collectedLetters.length,
+      });
+    }
+  }
+
+  private handleNPCInteraction(): void {
+    if (!this.nearNPC) {
+      this.npcPrompt.setVisible(false);
+      return;
+    }
+
+    const justPressed = this.eKey && Phaser.Input.Keyboard.JustDown(this.eKey);
+    if (!justPressed && !this.touchInteract) return;
+    this.touchInteract = false;
+
+    const npcData = this.nearNPC;
+    if (!npcData || !npcData.dialogues) return;
+
+    this.npcPrompt.setVisible(false);
+
+    this.scene.pause('GameScene');
+    this.scene.pause('UIScene');
+
+    this.scene.launch('DialogueScene', {
+      dialogue: npcData.dialogues,
+      onComplete: () => {
+        this.currentDialogue = null;
+        this.nearNPC = null;
+        this.scene.resume('GameScene');
+        this.scene.resume('UIScene');
+        this.playLevelMusic();
+      },
+    });
+    this.currentDialogue = this.scene.get('DialogueScene');
+  }
+
+  private createPlayerAnimations(): void {
+    if (this.anims.exists('player-idle')) return;
+
+    this.anims.create({
+      key: 'player-idle',
+      frames: this.anims.generateFrameNumbers('player-idle-sheet', { start: 0, end: 1 }),
+      frameRate: 2,
+      repeat: -1,
+    });
+
+    this.anims.create({
+      key: 'player-run',
+      frames: this.anims.generateFrameNumbers('player-run-sheet', { start: 0, end: 3 }),
+      frameRate: 10,
+      repeat: -1,
+    });
+  }
+
+  private updatePlayerAnimation(onGround: boolean, isMoving: boolean): void {
+    let animKey = '';
+    if (!onGround) {
+      animKey = '';
+    } else if (isMoving) {
+      animKey = 'player-run';
+    } else {
+      animKey = 'player-idle';
+    }
+
+    if (animKey && animKey !== this.currentAnim) {
+      this.currentAnim = animKey;
+      this.player.play(animKey);
+    }
+  }
+
+  private playLevelMusic(): void {
+    try {
+      this.sound.stopByKey('music-world-1');
+      this.sound.stopByKey('music-world-2');
+      this.sound.stopByKey('music-world-3');
+
+      const musicKey = this.levelMusicKey.startsWith('music-')
+        ? this.levelMusicKey
+        : `music-${this.levelMusicKey}`;
+
+      if (this.sound.get(musicKey)) {
+        this.sound.play(musicKey, { loop: true, volume: 0.3 });
+      }
+    } catch {}
+  }
+
+  private playSFX(key: string): void {
+    try {
+      if (this.sound.get(key)) {
+        this.sound.play(key, { volume: 0.5 });
+      }
+    } catch {}
+  }
+
+  private updateEnemies(): void {
+    this.enemiesGroup.getChildren().forEach((enemy: any) => {
+      if (!enemy.active) return;
+
+      const left = enemy.patrolLeft;
+      const right = enemy.patrolRight;
+      const dir = enemy.direction;
+      const speed = enemy.speed;
+
+      enemy.setVelocityX(speed * dir);
+
+      if (enemy.x <= left) {
+        enemy.direction = 1;
+        enemy.setFlipX(false);
+      } else if (enemy.x >= right) {
+        enemy.direction = -1;
+        enemy.setFlipX(true);
+      }
+    });
+
+    this.lettersGroup.getChildren().forEach((letter: any) => {
+      if (letter.stolen) {
+        if (letter.charText) {
+          letter.charText.setPosition(letter.x, letter.y);
+        }
+        if (this.time.now > letter.lifespan) {
+          if (letter.charText) letter.charText.destroy();
+          letter.destroy();
+        }
+      }
+    });
   }
 
   getPlayer(): Phaser.Physics.Arcade.Sprite { return this.player; }

@@ -8,19 +8,24 @@
 ### What's Working
 - All 9 Phaser scenes load and function
 - Platformer: run, jump (variable height), staircase platforms
-- Touch controls (virtual buttons)
+- Touch controls (virtual buttons for move/jump/interact)
 - Devanagari letters render as text on sprites
-- Letter collection with Howler.js pronunciation audio
+- Letter collection with Howler.js pronunciation audio + SFX
 - WordBar HUD showing collected letter tiles
 - WordPuzzle overlay (drag letters to spell, close button)
 - Doors auto-trigger puzzle on touch (no E key needed)
 - 12 letter positions, 6 Hindi words with splitLetters
 - Level completion saves to localStorage
 - Node.js backend ready (Express + MongoDB) — not running in dev
+- **NPC dialogue triggers** — walk near NPC, press E/tap 💬 to talk
+- **Shadow Creeper enemies** — patrol, steal collected letters, damage player
+- **Player animations** — idle (2-frame) and run (4-frame) spritesheets
+- **Checkpoint/respawn system** — flags save position, death respawns
+- **SFX** — jump, collect, door-open, hurt, success play during gameplay
+- **Level music** — auto-plays correct world music track
 
 ### Current Bugs / Pending
 - [ ] Music/SFX: silent placeholders (need real audio in Phase 5)
-- [ ] NPCs spawn but don't trigger dialogue
 - [ ] Boss fights not yet wired to level flow
 - [ ] Tiled level maps not created
 - [ ] Door per-word letter matching may need adjustment
@@ -33,12 +38,12 @@
 - Font: Noto Sans Devanagari via Google Fonts in index.html
 - JSON must be synced: `cp src/config/languages/hindi.json public/data/hindi.json`
 
-### Next Phase (Phase 3)
-1. Wire up NPC dialogue triggers
-2. Add Shadow Creeper enemies (patrol, steal letters)
-3. Create real player sprite animations
-4. Add checkpoint/respawn system
-5. Make music/SFX play (actual audio files)
+### Next Phase (Phase 4)
+1. Wire boss fights to level completion flow
+2. Add collectible gems for bonus stars
+3. Create health pickup items  
+4. Add world-2 and world-3 background parallax layers
+5. Balance enemy difficulty per level
 
 ### How to Run
 ```bash
@@ -50,11 +55,14 @@ npm run dev        # Frontend at http://localhost:5174
 | File | Purpose |
 |------|---------|
 | `src/main.ts` | Entry point, Phaser bootstrap |
-| `src/scenes/GameScene.ts` | Core gameplay (350+ lines, main file) |
+| `src/scenes/GameScene.ts` | Core gameplay (1100+ lines, main file) |
 | `src/scenes/WordPuzzleScene.ts` | Spelling puzzle overlay |
-| `src/scenes/UIScene.ts` | HUD (health, WordBar, score) |
+| `src/scenes/UIScene.ts` | HUD (health, WordBar, score, stolen letter handling) |
+| `src/scenes/DialogueScene.ts` | NPC conversation overlay |
 | `src/scenes/MenuScene.ts` | Animated menu |
 | `src/scenes/LevelSelectScene.ts` | World select |
+| `src/scenes/BossScene.ts` | Boss battle arena |
+| `src/scenes/PreloadScene.ts` | Asset loading (spritesheets, SFX, music) |
 | `src/config/languages/hindi.json` | Source of truth for Hindi words |
 | `public/data/hindi.json` | Copy for runtime fetch |
 | `src/systems/LanguageManager.ts` | Fetches /data/hindi.json |
