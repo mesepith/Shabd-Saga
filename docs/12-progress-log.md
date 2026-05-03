@@ -146,6 +146,11 @@
 - [x] Dialogue audio not playing: added Howler.js `play()` in DialogueScene `showNode()`
 - [x] Black screen crash on level 2→3: removed `?.clear()` calls on groups — Phaser reuses instances, groups were partially destroyed
 - [x] Level 3 (world-3-level-1) unsolvable: letter spawn positions expanded 12→20 to support words with 3+ splitLetters
+- [x] Enemy contact entirely broken: replaced `physics.add.overlap()` with manual distance check in `updateEnemies()` — Phaser group overlaps silently fail on reused scenes
+- [x] Enemies falling through world: group created with `allowGravity: false` (per-body setting was insufficient)
+- [x] "Need more letters" after collecting all: removed `spawnFallbackLetters()` from startup (its overlap was the only active one, using wrong wordId). Added defensive wordId recovery in `collectLetter()` to fix stolen-letter cascade
+- [x] Stolen letter lifespan 8s→30s with pulsing red glow for visibility
+- [x] Invincibility reduced 2s→1s, knockback always applies on enemy contact
 
 ### Updated Files
 - `src/scenes/GameScene.ts` — blink fix, enemy cooldown, damage logic, gravity, door positions, respawn check, audioPath
