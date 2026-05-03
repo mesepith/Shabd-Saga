@@ -483,6 +483,10 @@
           { "name": "ground_slam", "duration": 1500, "damage": 1, "speed": 200 }
         ]
       },
+      "enemies": [
+        { "id": "creeper_1", "type": "shadow-creeper", "position": { "x": 450, "y": 630 }, "patrolRange": 220 },
+        { "id": "creeper_2", "type": "shadow-creeper", "position": { "x": 800, "y": 410 }, "patrolRange": 160 }
+      ],
       "checkpoints": [
         { "id": "start", "x": 100, "y": 450, "activated": true }
       ]
@@ -602,6 +606,10 @@
           { "name": "spawn_minions", "duration": 2500, "damage": 0.5, "speed": 150 }
         ]
       },
+      "enemies": [
+        { "id": "creeper_1", "type": "shadow-creeper", "position": { "x": 530, "y": 630 }, "patrolRange": 200 },
+        { "id": "creeper_2", "type": "shadow-creeper", "position": { "x": 900, "y": 410 }, "patrolRange": 150 }
+      ],
       "checkpoints": [
         { "id": "start", "x": 100, "y": 450, "activated": true }
       ]

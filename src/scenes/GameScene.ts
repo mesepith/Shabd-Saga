@@ -66,6 +66,12 @@ export class GameScene extends Phaser.Scene {
     this.activeDoors = [];
     this.health = 3;
     this.isInvincible = false;
+    this.lettersOverlapRegistered = false;
+    this.doorsOverlapRegistered = false;
+    this.nearDoor = null;
+    this.nearNPC = null;
+    this.currentAnim = '';
+    this.currentDialogue = null;
 
     this.cameras.main.fadeIn(500);
 
@@ -104,7 +110,7 @@ export class GameScene extends Phaser.Scene {
     // Groups
     this.lettersGroup = this.physics.add.group({ allowGravity: false, immovable: true });
     this.doorsGroup = this.physics.add.staticGroup();
-    this.enemiesGroup = this.physics.add.group();
+    this.enemiesGroup = this.physics.add.group({ allowGravity: false });
     this.checkpointsGroup = this.physics.add.staticGroup();
 
     this.setupInput();
@@ -147,8 +153,7 @@ export class GameScene extends Phaser.Scene {
       padding: { x: 10, y: 4 },
     }).setOrigin(0.5).setScrollFactor(0).setDepth(200);
 
-    // Spawn letters from level data (try async, fall back to placeholders)
-    this.spawnFallbackLetters();
+    // Spawn letters from level data
     this.loadLevelData();
   }
 
@@ -186,6 +191,7 @@ export class GameScene extends Phaser.Scene {
       }
     } catch (err) {
       console.error('[GameScene] loadLevelData failed:', err);
+      this.spawnFallbackLetters();
     }
   }
 
@@ -248,13 +254,11 @@ export class GameScene extends Phaser.Scene {
       });
     });
 
-    // Overlap detection (register once)
-    if (!this.lettersOverlapRegistered) {
-      this.lettersOverlapRegistered = true;
-      this.physics.add.overlap(
-        this.player, this.lettersGroup,
-        (_, letterObj) => {
-          const l = letterObj as Phaser.Physics.Arcade.Sprite & {
+    // Overlap detection — register fresh each time
+    this.physics.add.overlap(
+      this.player, this.lettersGroup,
+      (_, letterObj) => {
+        const l = letterObj as Phaser.Physics.Arcade.Sprite & {
           charValue: string; wordId: string; audioPath: string;
           wordScript: string; wordTranslation: string;
           charText: Phaser.GameObjects.Text; glow: Phaser.GameObjects.Arc;
@@ -262,8 +266,6 @@ export class GameScene extends Phaser.Scene {
           _stolenAt?: number;
         };
         if (!l.active) return;
-
-        // Don't re-collect stolen letters for 600ms after ejection
         if (l._stolenAt && this.time.now - l._stolenAt < 600) return;
 
         l.floatTween?.stop();
@@ -275,7 +277,6 @@ export class GameScene extends Phaser.Scene {
       },
       undefined, this
     );
-    }
   }
 
   private spawnDoors(words: any[]): void {
@@ -443,6 +444,19 @@ export class GameScene extends Phaser.Scene {
     char: string, wordId: string, audioPath: string,
     wordScript: string, translation: string
   ): void {
+    // Defensive: recover correct wordId if missing or fallback
+    if (!wordId || wordId === 'fallback') {
+      for (const w of this.levelWords) {
+        if ((w.splitLetters || []).includes(char)) {
+          wordId = w.id;
+          wordScript = w.script;
+          audioPath = audioPath || `assets/audio/speech/${this.languageId}/${w.id}.mp3`;
+          break;
+        }
+      }
+    }
+    if (!wordId) wordId = 'unknown';
+
     this.collectedLetters.push({ letter: char, wordId, wordScript, audioPath });
 
     const uiScene = this.scene.get('UIScene');
@@ -727,14 +741,14 @@ export class GameScene extends Phaser.Scene {
         ];
       } else if (this.levelId === 'world-1-level-2') {
         enemies = [
-          { id: 'creeper_1', type: 'shadow-creeper', position: { x: 400, y: height - 90 }, patrolRange: 220 },
-          { id: 'creeper_2', type: 'shadow-creeper', position: { x: 750, y: 410 }, patrolRange: 180 },
-          { id: 'creeper_3', type: 'shadow-creeper', position: { x: 1000, y: 330 }, patrolRange: 160 },
+          { id: 'creeper_1', type: 'shadow-creeper', position: { x: 400, y: height - 90 }, patrolRange: 240 },
+          { id: 'creeper_2', type: 'shadow-creeper', position: { x: 750, y: height - 90 }, patrolRange: 200 },
+          { id: 'creeper_3', type: 'shadow-creeper', position: { x: 1050, y: 410 }, patrolRange: 160 },
         ];
       } else {
         enemies = [
           { id: 'creeper_1', type: 'shadow-creeper', position: { x: 500, y: height - 90 }, patrolRange: 200 },
-          { id: 'creeper_2', type: 'shadow-creeper', position: { x: 800, y: 410 }, patrolRange: 160 },
+          { id: 'creeper_2', type: 'shadow-creeper', position: { x: 850, y: 410 }, patrolRange: 160 },
         ];
       }
     }
@@ -745,8 +759,7 @@ export class GameScene extends Phaser.Scene {
 
       const enemySprite = this.physics.add.sprite(x, y, enemy.type || 'shadow-creeper');
       enemySprite.setDisplaySize(40, 40);
-      enemySprite.setCircle(20);
-      (enemySprite.body as Phaser.Physics.Arcade.Body).setOffset(12, 12);
+      (enemySprite.body as Phaser.Physics.Arcade.Body).setSize(40, 40);
       (enemySprite.body as Phaser.Physics.Arcade.Body).allowGravity = false;
       enemySprite.setDepth(8);
       enemySprite.setTint(0x9922AA);
@@ -759,6 +772,7 @@ export class GameScene extends Phaser.Scene {
 
       this.enemiesGroup.add(enemySprite);
 
+      // Float visual effect
       this.tweens.add({
         targets: enemySprite,
         y: y - 6,
@@ -768,43 +782,13 @@ export class GameScene extends Phaser.Scene {
         ease: 'Sine.easeInOut',
       });
 
+      // Patrol zone marker
       const zone = this.add.rectangle(x, y + 30, range * 2, 4, 0x9922AA, 0.2);
       zone.setDepth(4);
       this.enemyPatrolZones.set(enemy.id, { left: x - range, right: x + range });
     });
 
-    if (this.enemiesGroup.getLength() > 0) {
-      this.physics.add.overlap(this.player, this.enemiesGroup, (_, enemyObj) => {
-        const e = enemyObj as any;
-        if (!e.active || this.isInvincible) return;
-        this.handleEnemyContact(e);
-      }, undefined, this);
-    }
-  }
-
-  private handleEnemyContact(enemy: Phaser.Physics.Arcade.Sprite): void {
-    const e = enemy as any;
-    const now = this.time.now;
-
-    // 1.5s cooldown per enemy
-    if (e._lastContact && now - e._lastContact < 1500) return;
-    e._lastContact = now;
-
-    // Knockback first so player can't get multi-hit in one frame
-    const knockback = this.player.x < enemy.x ? -250 : 250;
-    this.player.setVelocityX(knockback);
-    this.player.setVelocityY(-280);
-
-    // Steal a letter if player has any
-    if (this.collectedLetters.length > 0) {
-      this.stealLetter();
-    }
-
-    // Always deal 1 damage (with invincibility frames)
-    this.damagePlayer();
-
-    enemy.setTint(0xFF0000);
-    this.time.delayedCall(150, () => enemy.setTint(0x9922AA));
+    // Overlap registration removed — now checked manually in updateEnemies()
   }
 
   private stealLetter(): void {
@@ -849,10 +833,23 @@ export class GameScene extends Phaser.Scene {
     (droppedLetter as any).audioPath = stolen.audioPath;
     (droppedLetter as any).stolen = true;
     (droppedLetter as any)._stolenAt = this.time.now;
-    (droppedLetter as any).lifespan = this.time.now + 8000;
-    const spreadX = Phaser.Math.Between(-250, 250);
-    const spreadY = -250 - Phaser.Math.Between(0, 150);
+    (droppedLetter as any).lifespan = this.time.now + 30000;
+    (droppedLetter as any).isStolenDrop = true;
+    const spreadX = Phaser.Math.Between(-300, 300);
+    const spreadY = -280 - Phaser.Math.Between(0, 150);
     droppedLetter.setVelocity(spreadX, spreadY);
+
+    // Pulsing red glow on stolen drop to make it noticeable
+    const dropGlow = this.add.circle(droppedLetter.x, droppedLetter.y, 16, 0xFF4444, 0.3);
+    dropGlow.setDepth(5);
+    (droppedLetter as any).glow = dropGlow;
+    this.tweens.add({
+      targets: dropGlow,
+      alpha: 0.1,
+      duration: 400,
+      yoyo: true,
+      repeat: -1,
+    });
 
     const charText = this.add.text(droppedLetter.x, droppedLetter.y, stolen.letter, {
       fontFamily: 'Noto Sans Devanagari, system-ui, sans-serif',
@@ -939,7 +936,7 @@ export class GameScene extends Phaser.Scene {
     this.player.setTint(0xFF0000);
     const blinkEvent = this.time.addEvent({
       delay: 120,
-      repeat: 17, // 18 toggles × 120ms = ~2160ms
+      repeat: 7, // 8 toggles × 120ms = ~960ms
       callback: () => {
         blinkOn = !blinkOn;
         this.player.setTint(blinkOn ? 0xFF0000 : 0xFFFFFF);
@@ -947,7 +944,7 @@ export class GameScene extends Phaser.Scene {
     });
     (this.player as any)._blinkTimer = blinkEvent;
 
-    this.invincibleTimer = this.time.delayedCall(2000, () => {
+    this.invincibleTimer = this.time.delayedCall(1000, () => {
       if ((this.player as any)._blinkTimer) {
         (this.player as any)._blinkTimer.remove();
         (this.player as any)._blinkTimer = null;
@@ -1106,14 +1103,16 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateEnemies(): void {
+    const now = this.time.now;
+
     this.enemiesGroup.getChildren().forEach((enemy: any) => {
       if (!enemy.active) return;
 
+      // Patrol movement
       const left = enemy.patrolLeft;
       const right = enemy.patrolRight;
       const dir = enemy.direction;
       const speed = enemy.speed;
-
       enemy.setVelocityX(speed * dir);
 
       if (enemy.x <= left) {
@@ -1123,15 +1122,44 @@ export class GameScene extends Phaser.Scene {
         enemy.direction = -1;
         enemy.setFlipX(true);
       }
+
+      // Manual distance-based contact check
+      const dx = this.player.x - enemy.x;
+      const dy = this.player.y - enemy.y;
+      if (Math.abs(dx) < 40 && Math.abs(dy) < 44) {
+        if (enemy._lastContact && now - enemy._lastContact < 1500) return;
+        enemy._lastContact = now;
+
+        // Always apply knockback
+        const knockback = this.player.x < enemy.x ? -250 : 250;
+        this.player.setVelocityX(knockback);
+        this.player.setVelocityY(-280);
+
+        if (this.collectedLetters.length > 0) {
+          this.stealLetter();
+        }
+
+        this.damagePlayer();
+
+        enemy.setTint(0xFF0000);
+        this.time.delayedCall(150, () => {
+          if (enemy.active) enemy.setTint(0x9922AA);
+        });
+      }
     });
 
+    // Clean up stolen letters that timed out
     this.lettersGroup.getChildren().forEach((letter: any) => {
       if (letter.stolen) {
         if (letter.charText) {
           letter.charText.setPosition(letter.x, letter.y);
         }
-        if (this.time.now > letter.lifespan) {
+        if (letter.glow) {
+          letter.glow.setPosition(letter.x, letter.y);
+        }
+        if (now > letter.lifespan) {
           if (letter.charText) letter.charText.destroy();
+          if (letter.glow) letter.glow.destroy();
           letter.destroy();
         }
       }
