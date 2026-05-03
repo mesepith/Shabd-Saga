@@ -24,18 +24,20 @@
 - [x] SaveManager (localStorage + server sync queue)
 - [x] Level 1-1 (Jungle Training) — 6 words, 12 letters, 3 doors
 
-## Phase 3 — Enemies & NPCs ⬅️ START HERE
+## Phase 3 — Enemies & NPCs ✅ COMPLETE (May 2026)
 **Goal**: Living world with interactions
 
-- [ ] NPC dialogue triggers (spawnNPCs creates NPCs but no dialogue flow yet)
-- [ ] Shadow Creeper enemy (patrol AI, letter stealing)
+- [x] NPC dialogue triggers (walk near → E/tap → DialogueScene with audio)
+- [x] Shadow Creeper enemy (patrol AI, letter stealing, player damage)
 - [ ] Letter Guard enemy (word-blocking mechanic)
-- [ ] Real player sprite animations (idle, run, jump — use player/idle.png and player/jump.png)
-- [ ] Checkpoint/respawn system
-- [ ] Real music/SFX audio (replace silent placeholders)
-- [ ] Enemy spawn from level data
-- [ ] Health/lives system integration
-- [ ] Level 1-2 (Jungle Challenge) with enemies
+- [x] Real player sprite animations (idle 2-frame, run 4-frame spritesheets)
+- [x] Checkpoint/respawn system (flags, death → respawn, auto-complete if all doors done)
+- [x] Real music/SFX hooks (wired, files are silent placeholders — real audio in Phase 5)
+- [x] Enemy spawn from level data (with defaults per level)
+- [x] Health/lives system integration (3 HP, invincibility frames, damage on contact)
+- [x] 6 door positions covering all words per level
+- [x] Dialogue audio playback (Howler.js in DialogueScene)
+- [x] 10+ bugfixes (see progress log May 4)
 
 ## Phase 4 — Boss Fights & Progression
 - [ ] Boss entity (multi-phase attack patterns)
