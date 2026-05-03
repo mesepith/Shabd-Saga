@@ -144,6 +144,8 @@
 - [x] Respawn after all doors done left player stuck: now checks `activeDoors.length === 0` and auto-triggers `levelComplete()`
 - [x] Re-collected stolen letters had no audio: added `audioPath` to `collectedLetters[]` type and stolen letter sprite
 - [x] Dialogue audio not playing: added Howler.js `play()` in DialogueScene `showNode()`
+- [x] Black screen crash on level 2→3: removed `?.clear()` calls on groups — Phaser reuses instances, groups were partially destroyed
+- [x] Level 3 (world-3-level-1) unsolvable: letter spawn positions expanded 12→20 to support words with 3+ splitLetters
 
 ### Updated Files
 - `src/scenes/GameScene.ts` — blink fix, enemy cooldown, damage logic, gravity, door positions, respawn check, audioPath
