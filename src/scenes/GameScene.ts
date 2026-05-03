@@ -13,8 +13,8 @@ export class GameScene extends Phaser.Scene {
   private touchJump: boolean = false;
 
   // Player state
-  private playerSpeed: number = 250;
-  private jumpForce: number = -450;
+  private playerSpeed: number = 280;
+  private jumpForce: number = -460;
   private canJump: boolean = true;
   private health: number = 3;
 
@@ -44,13 +44,13 @@ export class GameScene extends Phaser.Scene {
     (ground.body as Phaser.Physics.Arcade.StaticBody).checkCollision.right = false;
     this.platforms.add(ground);
 
-    // Create floating platforms
-    this.createFloatingPlatform(300, 500, 200, 20);
-    this.createFloatingPlatform(600, 400, 200, 20);
-    this.createFloatingPlatform(900, 320, 250, 20);
-    this.createFloatingPlatform(400, 250, 180, 20);
-    this.createFloatingPlatform(700, 180, 150, 20);
-    this.createFloatingPlatform(1000, 500, 200, 20);
+    // Create staircase platforms — easier to climb
+    this.createFloatingPlatform(250, 540, 180, 20);
+    this.createFloatingPlatform(480, 460, 180, 20);
+    this.createFloatingPlatform(710, 380, 180, 20);
+    this.createFloatingPlatform(940, 300, 180, 20);
+    this.createFloatingPlatform(1170, 240, 180, 20);
+    this.createFloatingPlatform(600, 560, 120, 20);
 
     // Create player
     this.player = this.physics.add.sprite(100, height - 150, 'player-placeholder');
@@ -242,55 +242,51 @@ export class GameScene extends Phaser.Scene {
     // Jump
     const jumpPressed = this.cursors.up?.isDown || this.wasd.W.isDown || this.spaceBar.isDown || this.touchJump;
     if (jumpPressed && onGround && this.canJump) {
-      this.player.setVelocityY(this.jumpForce);
+      body.velocity.y = this.jumpForce;
       this.canJump = false;
     }
 
-    // Variable jump height (release jump early = shorter jump)
+    // Variable jump height — release early = shorter jump
     if (!jumpPressed && body.velocity.y < -150) {
-      body.velocity.y *= 0.6;
+      body.velocity.y *= 0.5;
     }
   }
 
   private createPlaceholderLetters(): void {
-    // Create some floating collectible letters as placeholders
     const letterPositions = [
-      { x: 350, y: 450 },
-      { x: 650, y: 350 },
-      { x: 950, y: 270 },
-      { x: 450, y: 200 },
-      { x: 750, y: 130 },
+      { x: 250, y: 480 },
+      { x: 480, y: 400 },
+      { x: 710, y: 320 },
+      { x: 940, y: 240 },
+      { x: 600, y: 500 },
     ];
 
     letterPositions.forEach((pos, i) => {
-      const letter = this.add.circle(pos.x, pos.y, 16, 0xFFD700, 0.9);
-      letter.setStrokeStyle(2, 0xFFA500);
+      // Create letter as a physics-enabled sprite so overlaps work
+      const letter = this.physics.add.sprite(pos.x, pos.y, 'letter-placeholder');
+      letter.setScale(0.8);
+      letter.body!.allowGravity = false;
+      letter.body!.setImmovable(true);
+      (letter.body as Phaser.Physics.Arcade.Body).setCircle(16);
+
+      // Glow circle (visual only, follows the letter)
+      const glow = this.add.circle(pos.x, pos.y, 24, 0xFFD700, 0.15);
+      glow.setDepth(5);
 
       // Floating animation
-      this.tweens.add({
-        targets: letter,
-        y: pos.y - 10,
+      const floatTween = this.tweens.add({
+        targets: [letter, glow],
+        y: pos.y - 12,
         duration: 1500 + i * 200,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut',
       });
 
-      // Glow effect
-      const glow = this.add.circle(pos.x, pos.y, 24, 0xFFD700, 0.2);
-      this.tweens.add({
-        targets: glow,
-        scaleX: 1.5,
-        scaleY: 1.5,
-        alpha: 0.05,
-        duration: 1500 + i * 200,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-
-      // Collision with player
+      // Collision handler
       this.physics.add.overlap(this.player, letter, () => {
+        // Remove tween, destroy objects
+        floatTween.stop();
         letter.destroy();
         glow.destroy();
         this.collectLetter(i);
