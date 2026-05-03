@@ -115,7 +115,7 @@
 - [x] Zero TypeScript errors, clean Vite build
 
 ### Architecture Notes
-- `GameScene.ts` grew from 627 to ~1100 lines — modular extraction planned for Phase 4
+- `GameScene.ts` grew from 627 to ~1134 lines — modular extraction planned for Phase 4
 - `handleMovement()` now accepts optional `custom` params for programmatic control
 - Enemy defaults per level are hardcoded in `spawnEnemies()` when hindi.json lacks enemy data
 - Invincibility after damage: 2s with blinking white/red tint
@@ -128,6 +128,30 @@
 3. Spritesheets composed from individual SVG frames using sharp raw buffer compositing
 4. SFX and music use Phaser's built-in sound manager for simplicity
 5. Player animations only swap on ground state change to avoid jitter
+
+---
+
+## 2026-05-04 — Phase 3 Bugfixes
+
+### Issues Resolved
+- [x] Player stuck red after enemy contact: blink timer race condition — now tracked and explicitly cancelled
+- [x] Enemy contact flaky/stealing all letters: added 1.5s per-enemy cooldown (`_lastContact` timestamp)
+- [x] Stolen letters instantly re-collected: added `_stolenAt` timestamp, 600ms immunity in overlap handler
+- [x] Stolen letters ejected in a cluster: spread velocity increased to ±250 X, −250 to −400 Y
+- [x] Enemy contact never damaged health (only stole): now always calls `damagePlayer()` AND `stealLetter()`
+- [x] Only 3 doors for 6 words: expanded `doorPositions` from 3 to 6 entries
+- [x] All enemies fell to bottom due to gravity: set `allowGravity = false`, adjusted Y positions
+- [x] Respawn after all doors done left player stuck: now checks `activeDoors.length === 0` and auto-triggers `levelComplete()`
+- [x] Re-collected stolen letters had no audio: added `audioPath` to `collectedLetters[]` type and stolen letter sprite
+- [x] Dialogue audio not playing: added Howler.js `play()` in DialogueScene `showNode()`
+
+### Updated Files
+- `src/scenes/GameScene.ts` — blink fix, enemy cooldown, damage logic, gravity, door positions, respawn check, audioPath
+- `src/scenes/DialogueScene.ts` — added `audioPath` field, Howler playback in showNode
+- `src/scenes/PreloadScene.ts` — (from Phase 3 initial) spritesheets, enemy, NPC, music
+- `src/systems/LanguageManager.ts` — `enemies?` field in LevelData
+- `scripts/generate-sprites.ts` — run-frame and spritesheet generation
+- `src/config/languages/hindi.json` + `public/data/hindi.json` — enemy data, synced
 
 ### Pending (Phase 4)
 - Wire boss fights to level completion flow

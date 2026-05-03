@@ -3,7 +3,7 @@
 > **READ THIS FIRST** when starting a new AI session on Shabd Saga.
 > The AI should read `docs/12-progress-log.md` for full details.
 
-## Quick Status (May 3, 2026)
+## Quick Status (May 4, 2026)
 
 ### What's Working
 - All 9 Phaser scenes load and function
@@ -13,16 +13,24 @@
 - Letter collection with Howler.js pronunciation audio + SFX
 - WordBar HUD showing collected letter tiles
 - WordPuzzle overlay (drag letters to spell, close button)
-- Doors auto-trigger puzzle on touch (no E key needed)
+- Doors auto-trigger puzzle on touch (6 door positions, all words covered)
 - 12 letter positions, 6 Hindi words with splitLetters
 - Level completion saves to localStorage
 - Node.js backend ready (Express + MongoDB) — not running in dev
 - **NPC dialogue triggers** — walk near NPC, press E/tap 💬 to talk
-- **Shadow Creeper enemies** — patrol, steal collected letters, damage player
+- **Shadow Creeper enemies** — patrol at set heights (gravity off), steal letters + damage
 - **Player animations** — idle (2-frame) and run (4-frame) spritesheets
-- **Checkpoint/respawn system** — flags save position, death respawns
+- **Checkpoint/respawn system** — flags save position, death respawns, auto-win if all doors done
 - **SFX** — jump, collect, door-open, hurt, success play during gameplay
 - **Level music** — auto-plays correct world music track
+
+### Recent Bugfixes (May 4)
+- [x] Player no longer stuck red after enemy hit (blink timer properly cancelled)
+- [x] Enemy contact: 1.5s per-enemy cooldown prevents per-frame spam
+- [x] Stolen letters: 600ms re-collect immunity + wide spread (no more instant re-pickup)
+- [x] Enemies: gravity disabled, positions adjusted to ground/platform heights
+- [x] Respawn auto-triggers level complete if all doors already opened
+- [x] Re-collected stolen letters now play pronunciation audio
 
 ### Current Bugs / Pending
 - [ ] Music/SFX: silent placeholders (need real audio in Phase 5)
