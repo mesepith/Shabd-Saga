@@ -63,6 +63,9 @@ export class GameScene extends Phaser.Scene {
     this.levelId = data?.levelId || 'world-1-level-1';
     this.languageId = data?.language || 'hindi';
     this.collectedLetters = [];
+    this.activeDoors = [];
+    this.health = 3;
+    this.isInvincible = false;
 
     this.cameras.main.fadeIn(500);
 
@@ -105,6 +108,7 @@ export class GameScene extends Phaser.Scene {
     this.checkpointsGroup = this.physics.add.staticGroup();
 
     this.setupInput();
+    if (this.scene.isActive('UIScene')) this.scene.stop('UIScene');
     this.scene.launch('UIScene', { gameScene: this });
 
     // Create player animations
@@ -187,10 +191,13 @@ export class GameScene extends Phaser.Scene {
 
   private spawnLetters(words: any[]): void {
     const positions = [
-      { x: 250, y: 520 }, { x: 350, y: 480 }, { x: 480, y: 400 },
-      { x: 580, y: 360 }, { x: 710, y: 320 }, { x: 810, y: 280 },
-      { x: 940, y: 240 }, { x: 600, y: 500 }, { x: 420, y: 550 },
-      { x: 750, y: 440 }, { x: 880, y: 380 }, { x: 1020, y: 340 },
+      { x: 200, y: 530 }, { x: 300, y: 500 }, { x: 400, y: 460 },
+      { x: 500, y: 420 }, { x: 600, y: 380 }, { x: 700, y: 340 },
+      { x: 800, y: 300 }, { x: 900, y: 260 }, { x: 1000, y: 220 },
+      { x: 1100, y: 200 }, { x: 350, y: 560 }, { x: 480, y: 550 },
+      { x: 650, y: 500 }, { x: 780, y: 450 }, { x: 880, y: 400 },
+      { x: 980, y: 350 }, { x: 1080, y: 300 }, { x: 1150, y: 260 },
+      { x: 250, y: 450 }, { x: 550, y: 560 },
     ];
 
     let letterIndex = 0;
@@ -377,10 +384,13 @@ export class GameScene extends Phaser.Scene {
 
   private spawnFallbackLetters(): void {
     const positions = [
-      { x: 250, y: 520 }, { x: 350, y: 480 }, { x: 480, y: 400 },
-      { x: 580, y: 360 }, { x: 710, y: 320 }, { x: 810, y: 280 },
-      { x: 940, y: 240 }, { x: 600, y: 500 }, { x: 420, y: 550 },
-      { x: 750, y: 440 }, { x: 880, y: 380 }, { x: 1020, y: 340 },
+      { x: 200, y: 530 }, { x: 300, y: 500 }, { x: 400, y: 460 },
+      { x: 500, y: 420 }, { x: 600, y: 380 }, { x: 700, y: 340 },
+      { x: 800, y: 300 }, { x: 900, y: 260 }, { x: 1000, y: 220 },
+      { x: 1100, y: 200 }, { x: 350, y: 560 }, { x: 480, y: 550 },
+      { x: 650, y: 500 }, { x: 780, y: 450 }, { x: 880, y: 400 },
+      { x: 980, y: 350 }, { x: 1080, y: 300 }, { x: 1150, y: 260 },
+      { x: 250, y: 450 }, { x: 550, y: 560 },
     ];
 
     positions.forEach((pos, i) => {
