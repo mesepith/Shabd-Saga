@@ -1,0 +1,597 @@
+{
+  "languageId": "hindi",
+  "languageName": "Hindi",
+  "nativeName": "हिन्दी",
+  "scriptDirection": "ltr",
+  "fontFamily": "Noto Sans Devanagari",
+  "fontUrl": "assets/fonts/NotoSansDevanagari.woff2",
+  "ttsVoice": "Lekha (Enhanced)",
+  "levels": [
+    {
+      "id": "world-1-level-1",
+      "worldNumber": 1,
+      "levelNumber": 1,
+      "name": "जंगल का मार्ग",
+      "nameEnglish": "The Jungle Path",
+      "theme": "jungle",
+      "tilemapPath": "assets/tilesets/world-1-level-1.tmx",
+      "backgroundLayers": [
+        "assets/backgrounds/world-1/sky.png",
+        "assets/backgrounds/world-1/mountains-far.png",
+        "assets/backgrounds/world-1/trees-mid.png",
+        "assets/backgrounds/world-1/ground.png"
+      ],
+      "musicTrack": "assets/audio/music/world-1.mp3",
+      "ambientSound": "",
+      "difficulty": 1,
+      "words": [
+        {
+          "id": "baagh",
+          "script": "बाघ",
+          "transliteration": "baagh",
+          "translation": "tiger",
+          "splitLetters": ["बा", "घ"],
+          "category": "animal",
+          "difficulty": 1,
+          "audioPath": "assets/audio/speech/hindi/baagh.mp3",
+          "exampleSentence": "बाघ जंगल में रहता है।",
+          "exampleTranslation": "The tiger lives in the jungle."
+        },
+        {
+          "id": "haathi",
+          "script": "हाथी",
+          "transliteration": "haathee",
+          "translation": "elephant",
+          "splitLetters": ["हा", "थी"],
+          "category": "animal",
+          "difficulty": 1,
+          "audioPath": "assets/audio/speech/hindi/haathi.mp3",
+          "exampleSentence": "हाथी बड़ा होता है।",
+          "exampleTranslation": "The elephant is big."
+        },
+        {
+          "id": "mor",
+          "script": "मोर",
+          "transliteration": "mor",
+          "translation": "peacock",
+          "splitLetters": ["मो", "र"],
+          "category": "animal",
+          "difficulty": 1,
+          "audioPath": "assets/audio/speech/hindi/mor.mp3",
+          "exampleSentence": "मोर सुंदर होता है।",
+          "exampleTranslation": "The peacock is beautiful."
+        },
+        {
+          "id": "ped",
+          "script": "पेड़",
+          "transliteration": "ped",
+          "translation": "tree",
+          "splitLetters": ["पे", "ड़"],
+          "category": "nature",
+          "difficulty": 1,
+          "audioPath": "assets/audio/speech/hindi/ped.mp3",
+          "exampleSentence": "पेड़ हरा है।",
+          "exampleTranslation": "The tree is green."
+        },
+        {
+          "id": "nadee",
+          "script": "नदी",
+          "transliteration": "nadee",
+          "translation": "river",
+          "splitLetters": ["न", "दी"],
+          "category": "nature",
+          "difficulty": 1,
+          "audioPath": "assets/audio/speech/hindi/nadee.mp3",
+          "exampleSentence": "नदी बहती है।",
+          "exampleTranslation": "The river flows."
+        },
+        {
+          "id": "phool",
+          "script": "फूल",
+          "transliteration": "phool",
+          "translation": "flower",
+          "splitLetters": ["फू", "ल"],
+          "category": "nature",
+          "difficulty": 1,
+          "audioPath": "assets/audio/speech/hindi/phool.mp3",
+          "exampleSentence": "फूल खिलता है।",
+          "exampleTranslation": "The flower blooms."
+        }
+      ],
+      "npcs": [
+        {
+          "id": "wise_owl",
+          "name": "गुरु उल्लू",
+          "nameEnglish": "Wise Owl",
+          "spriteKey": "npc-owl",
+          "position": { "x": 250, "y": 420 },
+          "dialogues": [
+            {
+              "id": "owl_intro",
+              "speaker": "गुरु उल्लू",
+              "text": "नमस्ते! मैं गुरु उल्लू हूँ। जंगल में कई जानवर रहते हैं। चलो, हम सीखते हैं!",
+              "textEnglish": "Hello! I am Wise Owl. Many animals live in the jungle. Let's learn!",
+              "audioPath": "assets/audio/speech/hindi/dialogue/owl_intro.mp3",
+              "choices": [
+                { "text": "चलो सीखें!", "textHindi": "Let's learn!", "nextNodeId": "owl_teach" }
+              ],
+              "nextNodeId": null,
+              "action": null
+            },
+            {
+              "id": "owl_teach",
+              "speaker": "गुरु उल्लू",
+              "text": "इसे 'बाघ' कहते हैं। आगे जाकर 'बा' और 'घ' इकट्ठा करो और दरवाज़ा खोलो।",
+              "textEnglish": "This is called 'tiger'. Ahead, collect 'बा' and 'घ' and open the door.",
+              "audioPath": "assets/audio/speech/hindi/dialogue/owl_teach.mp3",
+              "choices": [],
+              "nextNodeId": null,
+              "action": "unlock_word:baagh"
+            }
+          ],
+          "teachesWords": ["baagh"]
+        }
+      ],
+      "boss": null,
+      "checkpoints": [
+        { "id": "start", "x": 100, "y": 450, "activated": true }
+      ]
+    },
+    {
+      "id": "world-1-level-2",
+      "worldNumber": 1,
+      "levelNumber": 2,
+      "name": "जंगल की चुनौती",
+      "nameEnglish": "The Jungle Challenge",
+      "theme": "jungle",
+      "tilemapPath": "assets/tilesets/world-1-level-2.tmx",
+      "backgroundLayers": [
+        "assets/backgrounds/world-1/sky.png",
+        "assets/backgrounds/world-1/mountains-far.png",
+        "assets/backgrounds/world-1/trees-mid.png",
+        "assets/backgrounds/world-1/ground.png"
+      ],
+      "musicTrack": "assets/audio/music/world-1.mp3",
+      "ambientSound": "",
+      "difficulty": 2,
+      "words": [
+        {
+          "id": "patta",
+          "script": "पत्ता",
+          "transliteration": "patta",
+          "translation": "leaf",
+          "splitLetters": ["प", "त्", "ता"],
+          "category": "nature",
+          "difficulty": 2,
+          "audioPath": "assets/audio/speech/hindi/patta.mp3"
+        },
+        {
+          "id": "sooraj",
+          "script": "सूरज",
+          "transliteration": "sooraj",
+          "translation": "sun",
+          "splitLetters": ["सू", "र", "ज"],
+          "category": "nature",
+          "difficulty": 2,
+          "audioPath": "assets/audio/speech/hindi/sooraj.mp3"
+        },
+        {
+          "id": "paanee",
+          "script": "पानी",
+          "transliteration": "paanee",
+          "translation": "water",
+          "splitLetters": ["पा", "नी"],
+          "category": "nature",
+          "difficulty": 2,
+          "audioPath": "assets/audio/speech/hindi/paanee.mp3"
+        },
+        {
+          "id": "bandar",
+          "script": "बंदर",
+          "transliteration": "bandar",
+          "translation": "monkey",
+          "splitLetters": ["बं", "द", "र"],
+          "category": "animal",
+          "difficulty": 2,
+          "audioPath": "assets/audio/speech/hindi/bandar.mp3"
+        },
+        {
+          "id": "ghaas",
+          "script": "घास",
+          "transliteration": "ghaas",
+          "translation": "grass",
+          "splitLetters": ["घा", "स"],
+          "category": "nature",
+          "difficulty": 2,
+          "audioPath": "assets/audio/speech/hindi/ghaas.mp3"
+        }
+      ],
+      "npcs": [
+        {
+          "id": "monkey_friend",
+          "name": "बंदर दोस्त",
+          "nameEnglish": "Monkey Friend",
+          "spriteKey": "npc-monkey",
+          "position": { "x": 600, "y": 400 },
+          "dialogues": [
+            {
+              "id": "monkey_intro",
+              "speaker": "बंदर दोस्त",
+              "text": "अरे! मैं यहाँ का बंदर हूँ। यहाँ बहुत अच्छे फल हैं! पानी भी बहुत है।",
+              "textEnglish": "Hey! I'm the monkey around here. There are great fruits here! There's also plenty of water.",
+              "audioPath": "assets/audio/speech/hindi/dialogue/monkey_intro.mp3",
+              "choices": [],
+              "nextNodeId": null,
+              "action": null
+            }
+          ],
+          "teachesWords": ["paanee"]
+        }
+      ],
+      "boss": {
+        "id": "jungle_boss",
+        "name": "छाया राक्षस",
+        "nameEnglish": "Shadow Demon of the Jungle",
+        "spriteKey": "boss-jungle",
+        "health": 3,
+        "sentences": [
+          {
+            "id": "boss_sentence_1",
+            "script": "बाघ जंगल में रहता है",
+            "translation": "The tiger lives in the jungle",
+            "requiredWords": ["baagh"],
+            "timeLimit": 30
+          },
+          {
+            "id": "boss_sentence_2",
+            "script": "मोर सुंदर होता है",
+            "translation": "The peacock is beautiful",
+            "requiredWords": ["mor"],
+            "timeLimit": 30
+          },
+          {
+            "id": "boss_sentence_3",
+            "script": "हाथी बड़ा होता है",
+            "translation": "The elephant is big",
+            "requiredWords": ["haathi"],
+            "timeLimit": 25
+          }
+        ],
+        "attackPatterns": [
+          { "name": "shadow_bolt", "duration": 2000, "damage": 1, "speed": 300 },
+          { "name": "ground_slam", "duration": 1500, "damage": 1, "speed": 150 },
+          { "name": "spawn_minions", "duration": 3000, "damage": 0.5, "speed": 100 }
+        ]
+      },
+      "checkpoints": [
+        { "id": "start", "x": 100, "y": 450, "activated": true },
+        { "id": "mid", "x": 800, "y": 350, "activated": false }
+      ]
+    },
+    {
+      "id": "world-2-level-1",
+      "worldNumber": 2,
+      "levelNumber": 1,
+      "name": "गाँव की यात्रा",
+      "nameEnglish": "The Village Journey",
+      "theme": "village",
+      "tilemapPath": "assets/tilesets/world-2-level-1.tmx",
+      "backgroundLayers": [
+        "assets/backgrounds/world-2/sky.png",
+        "assets/backgrounds/world-2/hills-far.png",
+        "assets/backgrounds/world-2/houses-mid.png",
+        "assets/backgrounds/world-2/ground.png"
+      ],
+      "musicTrack": "assets/audio/music/world-2.mp3",
+      "ambientSound": "",
+      "difficulty": 1,
+      "words": [
+        {
+          "id": "maa",
+          "script": "माँ",
+          "transliteration": "maa",
+          "translation": "mother",
+          "splitLetters": ["माँ"],
+          "category": "family",
+          "difficulty": 1,
+          "audioPath": "assets/audio/speech/hindi/maa.mp3",
+          "exampleSentence": "माँ प्यार करती है।",
+          "exampleTranslation": "Mother loves."
+        },
+        {
+          "id": "rotee",
+          "script": "रोटी",
+          "transliteration": "rotee",
+          "translation": "bread",
+          "splitLetters": ["रो", "टी"],
+          "category": "food",
+          "difficulty": 1,
+          "audioPath": "assets/audio/speech/hindi/rotee.mp3"
+        },
+        {
+          "id": "ghar",
+          "script": "घर",
+          "transliteration": "ghar",
+          "translation": "house",
+          "splitLetters": ["घ", "र"],
+          "category": "objects",
+          "difficulty": 1,
+          "audioPath": "assets/audio/speech/hindi/ghar.mp3"
+        },
+        {
+          "id": "doodh",
+          "script": "दूध",
+          "transliteration": "doodh",
+          "translation": "milk",
+          "splitLetters": ["दू", "ध"],
+          "category": "food",
+          "difficulty": 1,
+          "audioPath": "assets/audio/speech/hindi/doodh.mp3"
+        },
+        {
+          "id": "bazaar",
+          "script": "बाज़ार",
+          "transliteration": "bazaar",
+          "translation": "market",
+          "splitLetters": ["बा", "ज़ार"],
+          "category": "places",
+          "difficulty": 1,
+          "audioPath": "assets/audio/speech/hindi/bazaar.mp3"
+        }
+      ],
+      "npcs": [
+        {
+          "id": "deer_mother",
+          "name": "हिरण माँ",
+          "nameEnglish": "Mother Deer",
+          "spriteKey": "npc-deer",
+          "position": { "x": 300, "y": 420 },
+          "dialogues": [
+            {
+              "id": "deer_intro",
+              "speaker": "हिरण माँ",
+              "text": "नमस्ते बच्चे! गाँव में स्वागत है। यहाँ हमारा घर है और माँ रोटी बनाती है।",
+              "textEnglish": "Hello child! Welcome to the village. Here is our house and mother makes bread.",
+              "audioPath": "assets/audio/speech/hindi/dialogue/deer_intro.mp3",
+              "choices": [],
+              "nextNodeId": null,
+              "action": null
+            }
+          ],
+          "teachesWords": ["maa", "ghar", "rotee"]
+        }
+      ],
+      "boss": null,
+      "checkpoints": [
+        { "id": "start", "x": 100, "y": 450, "activated": true }
+      ]
+    },
+    {
+      "id": "world-2-level-2",
+      "worldNumber": 2,
+      "levelNumber": 2,
+      "name": "गाँव की चुनौती",
+      "nameEnglish": "The Village Challenge",
+      "theme": "village",
+      "tilemapPath": "assets/tilesets/world-2-level-2.tmx",
+      "backgroundLayers": [
+        "assets/backgrounds/world-2/sky.png",
+        "assets/backgrounds/world-2/hills-far.png",
+        "assets/backgrounds/world-2/houses-mid.png",
+        "assets/backgrounds/world-2/ground.png"
+      ],
+      "musicTrack": "assets/audio/music/world-2.mp3",
+      "ambientSound": "",
+      "difficulty": 2,
+      "words": [
+        {
+          "id": "pita",
+          "script": "पिता",
+          "transliteration": "pita",
+          "translation": "father",
+          "splitLetters": ["पि", "ता"],
+          "category": "family",
+          "difficulty": 2,
+          "audioPath": "assets/audio/speech/hindi/pita.mp3"
+        },
+        {
+          "id": "daadee",
+          "script": "दादी",
+          "transliteration": "daadee",
+          "translation": "grandmother",
+          "splitLetters": ["दा", "दी"],
+          "category": "family",
+          "difficulty": 2,
+          "audioPath": "assets/audio/speech/hindi/daadee.mp3"
+        },
+        {
+          "id": "chaay",
+          "script": "चाय",
+          "transliteration": "chaay",
+          "translation": "tea",
+          "splitLetters": ["चा", "य"],
+          "category": "food",
+          "difficulty": 2,
+          "audioPath": "assets/audio/speech/hindi/chaay.mp3"
+        },
+        {
+          "id": "phal",
+          "script": "फल",
+          "transliteration": "phal",
+          "translation": "fruit",
+          "splitLetters": ["फ", "ल"],
+          "category": "food",
+          "difficulty": 2,
+          "audioPath": "assets/audio/speech/hindi/phal.mp3"
+        },
+        {
+          "id": "mitthai",
+          "script": "मिठाई",
+          "transliteration": "mitthai",
+          "translation": "sweets",
+          "splitLetters": ["मि", "ठा", "ई"],
+          "category": "food",
+          "difficulty": 2,
+          "audioPath": "assets/audio/speech/hindi/mitthai.mp3"
+        }
+      ],
+      "npcs": [],
+      "boss": {
+        "id": "village_boss",
+        "name": "छाया रसोइया",
+        "nameEnglish": "Shadow Cook",
+        "spriteKey": "boss-village",
+        "health": 3,
+        "sentences": [
+          {
+            "id": "vb_sentence_1",
+            "script": "माँ रोटी बनाती है",
+            "translation": "Mother makes bread",
+            "requiredWords": ["maa", "rotee"],
+            "timeLimit": 30
+          },
+          {
+            "id": "vb_sentence_2",
+            "script": "दादी चाय पीती है",
+            "translation": "Grandmother drinks tea",
+            "requiredWords": ["daadee", "chaay"],
+            "timeLimit": 30
+          },
+          {
+            "id": "vb_sentence_3",
+            "script": "बाज़ार में फल है",
+            "translation": "There is fruit in the market",
+            "requiredWords": ["bazaar", "phal"],
+            "timeLimit": 25
+          }
+        ],
+        "attackPatterns": [
+          { "name": "shadow_bolt", "duration": 2000, "damage": 1, "speed": 350 },
+          { "name": "ground_slam", "duration": 1500, "damage": 1, "speed": 200 }
+        ]
+      },
+      "checkpoints": [
+        { "id": "start", "x": 100, "y": 450, "activated": true }
+      ]
+    },
+    {
+      "id": "world-3-level-1",
+      "worldNumber": 3,
+      "levelNumber": 1,
+      "name": "राजमहल का रहस्य",
+      "nameEnglish": "Secret of the Royal Palace",
+      "theme": "palace",
+      "tilemapPath": "assets/tilesets/world-3-level-1.tmx",
+      "backgroundLayers": [
+        "assets/backgrounds/world-3/sky.png",
+        "assets/backgrounds/world-3/palace-far.png",
+        "assets/backgrounds/world-3/pillars-mid.png",
+        "assets/backgrounds/world-3/floor.png"
+      ],
+      "musicTrack": "assets/audio/music/world-3.mp3",
+      "ambientSound": "",
+      "difficulty": 3,
+      "words": [
+        {
+          "id": "raaja",
+          "script": "राजा",
+          "transliteration": "raaja",
+          "translation": "king",
+          "splitLetters": ["रा", "जा"],
+          "category": "people",
+          "difficulty": 2,
+          "audioPath": "assets/audio/speech/hindi/raaja.mp3"
+        },
+        {
+          "id": "raanee",
+          "script": "रानी",
+          "transliteration": "raanee",
+          "translation": "queen",
+          "splitLetters": ["रा", "नी"],
+          "category": "people",
+          "difficulty": 2,
+          "audioPath": "assets/audio/speech/hindi/raanee.mp3"
+        },
+        {
+          "id": "laal",
+          "script": "लाल",
+          "transliteration": "laal",
+          "translation": "red",
+          "splitLetters": ["ला", "ल"],
+          "category": "color",
+          "difficulty": 1,
+          "audioPath": "assets/audio/speech/hindi/laal.mp3"
+        },
+        {
+          "id": "neela",
+          "script": "नीला",
+          "transliteration": "neela",
+          "translation": "blue",
+          "splitLetters": ["नी", "ला"],
+          "category": "color",
+          "difficulty": 1,
+          "audioPath": "assets/audio/speech/hindi/neela.mp3"
+        },
+        {
+          "id": "kitaab",
+          "script": "किताब",
+          "transliteration": "kitaab",
+          "translation": "book",
+          "splitLetters": ["कि", "ता", "ब"],
+          "category": "objects",
+          "difficulty": 2,
+          "audioPath": "assets/audio/speech/hindi/kitaab.mp3"
+        },
+        {
+          "id": "deepak",
+          "script": "दीपक",
+          "transliteration": "deepak",
+          "translation": "lamp",
+          "splitLetters": ["दी", "प", "क"],
+          "category": "objects",
+          "difficulty": 2,
+          "audioPath": "assets/audio/speech/hindi/deepak.mp3"
+        }
+      ],
+      "npcs": [],
+      "boss": {
+        "id": "palace_boss",
+        "name": "राज छाया",
+        "nameEnglish": "Royal Shadow Guardian",
+        "spriteKey": "boss-palace",
+        "health": 3,
+        "sentences": [
+          {
+            "id": "pb_sentence_1",
+            "script": "राजा के महल में दीपक है",
+            "translation": "There is a lamp in the king's palace",
+            "requiredWords": ["raaja", "deepak"],
+            "timeLimit": 35
+          },
+          {
+            "id": "pb_sentence_2",
+            "script": "रानी लाल किताब पढ़ती है",
+            "translation": "The queen reads a red book",
+            "requiredWords": ["raanee", "laal", "kitaab"],
+            "timeLimit": 30
+          },
+          {
+            "id": "pb_sentence_3",
+            "script": "नीला दीपक सुंदर है",
+            "translation": "The blue lamp is beautiful",
+            "requiredWords": ["neela", "deepak"],
+            "timeLimit": 30
+          }
+        ],
+        "attackPatterns": [
+          { "name": "shadow_bolt", "duration": 1500, "damage": 1, "speed": 400 },
+          { "name": "ground_slam", "duration": 1000, "damage": 1, "speed": 250 },
+          { "name": "spawn_minions", "duration": 2500, "damage": 0.5, "speed": 150 }
+        ]
+      },
+      "checkpoints": [
+        { "id": "start", "x": 100, "y": 450, "activated": true }
+      ]
+    }
+  ]
+}

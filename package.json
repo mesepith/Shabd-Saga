@@ -1,0 +1,36 @@
+{
+  "name": "shabd-saga",
+  "version": "0.1.0",
+  "description": "A hand-painted 2D platformer that teaches languages to kids through immersive gameplay",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "dev:client": "vite",
+    "dev:server": "tsx watch backend/src/server.ts",
+    "build": "vite build",
+    "build:server": "tsc -p backend/tsconfig.json",
+    "preview": "vite preview",
+    "generate-assets": "tsx scripts/generate-all-assets.ts",
+    "generate-backgrounds": "tsx scripts/generate-backgrounds.ts",
+    "generate-sprites": "tsx scripts/generate-sprites.ts",
+    "generate-tilesets": "tsx scripts/generate-tilesets.ts",
+    "generate-letters": "tsx scripts/generate-letters.ts",
+    "generate-speech": "bash scripts/generate-speech.sh",
+    "lint": "tsc --noEmit",
+    "start": "node backend/dist/server.js"
+  },
+  "dependencies": {
+    "howler": "^2.2.4",
+    "phaser": "^3.80.1"
+  },
+  "devDependencies": {
+    "@types/howler": "^2.2.12",
+    "@types/node": "^20.14.0",
+    "concurrently": "^8.2.2",
+    "sharp": "^0.33.4",
+    "tsx": "^4.16.0",
+    "typescript": "^5.4.5",
+    "vite": "^5.4.0",
+    "vite-plugin-singlefile": "^2.0.0"
+  }
+}
