@@ -98,11 +98,12 @@ export class LanguageManager {
    */
   async loadLanguage(languageId: string): Promise<LanguageConfig> {
     try {
-      // Try loading from bundled config first
-      const module = await import(`../config/languages/${languageId}.json`);
-      const config = module.default || module;
+      // Fetch from public static files
+      const response = await fetch(`/data/${languageId}.json`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const config: LanguageConfig = await response.json();
 
-      this.currentLanguage = config as LanguageConfig;
+      this.currentLanguage = config;
       this.buildIndexes();
 
       return this.currentLanguage;

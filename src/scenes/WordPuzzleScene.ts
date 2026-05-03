@@ -4,22 +4,17 @@ export class WordPuzzleScene extends Phaser.Scene {
   private targetWord: string = '';
   private targetTranslation: string = '';
   private collectedLetters: string[] = [];
-  private letterSlots: Phaser.GameObjects.Container[] = [];
-  private availableLetters: Phaser.GameObjects.Container[] = [];
   private correctOrder: string[] = [];
   private currentSlots: (string | null)[] = [];
   private attemptCount: number = 0;
+  private availableContainers: Phaser.GameObjects.Container[] = [];
+  private puzzleObjects: Phaser.GameObjects.GameObject[] = [];
 
   constructor() {
     super({ key: 'WordPuzzleScene' });
   }
 
-  create(data: {
-    word: string;
-    translation: string;
-    letters: string[];
-    correctOrder: string[];
-  }): void {
+  create(data: { word: string; translation: string; letters: string[]; correctOrder: string[] }): void {
     const { width, height } = this.cameras.main;
 
     this.targetWord = data.word;
@@ -28,349 +23,371 @@ export class WordPuzzleScene extends Phaser.Scene {
     this.correctOrder = data.correctOrder;
     this.currentSlots = new Array(this.correctOrder.length).fill(null);
     this.attemptCount = 0;
+    this.availableContainers = [];
+    this.puzzleObjects = [];
 
     // Semi-transparent overlay
     const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.7);
     overlay.setDepth(400);
+    this.puzzleObjects.push(overlay);
 
     // Puzzle panel
-    const panel = this.add.rectangle(width / 2, height / 2, 600, 400, 0x1a1a3e, 0.95);
+    const panel = this.add.rectangle(width / 2, height / 2, 620, 420, 0x1a1a3e, 0.95);
     panel.setStrokeStyle(3, 0x4444AA);
     panel.setDepth(401);
+    this.puzzleObjects.push(panel);
+
+    // Close button (X) — top right of panel
+    const closeBtn = this.add.text(width / 2 + 290, height / 2 - 195, '✕ Close', {
+      fontFamily: 'Noto Sans, system-ui, sans-serif',
+      fontSize: '16px', color: '#FF6666',
+      backgroundColor: '#331111',
+      padding: { x: 8, y: 4 },
+    }).setOrigin(1, 0).setDepth(405).setInteractive({ useHandCursor: true });
+    closeBtn.on('pointerdown', () => this.closePuzzle());
+    this.puzzleObjects.push(closeBtn);
 
     // Title
-    const title = this.add.text(width / 2, height / 2 - 150, 'Spell the Word!', {
+    const title = this.add.text(width / 2, height / 2 - 160, 'Spell the Word!', {
       fontFamily: 'Noto Sans, system-ui, sans-serif',
-      fontSize: '28px',
-      color: '#FFD700',
-    });
-    title.setOrigin(0.5);
-    title.setDepth(402);
+      fontSize: '28px', color: '#FFD700',
+    }).setOrigin(0.5).setDepth(402);
+    this.puzzleObjects.push(title);
+
+    // Target word (Devanagari script shown as visual hint too)
+    const wordHint = this.add.text(width / 2, height / 2 - 130, this.targetWord, {
+      fontFamily: 'Noto Sans Devanagari, system-ui, sans-serif',
+      fontSize: '32px', color: '#FFAA44',
+    }).setOrigin(0.5).setDepth(402);
+    this.puzzleObjects.push(wordHint);
 
     // Translation hint
-    const hint = this.add.text(width / 2, height / 2 - 110, this.targetTranslation, {
+    const hint = this.add.text(width / 2, height / 2 - 95, `(${this.targetTranslation})`, {
       fontFamily: 'Noto Sans, system-ui, sans-serif',
-      fontSize: '20px',
-      color: '#AAAACC',
+      fontSize: '18px', color: '#AAAACC',
       fontStyle: 'italic',
-    });
-    hint.setOrigin(0.5);
-    hint.setDepth(402);
+    }).setOrigin(0.5).setDepth(402);
+    this.puzzleObjects.push(hint);
 
-    // Letter slots (where player drops letters)
+    // Instruction
+    const inst = this.add.text(width / 2, height / 2 - 70, 'Drag letters into the correct slots below', {
+      fontFamily: 'Noto Sans, system-ui, sans-serif',
+      fontSize: '12px', color: '#666688',
+    }).setOrigin(0.5).setDepth(402);
+    this.puzzleObjects.push(inst);
+
+    // Letter slots
     this.createLetterSlots(width, height);
 
     // Available letters (draggable)
     this.createAvailableLetters(width, height);
 
-    // Submit button
-    this.createSubmitButton(width, height);
-
-    // Hint button
-    this.createHintButton(width, height);
+    // Buttons row
+    this.createButtons(width, height);
   }
 
   private createLetterSlots(width: number, height: number): void {
-    const slotWidth = 64;
-    const slotGap = 10;
-    const totalWidth = this.correctOrder.length * (slotWidth + slotGap) - slotGap;
-    const startX = width / 2 - totalWidth / 2 + slotWidth / 2;
+    const slotSize = 58;
+    const gap = 8;
+    const totalW = this.correctOrder.length * (slotSize + gap) - gap;
+    const startX = width / 2 - totalW / 2 + slotSize / 2;
+    const slotY = height / 2 - 5;
 
-    this.letterSlots = this.correctOrder.map((_, i) => {
-      const x = startX + i * (slotWidth + slotGap);
-      const y = height / 2 - 20;
-
-      // Slot background
-      const slotBg = this.add.rectangle(x, y, slotWidth, slotWidth, 0x222244, 1);
+    this.correctOrder.forEach((_, i) => {
+      const x = startX + i * (slotSize + gap);
+      const slotBg = this.add.rectangle(x, slotY, slotSize, slotSize, 0x222244, 1);
       slotBg.setStrokeStyle(2, 0x444488);
-      slotBg.setDepth(402);
+      slotBg.setDepth(402).setInteractive();
+      this.puzzleObjects.push(slotBg);
 
-      // Slot number
-      const slotNum = this.add.text(x, y + slotWidth / 2 + 12, `${i + 1}`, {
+      const slotNum = this.add.text(x, slotY + slotSize / 2 + 10, `${i + 1}`, {
         fontFamily: 'system-ui, sans-serif',
-        fontSize: '11px',
-        color: '#555588',
-      });
-      slotNum.setOrigin(0.5);
-      slotNum.setDepth(403);
+        fontSize: '10px', color: '#555588',
+      }).setOrigin(0.5).setDepth(403);
+      this.puzzleObjects.push(slotNum);
 
-      return this.add.container(0, 0, [slotBg, slotNum]);
+      // Tap empty slot to do nothing; tap filled slot to remove letter
+      slotBg.on('pointerdown', () => {
+        if (this.currentSlots[i] !== null) {
+          this.removeFromSlot(i);
+        }
+      });
     });
   }
 
   private createAvailableLetters(width: number, height: number): void {
-    const letterWidth = 56;
-    const gap = 8;
-    const totalWidth = this.collectedLetters.length * (letterWidth + gap) - gap;
-    const startX = width / 2 - totalWidth / 2 + letterWidth / 2;
+    const letterW = 52;
+    const gap = 6;
+    const totalW = this.collectedLetters.length * (letterW + gap) - gap;
+    const startX = width / 2 - totalW / 2 + letterW / 2;
+    const rowY = height / 2 + 75;
 
-    this.availableLetters = this.collectedLetters.map((letter, i) => {
-      const x = startX + i * (letterWidth + gap);
-      const y = height / 2 + 80;
+    this.collectedLetters.forEach((letter, i) => {
+      const x = startX + i * (letterW + gap);
 
-      const letterBg = this.add.rectangle(0, 0, letterWidth, letterWidth, 0x3D3D6B, 1);
-      letterBg.setStrokeStyle(2, 0x6666AA);
+      const bg = this.add.rectangle(0, 0, letterW, letterW, 0x3D3D6B, 1);
+      bg.setStrokeStyle(2, 0x6666AA);
 
-      const letterText = this.add.text(0, 0, letter, {
+      const txt = this.add.text(0, 0, letter, {
         fontFamily: 'Noto Sans Devanagari, system-ui, sans-serif',
-        fontSize: '24px',
-        color: '#FFFFFF',
-      });
-      letterText.setOrigin(0.5);
+        fontSize: '22px', color: '#FFFFFF',
+      }).setOrigin(0.5);
 
-      const container = this.add.container(x, y, [letterBg, letterText]);
-      container.setSize(letterWidth, letterWidth);
+      const container = this.add.container(x, rowY, [bg, txt]);
+      container.setSize(letterW, letterW);
       container.setDepth(403);
       container.setInteractive({ draggable: true, useHandCursor: true });
 
-      // Store letter data
       (container as any).letterValue = letter;
       (container as any).slotIndex = -1;
+      (container as any).origIndex = i;
 
-      // Drag events
-      this.input.on('drag', (_pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.Container, dragX: number, dragY: number) => {
-        gameObject.x = dragX;
-        gameObject.y = dragY;
-        gameObject.setDepth(410);
-      });
+      this.availableContainers.push(container);
+      this.puzzleObjects.push(container);
+    });
 
-      this.input.on('dragend', (_pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.Container) => {
-        gameObject.setDepth(403);
-        this.checkSlotDrop(gameObject);
-      });
+    // Drag handlers
+    this.input.on('drag', (_p: any, obj: Phaser.GameObjects.Container, dx: number, dy: number) => {
+      obj.x = dx;
+      obj.y = dy;
+      obj.setDepth(410);
+    });
 
-      return container;
+    this.input.on('dragend', (_p: any, obj: Phaser.GameObjects.Container) => {
+      obj.setDepth(403);
+      this.checkSlotDrop(obj);
     });
   }
 
-  private checkSlotDrop(letterObj: Phaser.GameObjects.Container): void {
-    const letterValue = (letterObj as any).letterValue as string;
+  private removeFromSlot(slotIndex: number): void {
+    const letterVal = this.currentSlots[slotIndex];
+    if (!letterVal) return;
+    this.currentSlots[slotIndex] = null;
 
-    // Check if dropped on a slot
-    const slotWidth = 64;
-    const slotGap = 10;
-    const totalWidth = this.correctOrder.length * (slotWidth + slotGap) - slotGap;
-    const startX = this.cameras.main.width / 2 - totalWidth / 2 + slotWidth / 2;
-    const slotY = this.cameras.main.height / 2 - 20;
-
-    let droppedInSlot = false;
-
-    this.correctOrder.forEach((_, i) => {
-      const slotX = startX + i * (slotWidth + slotGap);
-      const dist = Phaser.Math.Distance.Between(letterObj.x, letterObj.y, slotX, slotY);
-
-      if (dist < 40 && this.currentSlots[i] === null) {
-        // Snap to slot
-        letterObj.x = slotX;
-        letterObj.y = slotY;
-        this.currentSlots[i] = letterValue;
-        (letterObj as any).slotIndex = i;
-        droppedInSlot = true;
-
-        // Visual feedback
-        this.tweens.add({
-          targets: letterObj,
-          scaleX: 1.1,
-          scaleY: 1.1,
-          duration: 100,
-          yoyo: true,
-        });
-      }
-    });
-
-    if (!droppedInSlot) {
-      // Return to original position
-      const letterIndex = this.collectedLetters.indexOf(letterValue);
-      const letterWidth = 56;
-      const gap = 8;
-      const totalWidth2 = this.collectedLetters.length * (letterWidth + gap) - gap;
-      const startX2 = this.cameras.main.width / 2 - totalWidth2 / 2 + letterWidth / 2;
-      const origX = startX2 + letterIndex * (letterWidth + gap);
-      const origY = this.cameras.main.height / 2 + 80;
+    // Return the letter to its original available position
+    const container = this.availableContainers.find(
+      (c) => (c as any).letterValue === letterVal && (c as any).slotIndex === slotIndex
+    );
+    if (container) {
+      (container as any).slotIndex = -1;
+      const idx = (container as any).origIndex;
+      const letterW = 52;
+      const gap = 6;
+      const totalW = this.collectedLetters.length * (letterW + gap) - gap;
+      const startX = this.cameras.main.width / 2 - totalW / 2 + letterW / 2;
+      const rowY = this.cameras.main.height / 2 + 75;
 
       this.tweens.add({
-        targets: letterObj,
-        x: origX,
-        y: origY,
+        targets: container,
+        x: startX + idx * (letterW + gap),
+        y: rowY,
         duration: 200,
         ease: 'Back.easeOut',
       });
     }
   }
 
-  private createSubmitButton(width: number, height: number): void {
-    const btn = this.add.rectangle(width / 2, height / 2 + 150, 160, 44, 0x44AA44, 1);
-    btn.setStrokeStyle(2, 0x66DD66);
-    btn.setDepth(402);
-    btn.setInteractive({ useHandCursor: true });
+  private checkSlotDrop(obj: Phaser.GameObjects.Container): void {
+    const letterVal = (obj as any).letterValue as string;
+    if (!letterVal) return;
+    const oldSlotIdx = (obj as any).slotIndex;
 
-    const btnText = this.add.text(width / 2, height / 2 + 150, '✓ Submit', {
-      fontFamily: 'Noto Sans, system-ui, sans-serif',
-      fontSize: '18px',
-      color: '#FFFFFF',
+    // Clear old slot
+    if (oldSlotIdx >= 0) {
+      this.currentSlots[oldSlotIdx] = null;
+      (obj as any).slotIndex = -1;
+    }
+
+    const slotSize = 58;
+    const gap = 8;
+    const totalW = this.correctOrder.length * (slotSize + gap) - gap;
+    const startX = this.cameras.main.width / 2 - totalW / 2 + slotSize / 2;
+    const slotY = this.cameras.main.height / 2 - 5;
+
+    let dropped = false;
+
+    this.correctOrder.forEach((_, i) => {
+      const sx = startX + i * (slotSize + gap);
+      const dist = Phaser.Math.Distance.Between(obj.x, obj.y, sx, slotY);
+      if (dist < 40 && this.currentSlots[i] === null) {
+        obj.x = sx;
+        obj.y = slotY;
+        this.currentSlots[i] = letterVal;
+        (obj as any).slotIndex = i;
+        dropped = true;
+        this.tweens.add({
+          targets: obj, scaleX: 1.1, scaleY: 1.1,
+          duration: 100, yoyo: true,
+        });
+      }
     });
-    btnText.setOrigin(0.5);
-    btnText.setDepth(403);
 
-    btn.on('pointerover', () => btn.setFillStyle(0x55CC55));
-    btn.on('pointerout', () => btn.setFillStyle(0x44AA44));
-    btn.on('pointerdown', () => this.validateWord());
+    if (!dropped) {
+      const idx = (obj as any).origIndex;
+      const letterW = 52;
+      const gap2 = 6;
+      const totalW2 = this.collectedLetters.length * (letterW + gap2) - gap2;
+      const startX2 = this.cameras.main.width / 2 - totalW2 / 2 + letterW / 2;
+      const rowY = this.cameras.main.height / 2 + 75;
+
+      this.tweens.add({
+        targets: obj,
+        x: startX2 + idx * (letterW + gap2),
+        y: rowY,
+        duration: 200,
+        ease: 'Back.easeOut',
+      });
+    }
   }
 
-  private createHintButton(width: number, height: number): void {
-    const btn = this.add.rectangle(width / 2 + 100, height / 2 + 150, 120, 44, 0x4444AA, 1);
-    btn.setStrokeStyle(2, 0x6666CC);
-    btn.setDepth(402);
-    btn.setInteractive({ useHandCursor: true });
+  private createButtons(width: number, height: number): void {
+    const btnY = height / 2 + 155;
+    const btnW = 140;
+    const btnH = 40;
 
-    const btnText = this.add.text(width / 2 + 100, height / 2 + 150, '💡 Hint', {
+    // Submit button
+    const subBtn = this.add.rectangle(width / 2 - 80, btnY, btnW, btnH, 0x44AA44, 1);
+    subBtn.setStrokeStyle(2, 0x66DD66).setDepth(402).setInteractive({ useHandCursor: true });
+    const subTxt = this.add.text(width / 2 - 80, btnY, '✓ Submit', {
       fontFamily: 'Noto Sans, system-ui, sans-serif',
-      fontSize: '16px',
-      color: '#CCCCFF',
-    });
-    btnText.setOrigin(0.5);
-    btnText.setDepth(403);
+      fontSize: '16px', color: '#FFFFFF',
+    }).setOrigin(0.5).setDepth(403);
 
-    btn.on('pointerdown', () => {
-      this.attemptCount++;
-      // Show transliteration as hint
-      const hintText = this.add.text(
-        this.cameras.main.width / 2,
-        this.cameras.main.height / 2 - 70,
-        'Hint: ' + this.correctOrder.join(' '),
-        {
-          fontFamily: 'Noto Sans, system-ui, sans-serif',
-          fontSize: '18px',
-          color: '#FFD700',
-        }
-      );
-      hintText.setOrigin(0.5);
-      hintText.setDepth(405);
+    subBtn.on('pointerover', () => subBtn.setFillStyle(0x55CC55));
+    subBtn.on('pointerout', () => subBtn.setFillStyle(0x44AA44));
+    subBtn.on('pointerdown', () => this.validateWord());
 
-      this.time.delayedCall(3000, () => hintText.destroy());
-    });
+    // Hint button
+    const hintBtn = this.add.rectangle(width / 2 + 80, btnY, btnW, btnH, 0x4444AA, 1);
+    hintBtn.setStrokeStyle(2, 0x6666CC).setDepth(402).setInteractive({ useHandCursor: true });
+    const hintTxt = this.add.text(width / 2 + 80, btnY, '💡 Hint', {
+      fontFamily: 'Noto Sans, system-ui, sans-serif',
+      fontSize: '16px', color: '#CCCCFF',
+    }).setOrigin(0.5).setDepth(403);
+
+    hintBtn.on('pointerdown', () => this.showHint());
+
+    this.puzzleObjects.push(subBtn, subTxt, hintBtn, hintTxt);
+  }
+
+  private showHint(): void {
+    this.attemptCount++;
+    const msgs = [
+      `First letter: "${this.correctOrder[0]}"`,
+      `Try: ${this.correctOrder.join(' ')}`,
+      `Answer: ${this.correctOrder.join('')}`,
+    ];
+    const msg = msgs[Math.min(this.attemptCount - 1, msgs.length - 1)];
+
+    const t = this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 2 + 110, msg, {
+      fontFamily: 'Noto Sans, system-ui, sans-serif',
+      fontSize: '16px', color: '#FFD700',
+      backgroundColor: '#00000088',
+      padding: { x: 8, y: 4 },
+    }).setOrigin(0.5).setDepth(410);
+    this.puzzleObjects.push(t);
+    this.time.delayedCall(3000, () => t.destroy());
   }
 
   private validateWord(): void {
-    const hasAllSlots = this.currentSlots.every((s) => s !== null);
-    if (!hasAllSlots) {
-      // Shake effect — not all slots filled
-      this.cameras.main.shake(200, 0.005);
+    if (this.currentSlots.some((s) => s === null)) {
+      this.shake('Fill all slots!');
       return;
     }
 
-    const isCorrect = this.currentSlots.every(
-      (letter, i) => letter === this.correctOrder[i]
-    );
+    const isCorrect = this.currentSlots.every((l, i) => l === this.correctOrder[i]);
 
     if (isCorrect) {
-      // Success!
-      this.showSuccess(() => {
-        this.scene.stop('WordPuzzleScene');
-        this.scene.resume('GameScene');
-        // Emit success event
-        const gameScene = this.scene.get('GameScene');
-        gameScene.events.emit('wordSpelled', {
-          word: this.targetWord,
-          translation: this.targetTranslation,
-        });
-      });
+      this.showSuccess();
     } else {
       this.attemptCount++;
-      this.cameras.main.shake(300, 0.01);
+      this.shake('Try again!');
 
-      // Show transliteration hint after 2nd fail
       if (this.attemptCount >= 2) {
-        const hintText = this.add.text(
-          this.cameras.main.width / 2,
-          this.cameras.main.height / 2 - 70,
-          'Try: ' + this.correctOrder.join(' '),
-          {
-            fontFamily: 'Noto Sans, system-ui, sans-serif',
-            fontSize: '18px',
-            color: '#FFAA00',
-          }
-        );
-        hintText.setOrigin(0.5);
-        hintText.setDepth(405);
-        this.time.delayedCall(3000, () => hintText.destroy());
+        this.showHint();
       }
-
-      // Reset slots after delay
-      this.time.delayedCall(500, () => {
-        this.resetSlots();
-      });
+      this.time.delayedCall(600, () => this.resetSlots());
     }
+  }
+
+  private shake(msg: string): void {
+    this.cameras.main.shake(300, 0.008);
+    const t = this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 2 + 135, msg, {
+      fontFamily: 'Noto Sans, system-ui, sans-serif',
+      fontSize: '14px', color: '#FF6666',
+      backgroundColor: '#00000088',
+      padding: { x: 8, y: 4 },
+    }).setOrigin(0.5).setDepth(410);
+    this.puzzleObjects.push(t);
+    this.time.delayedCall(1500, () => t.destroy());
   }
 
   private resetSlots(): void {
     this.currentSlots = new Array(this.correctOrder.length).fill(null);
-
-    this.availableLetters.forEach((letterObj) => {
-      const letterIndex = this.collectedLetters.indexOf((letterObj as any).letterValue);
-      const letterWidth = 56;
-      const gap = 8;
-      const totalWidth = this.collectedLetters.length * (letterWidth + gap) - gap;
-      const startX = this.cameras.main.width / 2 - totalWidth / 2 + letterWidth / 2;
-      const origX = startX + letterIndex * (letterWidth + gap);
-      const origY = this.cameras.main.height / 2 + 80;
-
-      (letterObj as any).slotIndex = -1;
+    this.availableContainers.forEach((c) => {
+      (c as any).slotIndex = -1;
+      const idx = (c as any).origIndex;
+      const letterW = 52;
+      const gap = 6;
+      const totalW = this.collectedLetters.length * (letterW + gap) - gap;
+      const startX = this.cameras.main.width / 2 - totalW / 2 + letterW / 2;
+      const rowY = this.cameras.main.height / 2 + 75;
       this.tweens.add({
-        targets: letterObj,
-        x: origX,
-        y: origY,
+        targets: c,
+        x: startX + idx * (letterW + gap),
+        y: rowY,
         duration: 300,
         ease: 'Back.easeOut',
       });
     });
   }
 
-  private showSuccess(callback: () => void): void {
+  private showSuccess(): void {
     const { width, height } = this.cameras.main;
 
-    // Success flash
     this.cameras.main.flash(300, 255, 255, 200);
 
-    // Success text
-    const successText = this.add.text(width / 2, height / 2 - 170, '✨ Correct! ✨', {
-      fontFamily: 'Noto Sans, system-ui, sans-serif',
-      fontSize: '36px',
-      color: '#FFD700',
-      stroke: '#8B6914',
-      strokeThickness: 3,
-    });
-    successText.setOrigin(0.5);
-    successText.setDepth(410);
+    const successText = this.add.text(width / 2, height / 2 - 180, `✨ ${this.targetWord} ✨`, {
+      fontFamily: 'Noto Sans Devanagari, system-ui, sans-serif',
+      fontSize: '34px', color: '#FFD700',
+      stroke: '#8B6914', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(410).setScale(0);
 
-    // Scale-up animation
-    successText.setScale(0);
     this.tweens.add({
       targets: successText,
-      scaleX: 1,
-      scaleY: 1,
-      duration: 400,
-      ease: 'Back.easeOut',
+      scaleX: 1, scaleY: 1,
+      duration: 400, ease: 'Back.easeOut',
     });
 
-    // Celebration particles
-    for (let i = 0; i < 20; i++) {
-      const angle = (i / 20) * Math.PI * 2;
-      const particle = this.add.circle(width / 2, height / 2, 3, Phaser.Math.Between(0, 1) ? 0xFFD700 : 0xFF6B6B, 1);
-      particle.setDepth(411);
-
+    // Particles
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      const p = this.add.circle(width / 2, height / 2, 3, 0xFFD700, 1).setDepth(411);
       this.tweens.add({
-        targets: particle,
-        x: width / 2 + Math.cos(angle) * Phaser.Math.Between(80, 200),
-        y: height / 2 + Math.sin(angle) * Phaser.Math.Between(80, 200),
-        alpha: 0,
-        duration: 600,
-        delay: i * 30,
-        ease: 'Quad.easeOut',
-        onComplete: () => particle.destroy(),
+        targets: p,
+        x: width / 2 + Math.cos(a) * 120,
+        y: height / 2 + Math.sin(a) * 120,
+        alpha: 0, duration: 500, delay: i * 20,
+        onComplete: () => p.destroy(),
       });
     }
 
-    this.time.delayedCall(1200, callback);
+    // Resume scenes and emit completion
+    this.time.delayedCall(1000, () => {
+      this.scene.resume('GameScene');
+      this.scene.resume('UIScene');
+      const gs = this.scene.get('GameScene');
+      gs.events.emit('wordSpelled', {
+        word: this.targetWord,
+        translation: this.targetTranslation,
+      });
+      this.scene.stop('WordPuzzleScene');
+    });
+  }
+
+  private closePuzzle(): void {
+    this.scene.resume('GameScene');
+    this.scene.resume('UIScene');
+    this.scene.stop('WordPuzzleScene');
   }
 }

@@ -8,20 +8,17 @@ window.addEventListener('resize', () => {
   game.scale.resize(window.innerWidth, window.innerHeight);
 });
 
-// Handle visibility change (pause when tab hidden)
+// Handle visibility change — resume audio context on return
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    game.scene.scenes.forEach((scene) => {
-      if (scene.scene.isActive()) {
-        scene.scene.pause();
-      }
-    });
-  } else {
-    game.scene.scenes.forEach((scene) => {
-      if (scene.scene.isPaused()) {
-        scene.scene.resume();
-      }
-    });
+  if (!document.hidden) {
+    // Resume audio context if suspended
+    const gameInstance = game;
+    if (gameInstance && gameInstance.sound && (gameInstance.sound as any).context) {
+      try {
+        const ctx = (gameInstance.sound as any).context;
+        if (ctx.state === 'suspended') ctx.resume();
+      } catch (e) { /* ignore */ }
+    }
   }
 });
 

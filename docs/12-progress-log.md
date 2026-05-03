@@ -4,102 +4,98 @@
 
 ---
 
-## 2026-05-03 — Project Initialization
+## 2026-05-03 — Project Initialization & Phase 1-2 Build
 
 ### Completed
 - [x] Full project planning and architecture design
-- [x] Tech stack decisions finalized (Phaser 3, TypeScript, Vite, Node.js/MongoDB)
-- [x] Created `docs/` folder with comprehensive documentation:
-  - `01-overview.md` — Project overview and goals
-  - `02-architecture.md` — System architecture diagram
-  - `03-tech-stack.md` — Every dependency with rationale
-  - `04-game-design.md` — Game mechanics, levels, progression
-  - `05-language-system.md` — JSON schema, multi-language design
-  - `06-asset-pipeline.md` — Procedural art generation strategy
-  - `07-backend-api.md` — Node.js API design, MongoDB schemas
-  - `08-level-design.md` — Tiled workflow, level layout principles
-  - `09-setup-guide.md` — How to run, dependencies, troubleshooting
-  - `10-audio-pipeline.md` — TTS generation with macOS voices
-  - `11-voices-reference.md` — All available macOS voices catalogued
-  - `12-progress-log.md` — This file
-  - `13-roadmap.md` — Future plans and milestones
-- [x] Created complete project directory structure
-- [x] Verified macOS Hindi TTS voices available (Lekha, Kiyara)
-- [x] Identified Eddy multilingual voice for future language support (12 languages)
-
-### Decisions Made
-1. **2D hand-painted platformer with Phaser 3** (not 3D) — best fit for the hand-painted art style the user wants
-2. **Procedural art generation** (Canvas/SVG → PNG) — no external artists needed, reproducible from code
-3. **MongoDB** for backend — flexible schema for game data, no migrations
-4. **Tiled** for level editing — free, exports to Phaser natively
-5. **Offline-first with server sync** — localStorage + Node.js API
-6. **Pre-generated audio** from macOS `say` — consistent quality vs Web Speech API
-7. **Hindi voices**: Lekha (Enhanced) for words, Kiyara (Premium) for narration
-8. **Target platform**: All modern browsers + tablets/iPads with touch-first design
+- [x] Tech stack finalized (Phaser 3, TypeScript, Vite, Node.js/MongoDB)
+- [x] All 13 documentation files
+- [x] Project scaffolding (package.json, Vite, TypeScript, index.html)
+- [x] All 9 Phaser scenes (Boot, Preload, Menu, LevelSelect, Game, UI, WordPuzzle, Boss, Dialogue)
+- [x] All 4 core systems (LanguageManager, SaveManager, WordValidator, PronunciationEngine)
+- [x] Node.js backend (Express + MongoDB routes, models, config)
+- [x] Procedural asset generation (backgrounds, sprites, tilesets, letters, UI)
+- [x] 28 Hindi word pronunciations + 3 dialogue clips (Lekha voice)
+- [x] Zero TypeScript errors, clean Vite build
+- [x] Platformer physics: run, jump (variable height), staircase platforms
+- [x] Touch controls (virtual buttons for left/right/jump)
+- [x] Letter collection with Devanagari text rendering
+- [x] WordPuzzle overlay (drag-and-drop letter spelling)
+- [x] Locked doors that trigger WordPuzzleScene
+- [x] Pronunciation audio plays on letter collection (Howler.js + real Hindi MP3s)
+- [x] WordBar HUD showing collected letter tiles
+- [x] Level completion flow (all doors open → level complete → save progress)
+- [x] SaveManager integration (localStorage)
+- [x] Font: Noto Sans Devanagari loaded via Google Fonts
 
 ---
 
-## 2026-05-03 — Phase 1 Build Complete
+## 2026-05-03 — WordPuzzle & Door Fixes
 
-### Completed
-- [x] Project scaffolding: package.json, vite.config.ts, tsconfig.json, index.html, .env, .gitignore
-- [x] All Phaser 3 scenes implemented:
-  - `BootScene` — Minimal asset loading for loading bar
-  - `PreloadScene` — Full asset loader with progress bar, tips, and transitions
-  - `MenuScene` — Animated title, language selector, play button with particle effects
-  - `LevelSelectScene` — World map with 3 worlds, unlock progression, star display
-  - `GameScene` — Platformer with player controller, parallax backgrounds, floating platforms, letter collection
-  - `UIScene` — HUD overlay with health, letters, score, pause menu
-  - `WordPuzzleScene` — Drag-and-drop letter arrangement with validation, hints, success animation
-  - `BossScene` — Multi-phase boss fight with attack patterns, sentence construction, health bar
-  - `DialogueScene` — NPC conversation with typewriter text, Hindi/English display, touch advance
-- [x] Core systems implemented:
-  - `LanguageManager` — Singleton, JSON-based language loading, word/category/level indexes
-  - `SaveManager` — localStorage persistence, offline-first with server sync queue
-  - `WordValidator` — Letter order validation, progressive hints, star calculation
-  - `PronunciationEngine` — Howler.js audio playback with Web Speech API fallback
-- [x] Hindi language JSON config complete:
-  - 5 levels across 3 worlds (Jungle, Village, Palace)
-  - 28 words with translations, transliterations, split letters
-  - 3 NPCs with full dialogue trees
-  - 3 boss configurations with attack patterns and sentence challenges
-- [x] Node.js backend implemented:
-  - Express server with CORS, health check
-  - MongoDB connection with config
-  - Progress API (save, load, sync)
-  - Words API (serve language JSON)
-  - Levels API (serve level metadata)
-  - Progress model with Mongoose schema
-- [x] Procedural asset generation:
-  - `generate-backgrounds.ts` — SVG-based parallax layers (12 layers across 3 worlds)
-  - `generate-sprites.ts` — Player, enemy, NPC, prop sprites (9 sprite types)
-  - `generate-tilesets.ts` — 5 platform tile types (grass, stone, dirt, marble, wood)
-  - `generate-letters.ts` — 40 Devanagari letter sprites with color coding
-  - `generate-ui.ts` — 14 UI elements (logo, buttons, stars, hearts, panels)
-  - `generate-all-assets.ts` — Master script + silent audio placeholders
-  - All 70+ generated PNGs stored in `public/assets/`
-- [x] Audio pipeline complete:
-  - 28 Hindi word pronunciations generated via macOS `say` + `ffmpeg` → MP3
-  - 3 NPC dialogue clips generated
-  - `generate-speech.sh` script for any language with any macOS voice
-  - Silent SFX/music placeholders for development
-- [x] TypeScript: Zero type errors
-- [x] Vite build: Successful production build (Phaser 1.4MB chunk)
+### Issues Resolved
+- [x] WordPuzzle modal not closable: Added ✕ Close button (top right), tap-to-remove from slots, better feedback messages
+- [x] WordPuzzle rewritten: Cleaner drag-and-drop, slot tap-to-remove letters, better UI layout with Devanagari word display
+- [x] Door re-trigger loop: Changed from boolean flag to 2s cooldown timer (`_lastTrigger`), prevents per-frame spam
+- [x] Peacock (mor) door not working: Only 5 letter positions for 12 letters across 6 words → increased to 12 positions
+- [x] Door labels changed from 🔒 to 🚪 for clarity
+- [x] Created `docs/AI-SESSION-HANDOFF.md` — read this first in new AI sessions
+- [x] Updated `docs/13-roadmap.md` with current progress markers
 
-### In Progress
-- None — Phase 1 complete
+### Current Behavior
+- 12 floating Devanagari letters (all 6 words have complete splitLetters)
+- 3 orange doors at x=420, 550, 680 with word labels
+- Walk into door → auto-opens WordPuzzle (with 2s cooldown)
+- Puzzle has ✕ Close, drag-and-drop, Submit, Hint buttons
+- Tap a filled slot to remove letter back to available
+- Success → door opens, celebration particles
+- All doors complete → Level Complete
 
-### Blockers
-- None currently
+### Remaining Issues
+- Music/SFX: silent placeholders
+- NPC dialogue: not wired
+- Boss fights: not wired
+- Tiled maps: not created
 
-### Next Steps (Phase 2)
-1. Create Tiled `.tmx` level files for World 1
-2. Implement real Akshar entity (replace placeholder letters)
-3. Connect WordPuzzleScene to locked doors in GameScene
-4. Wire up NPC dialogue triggers in GameScene
-5. Implement SaveManager integration in level completion flow
-6. Connect pronunciation audio to letter collection and word spelling
-7. Playtest World 1-1 end-to-end
+### Next Phase (Phase 3: Enemies & NPCs)
+1. Wire up NPC dialogue triggers
+2. Add Shadow Creeper enemies (patrol, steal letters)
+3. Create real player sprite animations
+
+### Session Handoff
+- See `docs/AI-SESSION-HANDOFF.md` for quick-start in new chat
+- See `docs/12-progress-log.md` for full history
+
+### Issues Resolved
+- [x] NPC green/black box: spriteKey mismatch (`npc-owl` vs `npc-placeholder`) — fixed in both JSON copies
+- [x] Doors not appearing: Moved from x=1300 to x=420-680 (near player start), made larger (56x84), tinted orange (#FFAA44), added English labels
+- [x] Doors not triggerable: Changed from E-key interaction to **auto-trigger on touch** — walk into a door and the word puzzle opens automatically
+- [x] Door interaction flow: If not enough letters collected, shows "Need more letters for X!" hint
+- [x] Added console logging throughout GameScene for debugging (loadLevelData, spawnDoors, openDoor)
+- [x] Added permanent instruction text: "Collect letters → Walk into doors to unlock!"
+- [x] JSON synced between `src/config/languages/` and `public/data/`
+
+### Game Flow (Current)
+```
+1. Spawn → see 5 floating letters + orange doors on right
+2. Collect Devanagari letters (hear pronunciation via Howler.js)
+3. Letters appear in bottom WordBar
+4. Walk into a door → auto-opens word puzzle
+5. Drag letters to spell the word → door opens
+6. Repeat for remaining doors → Level Complete
+```
+
+### Remaining Issues
+- Music/SFX: intentionally silent placeholders (real audio in Phase 5)
+- NPC interaction: NPCs spawn but don't trigger dialogue (Phase 3)
+- Boss fights: not yet wired to level flow (Phase 4)
+- Tiled level maps: not yet created (Phase 5)
+
+### Next Phase (Phase 3: Enemies & NPCs)
+1. Wire up NPC dialogue triggers
+2. Add Shadow Creeper enemies (patrol, steal letters)
+3. Create real player sprite animations
+4. Add checkpoint/respawn system
+5. Make music/SFX play (actual audio files)
 
 ---
 

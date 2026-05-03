@@ -79,17 +79,15 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('map-node-locked', 'assets/ui/map-node-locked.png');
     this.load.image('map-connector', 'assets/ui/map-connector.png');
 
-    // Placeholder sprites (will be replaced by generated assets)
+    // Placeholder sprites
     this.load.image('bg-placeholder', 'assets/backgrounds/world-1/sky.png');
     this.load.image('player-placeholder', 'assets/sprites/player/idle.png');
     this.load.image('platform-placeholder', 'assets/tilesets/platform-grass.png');
     this.load.image('letter-placeholder', 'assets/sprites/letters/placeholder.png');
     this.load.image('door-placeholder', 'assets/sprites/props/door.png');
-    this.load.image('enemy-placeholder', 'assets/sprites/enemies/shadow-creeper.png');
     this.load.image('npc-placeholder', 'assets/sprites/npcs/owl.png');
-    this.load.image('gem-placeholder', 'assets/sprites/props/gem.png');
 
-    // Audio (placeholder silent files until real audio is generated)
+    // Audio
     this.load.audio('sfx-jump', 'assets/audio/sfx/jump.mp3');
     this.load.audio('sfx-collect', 'assets/audio/sfx/collect.mp3');
     this.load.audio('sfx-door-open', 'assets/audio/sfx/door-open.mp3');

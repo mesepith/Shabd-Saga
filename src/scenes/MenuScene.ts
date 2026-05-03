@@ -100,12 +100,13 @@ export class MenuScene extends Phaser.Scene {
     });
     this.creditsText.setOrigin(0.5);
 
-    // Start menu music if available
-    try {
-      this.sound.play('music-menu', { loop: true, volume: 0.4 });
-    } catch (e) {
-      // Audio files not yet generated — silent fallback
-    }
+    // Audio will unlock on first user interaction (browser autoplay policy)
+    this.input.once('pointerdown', () => {
+      try {
+        if (!this.sound.get('music-menu')) return;
+        this.sound.play('music-menu', { loop: true, volume: 0.4 });
+      } catch (e) { /* silent */ }
+    });
   }
 
   private createLanguageSelector(x: number, y: number): void {
