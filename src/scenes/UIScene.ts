@@ -6,9 +6,11 @@ export class UIScene extends Phaser.Scene {
   private healthDisplay!: Phaser.GameObjects.Text;
   private letterCountText!: Phaser.GameObjects.Text;
   private scoreDisplay!: Phaser.GameObjects.Text;
+  private gemDisplay!: Phaser.GameObjects.Text;
   private wordBarBg!: Phaser.GameObjects.Graphics;
   private wordBarTiles: Phaser.GameObjects.Container[] = [];
   private score: number = 0;
+  private gems: number = 0;
 
   constructor() {
     super({ key: 'UIScene' });
@@ -32,6 +34,15 @@ export class UIScene extends Phaser.Scene {
 
     // Letter counter
     this.letterCountText = this.add.text(padding, padding + 40, 'Letters: 0', {
+      fontFamily: 'Noto Sans, system-ui, sans-serif',
+      fontSize: '16px',
+      color: '#FFD700',
+      stroke: '#000000',
+      strokeThickness: 1,
+    }).setScrollFactor(0).setDepth(200);
+
+    // Gem counter
+    this.gemDisplay = this.add.text(padding + 130, padding + 40, '💎 0', {
       fontFamily: 'Noto Sans, system-ui, sans-serif',
       fontSize: '16px',
       color: '#FFD700',
@@ -65,9 +76,11 @@ export class UIScene extends Phaser.Scene {
     // WordBar background (bottom of screen)
     this.createWordBar();
 
-    // Listen for letter collection and steal
+    // Listen for letter collection, steal, consumption, and gems
     this.gameScene.events.on('letterCollected', this.onLetterCollected, this);
     this.gameScene.events.on('letterStolen', this.onLetterStolen, this);
+    this.gameScene.events.on('letterConsumed', this.onLetterConsumed, this);
+    this.gameScene.events.on('gemCollected', this.onGemCollected, this);
   }
 
   private createWordBar(): void {
@@ -96,7 +109,7 @@ export class UIScene extends Phaser.Scene {
     this.scoreDisplay.setText(`Score: ${this.score}`);
 
     // Add tile to WordBar
-    this.addWordBarTile(data.letter, data.wordScript);
+    this.addWordBarTile(data.letter, data.wordScript, data.wordId);
 
     // Pulse
     this.tweens.add({
@@ -125,7 +138,59 @@ export class UIScene extends Phaser.Scene {
     }
   }
 
-  private addWordBarTile(letter: string, wordHint: string): void {
+  private onLetterConsumed(data: { remaining: number; wordId: string }): void {
+    this.letterCountText.setText(`Letters: ${data.remaining}`);
+
+    // Remove tiles for the consumed word from WordBar
+    this.wordBarTiles = this.wordBarTiles.filter((tile) => {
+      if ((tile as any).wordId === data.wordId) {
+        this.tweens.add({
+          targets: tile,
+          alpha: 0, scaleX: 0, scaleY: 0,
+          duration: 300,
+          ease: 'Quad.easeIn',
+          onComplete: () => tile.destroy(),
+        });
+        return false;
+      }
+      return true;
+    });
+
+    // Shift remaining tiles to fill gaps
+    this.rebuildWordBarLayout();
+  }
+
+  private rebuildWordBarLayout(): void {
+    const { width, height } = this.cameras.main;
+    const barY = height - 12;
+    const barWidth = Math.min(900, width - 80);
+    const barX = (width - barWidth) / 2;
+    const tileSize = 28;
+    const gap = 4;
+
+    this.wordBarTiles.forEach((tile, i) => {
+      const startX = barX + 16 + i * (tileSize + gap);
+      this.tweens.add({
+        targets: tile,
+        x: startX,
+        duration: 200,
+        ease: 'Quad.easeOut',
+      });
+    });
+  }
+
+  private onGemCollected(_count: number): void {
+    this.gems++;
+    this.gemDisplay.setText(`💎 ${this.gems}`);
+
+    this.tweens.add({
+      targets: this.gemDisplay,
+      scaleX: 1.3, scaleY: 1.3,
+      duration: 100, yoyo: true, ease: 'Quad.easeOut',
+    });
+  }
+
+  private addWordBarTile(letter: string, wordHint: string, wordId?: string): void {
     const { width, height } = this.cameras.main;
     const barY = height - 12;
     const barWidth = Math.min(900, width - 80);
@@ -151,6 +216,7 @@ export class UIScene extends Phaser.Scene {
     tile.add([bg, charText]);
     tile.setScrollFactor(0).setDepth(201);
     tile.setAlpha(0).setScale(0.5);
+    (tile as any).wordId = wordId;
 
     // Pop-in animation
     this.tweens.add({

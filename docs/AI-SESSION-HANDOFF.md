@@ -3,7 +3,7 @@
 > **READ THIS FIRST** when starting a new AI session on Shabd Saga.
 > The AI should read `docs/12-progress-log.md` for full details.
 
-## Quick Status (May 4, 2026)
+## Quick Status (May 4, 2026) — Phase 4 In Progress
 
 ### What's Working
 - All 9 Phaser scenes load and function
@@ -12,31 +12,54 @@
 - Devanagari letters render as text on sprites
 - Letter collection with Howler.js pronunciation audio + SFX
 - WordBar HUD showing collected letter tiles
-- WordPuzzle overlay (drag letters to spell, close button)
+- WordPuzzle overlay (drag letters to spell, close button, caller-aware for BossScene)
 - Doors auto-trigger puzzle on touch (6 door positions, all words covered)
-- 12 letter positions, 6 Hindi words with splitLetters
-- Level completion saves to localStorage
-- Node.js backend ready (Express + MongoDB) — not running in dev
-- **NPC dialogue triggers** — walk near NPC, press E/tap 💬 to talk
-- **Shadow Creeper enemies** — patrol at set heights (gravity off), steal letters + damage
-- **Player animations** — idle (2-frame) and run (4-frame) spritesheets
-- **Checkpoint/respawn system** — flags save position, death respawns, auto-win if all doors done
-- **SFX** — jump, collect, door-open, hurt, success play during gameplay
-- **Level music** — auto-plays correct world music track
+- Level completion saves to localStorage with star rating
+- NPC dialogue triggers + audio
+- Shadow Creeper enemies (patrol, steal letters, damage, per-enemy cooldown)
+- Player animations (idle 2-frame, run 4-frame spritesheets)
+- Checkpoint/respawn system with death counter
+- SFX + level music (placeholder audio)
+- **Boss fights wired** — BossScene launches when boss level doors are all done
+- **WordPuzzle in BossScene** — player spells required word to damage boss
+- **Health pickups** — floating ❤️ restores 1 HP (max 3)
+- **WisdomGems** — collectible gems with particle effects, shown in UI
+- **Star rating** — calculated from deaths + gems collected (not hardcoded 3)
+- **World-2/3 parallax backgrounds** — village houses, palace pillars + moon
+- **LevelSelectScene level buttons** — per-world sub-menu with individual level access
 
-### Recent Bugfixes (May 4)
-- [x] Player no longer stuck red after enemy hit (blink timer properly cancelled)
-- [x] Enemy contact: 1.5s per-enemy cooldown prevents per-frame spam
-- [x] Stolen letters: 600ms re-collect immunity + wide spread (no more instant re-pickup)
-- [x] Enemies: gravity disabled, positions adjusted to ground/platform heights
-- [x] Respawn auto-triggers level complete if all doors already opened
-- [x] Re-collected stolen letters now play pronunciation audio
+### Recent Changes (May 4 — Phase 4 Implementation)
+- [x] BossScene launched from GameScene.levelComplete() when level.boss exists
+- [x] BossScene.showSpellPrompt() launches WordPuzzleScene (caller='BossScene')
+- [x] WordPuzzleScene supports caller param (resumes caller instead of hardcoded GameScene)
+- [x] BossScene: player HP, invincibility, death handling in arena
+- [x] Boss defeated → SaveManager.completeLevel() → LevelSelectScene
+- [x] Health pickups spawned procedurally (2 per level), restore 1 HP on overlap
+- [x] WisdomGems spawned (5 per level), diamond shape with sparkle, burst particles on collect
+- [x] UIScene: gem counter display, gemCollected event listener
+- [x] Star rating: 1★ base + 1★ no deaths + 1★ 3+ gems
+- [x] Level complete UI: star display + Next Level button for same-world progression
+- [x] World-specific parallax: jungle (green mountains+sun), village (warm houses+sun), palace (purple pillars+moon)
+- [x] LevelSelectScene: clicking a world opens level sub-menu with individual level buttons
+- [x] Level unlock chaining: must complete previous level to access next
+
+### Bugfixes (May 4 — session 2)
+
+**Event emitter bug** — all HUD events emitted on `uiScene.events` but UIScene listened on `gameScene.events` (different Phaser EventEmitters). Fixed `letterCollected`, `letterStolen`, `gemCollected` to emit on `this.events` (GameScene). WordBar counter, gem counter now update correctly.
+
+**Stolen letter gravity** — `lettersGroup` default `allowGravity: false` overrode the explicit `true` via `group.add()`. Fixed by adding to group FIRST, setting gravity AFTER. Also added `immovable = false` + `setCollideWorldBounds(true)` so letters collide with platforms instead of falling through world. Added `this.physics.add.collider(lettersGroup, platforms)` for platform landing.
+
+**Gem/Health pickup collision** — gems and health pickups used invisible alpha:0 sprites with decoupled Graphics visuals. Replaced with visible tinted sprites + text labels, matching working letter pattern. Groups now have `immovable: true`.
+
+**Collected letters not consumed on puzzle solve** — opening a door didn't remove used letters from `collectedLetters`. Enemy steals could then target letters needed for remaining doors. Fixed by filtering `collectedLetters` on `wordSpelled` + emitting `letterConsumed` to UIScene (removes WordBar tiles, slides remaining).
+
+**Stolen letter lifetime** — timer was 30s, expiry destroyed letter permanently (soft-lock). Now 60s with flash warning at 10s remaining. On expiry, letter RESPAWNS at camera position with blue glow + "reappeared!" message — never permanently lost.
 
 ### Current Bugs / Pending
 - [ ] Music/SFX: silent placeholders (need real audio in Phase 5)
-- [ ] Boss fights not yet wired to level flow
 - [ ] Tiled level maps not created
-- [ ] Door per-word letter matching may need adjustment
+- [ ] Letter Guard enemy type not implemented (Phase 3 leftover)
+- [ ] Enemy difficulty balancing per level
 
 ### Key Architecture Notes
 - Language JSON served from `public/data/hindi.json` (NOT `src/config/`)
@@ -45,13 +68,19 @@
 - Vite dev port: **5174**
 - Font: Noto Sans Devanagari via Google Fonts in index.html
 - JSON must be synced: `cp src/config/languages/hindi.json public/data/hindi.json`
+- **BossScene data flow**: GameScene passes `{ bossConfig, levelWords, collectedWordIds, onBossDefeated }`
+- **WordPuzzleScene `caller` param**: set to 'BossScene' to resume correct scene after puzzle
+- **Event emission**: always use `this.events` in GameScene for events UIScene listens to
+- **Group defaults override**: always set `allowGravity`/`immovable` AFTER `group.add()`
+- **Stolen letter flow**: `stealLetter()` → pop from `collectedLetters` → add to group → set gravity → respawn on expiry
+- **Letter consumption**: on `wordSpelled` → filter `collectedLetters` by wordId → emit `letterConsumed` → UIScene removes tiles
+- **Pickup pattern**: use visible tinted sprite + text label, NOT invisible sprite + separate Graphics visual
 
-### Next Phase (Phase 4)
-1. Wire boss fights to level completion flow
-2. Add collectible gems for bonus stars
-3. Create health pickup items  
-4. Add world-2 and world-3 background parallax layers
-5. Balance enemy difficulty per level
+### Phase 4 Remaining
+1. Letter Guard enemy type (word-blocking mechanic)
+2. Enemy difficulty balancing per level
+3. Boss sprites (currently uses 'enemy-placeholder')
+4. Tiled level maps
 
 ### How to Run
 ```bash
@@ -63,14 +92,14 @@ npm run dev        # Frontend at http://localhost:5174
 | File | Purpose |
 |------|---------|
 | `src/main.ts` | Entry point, Phaser bootstrap |
-| `src/scenes/GameScene.ts` | Core gameplay (1100+ lines, main file) |
-| `src/scenes/WordPuzzleScene.ts` | Spelling puzzle overlay |
-| `src/scenes/UIScene.ts` | HUD (health, WordBar, score, stolen letter handling) |
+| `src/scenes/GameScene.ts` | Core gameplay (~1550 lines, boss wiring, pickups, gems, stars, letter respawn) |
+| `src/scenes/WordPuzzleScene.ts` | Spelling puzzle (caller-aware for GameScene/BossScene) |
+| `src/scenes/UIScene.ts` | HUD (health, WordBar, score, gem count, letterConsumed handler) |
 | `src/scenes/DialogueScene.ts` | NPC conversation overlay |
 | `src/scenes/MenuScene.ts` | Animated menu |
-| `src/scenes/LevelSelectScene.ts` | World select |
-| `src/scenes/BossScene.ts` | Boss battle arena |
-| `src/scenes/PreloadScene.ts` | Asset loading (spritesheets, SFX, music) |
+| `src/scenes/LevelSelectScene.ts` | World + level select with sub-menus |
+| `src/scenes/BossScene.ts` | Boss battle arena with WordPuzzle integration |
+| `src/scenes/PreloadScene.ts` | Asset loading |
 | `src/config/languages/hindi.json` | Source of truth for Hindi words |
 | `public/data/hindi.json` | Copy for runtime fetch |
 | `src/systems/LanguageManager.ts` | Fetches /data/hindi.json |

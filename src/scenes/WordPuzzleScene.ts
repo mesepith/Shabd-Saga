@@ -9,18 +9,20 @@ export class WordPuzzleScene extends Phaser.Scene {
   private attemptCount: number = 0;
   private availableContainers: Phaser.GameObjects.Container[] = [];
   private puzzleObjects: Phaser.GameObjects.GameObject[] = [];
+  private callerSceneKey: string = 'GameScene';
 
   constructor() {
     super({ key: 'WordPuzzleScene' });
   }
 
-  create(data: { word: string; translation: string; letters: string[]; correctOrder: string[] }): void {
+  create(data: { word: string; translation: string; letters: string[]; correctOrder: string[]; caller?: string }): void {
     const { width, height } = this.cameras.main;
 
     this.targetWord = data.word;
     this.targetTranslation = data.translation;
     this.collectedLetters = [...data.letters];
     this.correctOrder = data.correctOrder;
+    this.callerSceneKey = data.caller || 'GameScene';
     this.currentSlots = new Array(this.correctOrder.length).fill(null);
     this.attemptCount = 0;
     this.availableContainers = [];
@@ -372,22 +374,28 @@ export class WordPuzzleScene extends Phaser.Scene {
       });
     }
 
-    // Resume scenes and emit completion
+    // Resume caller scene and emit completion
     this.time.delayedCall(1000, () => {
-      this.scene.resume('GameScene');
-      this.scene.resume('UIScene');
-      const gs = this.scene.get('GameScene');
-      gs.events.emit('wordSpelled', {
-        word: this.targetWord,
-        translation: this.targetTranslation,
-      });
+      const callerScene = this.scene.get(this.callerSceneKey);
+      if (callerScene) {
+        this.scene.resume(this.callerSceneKey);
+        if (this.callerSceneKey === 'GameScene') {
+          this.scene.resume('UIScene');
+        }
+        callerScene.events.emit('wordSpelled', {
+          word: this.targetWord,
+          translation: this.targetTranslation,
+        });
+      }
       this.scene.stop('WordPuzzleScene');
     });
   }
 
   private closePuzzle(): void {
-    this.scene.resume('GameScene');
-    this.scene.resume('UIScene');
+    this.scene.resume(this.callerSceneKey);
+    if (this.callerSceneKey === 'GameScene') {
+      this.scene.resume('UIScene');
+    }
     this.scene.stop('WordPuzzleScene');
   }
 }

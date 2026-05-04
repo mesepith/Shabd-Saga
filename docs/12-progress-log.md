@@ -169,6 +169,95 @@
 
 ---
 
+## 2026-05-04 — Phase 4: Boss Fights, Gems, Health, Parallax & Level Select
+
+### Completed
+- [x] BossScene wired to GameScene.levelComplete(): checks `level.boss`, launches BossScene when all doors done
+- [x] BossScene.showSpellPrompt() replaced simulated auto-win with real WordPuzzleScene integration
+- [x] WordPuzzleScene made caller-aware (`caller` param: 'GameScene' or 'BossScene') for correct resume
+- [x] BossScene: player HP system (3 HP), invincibility frames, knockback, death → arena reset
+- [x] Boss defeated → SaveManager.completeLevel() → LevelSelectScene (via onBossDefeated callback)
+- [x] Health pickup items: floating ❤️ cross, 2 per level, restore 1 HP (max 3) on overlap
+- [x] WisdomGem collectibles: diamond-shaped gold gems, 5 per level, sparkle + burst particles on collect
+- [x] UIScene: gem counter (`💎 N`) with pop-in animation, gemCollected event listener
+- [x] Star rating system: 1★ base (all doors) + 1★ no deaths + 1★ 3+ gems collected
+- [x] deathsThisLevel counter incremented in respawnAtCheckpoint()
+- [x] Level complete UI: star display + "Next Level →" button for same-world progression
+- [x] World-specific parallax backgrounds: Jungle (green mountains+sun), Village (warm houses+sun), Palace (purple pillars+moon)
+- [x] createParallaxBackground() detects world number from levelId, switches color palettes + decorations
+- [x] LevelSelectScene: clicking a world opens sub-menu panel with individual level buttons
+- [x] Level buttons show name (Hindi/English), star rating, boss indicator, completion status
+- [x] Level unlock chaining: next level only visible when previous completed
+- [x] getWorldLevels() dynamically reads completedLevels from localStorage
+- [x] hindi.json synced to public/data/
+- [x] Zero TypeScript errors, clean Vite build (72.75 kB gzip: 18.80 kB)
+
+### Files Modified
+- `src/scenes/GameScene.ts` — boss wiring (+levelBoss, levelComplete→BossScene), health pickups, gems, star rating, deaths counter, world-specific parallax, Next Level button, getGemsCollected()
+- `src/scenes/BossScene.ts` — full rewrite: WordPuzzle integration, onBossDefeated callback, player HP/combat, vulnerability timer, arena mechanics
+- `src/scenes/WordPuzzleScene.ts` — caller param, dynamic scene resume (GameScene+UIScene or BossScene only)
+- `src/scenes/UIScene.ts` — gem display + gemCollected event handler
+- `src/scenes/LevelSelectScene.ts` — full rewrite: world sub-menus, level buttons, unlock chaining, star display
+- `docs/AI-SESSION-HANDOFF.md` — updated status, architecture notes
+- `public/data/hindi.json` — synced
+
+### Architecture Decisions
+1. BossScene receives `{ bossConfig, levelWords, collectedWordIds, onBossDefeated }` from GameScene
+2. WordPuzzleScene `caller` param avoids hardcoded GameScene resume — cleanly supports BossScene too
+3. Health/gems spawned procedurally (not in hindi.json) to keep JSON simple — positions are level defaults
+4. Star rating: simple additive formula (1 + noDeaths + gems≥3) — easy to tune later
+5. LevelSelectScene uses localStorage directly instead of SaveManager for simplicity in UI reading
+
+### Known Edge Cases
+- If WordPuzzleScene is closed during boss vulnerability, timer keeps running until expiry
+- Boss spells use splitLetters directly as available letters (no pre-collection needed)
+- Level-2 and beyond only reachable via "Next Level" button or LevelSelect sub-menu
+- Health pickups/Gems respawn on level restart (clear+recreate in spawn methods)
+
+### Pending (Phase 4/5)
+- Letter Guard enemy type (word-blocking mechanic, Phase 3 leftover)
+- Boss sprites (currently uses 'enemy-placeholder', needs boss spritesheets)
+- Enemy difficulty balancing per level
+- Real audio files (current are silent placeholders)
+- Tiled level maps
+
+---
+
+## 2026-05-04 — Playtest Bugfix Session (6 issues resolved)
+
+### Issues Resolved
+
+**1. Event emitter mismatch — HUD never updated**
+`gemCollected`, `letterCollected`, `letterStolen` events emitted on `uiScene.events` but UIScene listened on `gameScene.events` (different Phaser EventEmitters). Fixed all to emit on `this.events` (GameScene).
+
+**2. Stolen letters floated away forever**
+`lettersGroup` default `allowGravity: false` + `immovable: true` overrode stolen letter properties via `group.add()`. Fixed: add to group FIRST, then set `allowGravity = true` + `immovable = false` + `setCollideWorldBounds(true)`. Also added `physics.add.collider(lettersGroup, platforms)` so stolen letters land on platforms instead of falling through world.
+
+**3. Gem & Health pickup collision never fired**
+Both used invisible alpha:0 sprites with decoupled Graphics visuals; Graphics tween sent visuals far from physics body. Rewrote both to use visible tinted sprites + text labels (same pattern as working letters). Groups now have `immovable: true`.
+
+**4. Collected letters not consumed on door puzzle solve**
+Opening a door removed it from `activeDoors` but left letters in `collectedLetters`. Enemy steals could target letters needed for remaining doors. Fixed: filter `collectedLetters` on `wordSpelled`, emit `letterConsumed` event → UIScene removes WordBar tiles for that word and slides remaining tiles to fill gaps.
+
+**5. Stolen letter timer = soft-lock**
+30s timer destroyed letter permanently — door unopenable. Fixed: increased to 60s with flash warning last 10s. On expiry: `respawnLetter()` creates new letter at camera position with blue glow + "reappeared!" message. Player can NEVER permanently lose a letter.
+
+**6. Stolen letters fell below screen**
+No collision with platforms/ground meant letters fell through world. Fixed via #2 above (platform collider + world bounds).
+
+### Files Modified
+- `src/scenes/GameScene.ts` — `spawnGems()` rewrite, `spawnHealthPickups()` rewrite, `stealLetter()` gravity/bounds fix, `openDoor()` letter consumption, `updateEnemies()` expiry → respawn, `respawnLetter()` method, `lettersGroup ↔ platforms` collider
+- `src/scenes/UIScene.ts` — `onLetterConsumed()` handler, tile wordId tracking, `rebuildWordBarLayout()`, `addWordBarTile()` wordId param
+- `docs/AI-SESSION-HANDOFF.md` — updated with all fixes, architecture notes
+
+### Architecture Rules Learned
+- **Always set body properties AFTER `group.add()`** — group defaults overwrite previous settings
+- **Events: emit on `this.events`** for cross-scene communication where listeners are on `gameScene.events`
+- **Use visible sprites for physics**, not invisible sprites + separate Graphics visuals
+- **Never soft-lock**: expired/removed entities must respawn
+
+---
+
 ## Template for Future Entries
 
 ```

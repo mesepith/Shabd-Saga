@@ -45,6 +45,10 @@ export class GameScene extends Phaser.Scene {
   private lastCheckpoint: { x: number; y: number } = { x: 100, y: 450 };
   private checkpointActive: Map<string, boolean> = new Map();
 
+  // Health pickups & gems
+  private healthPickupsGroup!: Phaser.Physics.Arcade.Group;
+  private gemsGroup!: Phaser.Physics.Arcade.Group;
+
   // Door interaction
   private nearDoor: string | null = null;
   private doorPrompt!: Phaser.GameObjects.Text;
@@ -53,6 +57,11 @@ export class GameScene extends Phaser.Scene {
 
   // Player animations
   private currentAnim: string = '';
+
+  // Boss data
+  private levelBoss: any = null;
+  private gemsCollected: number = 0;
+  private deathsThisLevel: number = 0;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -72,6 +81,9 @@ export class GameScene extends Phaser.Scene {
     this.nearNPC = null;
     this.currentAnim = '';
     this.currentDialogue = null;
+    this.levelBoss = null;
+    this.gemsCollected = 0;
+    this.deathsThisLevel = 0;
 
     this.cameras.main.fadeIn(500);
 
@@ -109,9 +121,12 @@ export class GameScene extends Phaser.Scene {
 
     // Groups
     this.lettersGroup = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.physics.add.collider(this.lettersGroup, this.platforms);
     this.doorsGroup = this.physics.add.staticGroup();
     this.enemiesGroup = this.physics.add.group({ allowGravity: false });
     this.checkpointsGroup = this.physics.add.staticGroup();
+    this.healthPickupsGroup = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.gemsGroup = this.physics.add.group({ allowGravity: false, immovable: true });
 
     this.setupInput();
     if (this.scene.isActive('UIScene')) this.scene.stop('UIScene');
@@ -177,11 +192,14 @@ export class GameScene extends Phaser.Scene {
         });
         this.lettersGroup.clear(true, true);
         this.levelWords = level.words;
+        this.levelBoss = level.boss || null;
         this.spawnLetters(level.words);
         this.spawnDoors(level.words);
         this.spawnNPCs(level.npcs || []);
         this.spawnEnemies(level.enemies || []);
         this.spawnCheckpoints(level.checkpoints || []);
+        this.spawnHealthPickups();
+        this.spawnGems();
         this.levelMusicKey = level.musicTrack
           ? level.musicTrack.replace('assets/audio/music/', '').replace('.mp3', '')
           : 'music-world-1';
@@ -459,13 +477,10 @@ export class GameScene extends Phaser.Scene {
 
     this.collectedLetters.push({ letter: char, wordId, wordScript, audioPath });
 
-    const uiScene = this.scene.get('UIScene');
-    if (uiScene) {
-      uiScene.events.emit('letterCollected', {
-        letter: char, wordId, wordScript, translation,
-        totalLetters: this.collectedLetters.length,
-      });
-    }
+    this.events.emit('letterCollected', {
+      letter: char, wordId, wordScript, translation,
+      totalLetters: this.collectedLetters.length,
+    });
 
     this.playSFX('sfx-collect');
 
@@ -545,6 +560,10 @@ export class GameScene extends Phaser.Scene {
         this.activeDoors = this.activeDoors.filter((d) => d.wordId !== wordId);
       }
 
+      // Remove consumed letters so enemy steals can't target already-used letters
+      this.collectedLetters = this.collectedLetters.filter((l) => l.wordId !== wordId);
+      this.events.emit('letterConsumed', { remaining: this.collectedLetters.length, wordId });
+
       this.playSFX('sfx-door-open');
       this.showMessage(`Correct! "${data.word}" means "${data.translation}"`);
 
@@ -591,15 +610,47 @@ export class GameScene extends Phaser.Scene {
   }
 
   private levelComplete(): void {
+    // If this level has a boss and doors are all done, launch boss fight
+    if (this.levelBoss && this.activeDoors.length === 0) {
+      console.log('[GameScene] Launching BossScene for level:', this.levelId);
+      const collectedWordIds = [...new Set(this.collectedLetters.map((l) => l.wordId))];
+
+      this.scene.pause('UIScene');
+      this.scene.pause('GameScene');
+
+      this.events.once('bossDefeated', () => {
+        this.scene.resume('GameScene');
+        this.completeLevelAndProgress();
+      });
+
+      this.scene.launch('BossScene', {
+        bossConfig: this.levelBoss,
+        levelWords: this.levelWords,
+        collectedWordIds,
+        levelId: this.levelId,
+        onBossDefeated: () => {
+          this.scene.stop('BossScene');
+          this.events.emit('bossDefeated');
+        },
+      });
+      return;
+    }
+
+    this.completeLevelAndProgress();
+  }
+
+  private completeLevelAndProgress(): void {
     this.playSFX('sfx-success');
+
+    const stars = this.calculateStars();
 
     import('../systems/SaveManager').then(({ SaveManager }) => {
       SaveManager.getInstance().completeLevel(
         this.languageId,
         this.levelId,
-        3, // stars
+        stars,
         this.collectedLetters.map((l) => l.wordId),
-        0, // gems
+        this.gemsCollected,
         0  // time
       );
     });
@@ -610,35 +661,118 @@ export class GameScene extends Phaser.Scene {
 
     this.cameras.main.flash(500, 255, 215, 0);
 
-    const completeText = this.add.text(width / 2, height / 2, 'Level Complete! 🎉', {
+    const starStr = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+    const completeText = this.add.text(width / 2, height / 2, `Level Complete!\n${starStr}`, {
       fontFamily: 'Noto Sans, system-ui, sans-serif',
       fontSize: '42px',
       color: '#FFD700',
       stroke: '#8B6914',
       strokeThickness: 4,
+      align: 'center',
     });
     completeText.setOrigin(0.5);
     completeText.setDepth(500);
     completeText.setScrollFactor(0);
 
-    this.time.delayedCall(2000, () => {
-      this.scene.stop('UIScene');
-      this.scene.start('LevelSelectScene');
+    // Check if next level exists in same world
+    const nextLevelId = this.getNextLevelId();
+    const hasNextLevel = !!nextLevelId;
+
+    this.time.delayedCall(2500, () => {
+      const { width: w, height: h } = this.cameras.main;
+
+      if (hasNextLevel) {
+        // Next Level button
+        const nextBtn = this.add.text(w / 2, h / 2 + 80, 'Next Level →', {
+          fontFamily: 'Noto Sans, system-ui, sans-serif',
+          fontSize: '24px',
+          color: '#44FF44',
+          backgroundColor: '#00000088',
+          padding: { x: 20, y: 10 },
+        }).setOrigin(0.5).setDepth(500).setScrollFactor(0).setInteractive({ useHandCursor: true });
+
+        nextBtn.on('pointerdown', () => {
+          this.scene.stop('UIScene');
+          this.scene.restart({ worldId: `world-${this.getWorldNum()}`, levelId: nextLevelId, language: this.languageId });
+        });
+        nextBtn.on('pointerover', () => nextBtn.setColor('#88FF88'));
+        nextBtn.on('pointerout', () => nextBtn.setColor('#44FF44'));
+      }
+
+      // Back to menu button
+      const menuBtn = this.add.text(w / 2, h / 2 + (hasNextLevel ? 130 : 60), '← Level Select', {
+        fontFamily: 'Noto Sans, system-ui, sans-serif',
+        fontSize: '20px',
+        color: '#AAAACC',
+        backgroundColor: '#00000088',
+        padding: { x: 15, y: 8 },
+      }).setOrigin(0.5).setDepth(500).setScrollFactor(0).setInteractive({ useHandCursor: true });
+
+      menuBtn.on('pointerdown', () => {
+        this.scene.stop('UIScene');
+        this.scene.start('LevelSelectScene');
+      });
+      menuBtn.on('pointerover', () => menuBtn.setColor('#FFFFFF'));
+      menuBtn.on('pointerout', () => menuBtn.setColor('#AAAACC'));
     });
+  }
+
+  private calculateStars(): number {
+    let stars = 1; // base: all doors completed
+    if (this.deathsThisLevel === 0) stars++;
+    if (this.gemsCollected >= 3) stars++;
+    return Math.min(stars, 3);
+  }
+
+  private getWorldNum(): number {
+    const match = this.levelId.match(/world-(\d+)/);
+    return match ? parseInt(match[1]) : 1;
+  }
+
+  private getNextLevelId(): string | null {
+    const match = this.levelId.match(/world-(\d+)-level-(\d+)/);
+    if (!match) return null;
+    const worldNum = parseInt(match[1]);
+    const levelNum = parseInt(match[2]);
+    const nextId = `world-${worldNum}-level-${levelNum + 1}`;
+    return nextId;
   }
 
   // ── Rendering helpers ──
 
   private createParallaxBackground(): void {
     const { width, height } = this.cameras.main;
-    const colors = [
-      { color: 0x0D1B2A, scrollFactor: 0 },
-      { color: 0x1B2838, scrollFactor: 0.05 },
-      { color: 0x2C3E50, scrollFactor: 0.1 },
-      { color: 0x1A472A, scrollFactor: 0.2 },
-      { color: 0x1E5631, scrollFactor: 0.4 },
-      { color: 0x2D5A27, scrollFactor: 0.7 },
-    ];
+    const worldNum = this.getWorldNum();
+
+    // World-specific color palettes
+    const palettes: Record<number, Array<{ color: number; scrollFactor: number }>> = {
+      1: [ // Jungle
+        { color: 0x0D1B2A, scrollFactor: 0 },
+        { color: 0x1B2838, scrollFactor: 0.05 },
+        { color: 0x2C3E50, scrollFactor: 0.1 },
+        { color: 0x1A472A, scrollFactor: 0.2 },
+        { color: 0x1E5631, scrollFactor: 0.4 },
+        { color: 0x2D5A27, scrollFactor: 0.7 },
+      ],
+      2: [ // Village
+        { color: 0x1A1428, scrollFactor: 0 },
+        { color: 0x2A1F3D, scrollFactor: 0.05 },
+        { color: 0x3D2E52, scrollFactor: 0.1 },
+        { color: 0x4A3F3A, scrollFactor: 0.2 },
+        { color: 0x5C4A3A, scrollFactor: 0.4 },
+        { color: 0x6B5540, scrollFactor: 0.7 },
+      ],
+      3: [ // Palace
+        { color: 0x0A0A1E, scrollFactor: 0 },
+        { color: 0x141438, scrollFactor: 0.05 },
+        { color: 0x1E1E4A, scrollFactor: 0.1 },
+        { color: 0x2A2A5C, scrollFactor: 0.2 },
+        { color: 0x35356E, scrollFactor: 0.4 },
+        { color: 0x404080, scrollFactor: 0.7 },
+      ],
+    };
+
+    const colors = palettes[worldNum] || palettes[1];
 
     colors.forEach((layer) => {
       const bg = this.add.rectangle(0, 0, width * 2, height, layer.color);
@@ -647,22 +781,65 @@ export class GameScene extends Phaser.Scene {
       bg.setDepth(-10 + layer.scrollFactor * 10);
     });
 
-    const mountains = this.add.graphics();
-    mountains.fillStyle(0x1B3A2A, 1);
-    mountains.setScrollFactor(0.15);
-    mountains.setDepth(-8);
-    const peakY = height * 0.6;
-    for (let x = 0; x < width * 3; x += 100) {
-      const h = Math.sin(x * 0.01) * 80 + Math.cos(x * 0.03) * 40;
-      mountains.fillTriangle(x, peakY, x + 50, peakY - h - 20, x + 100, peakY);
+    // Decorative elements vary by world
+    const gfx = this.add.graphics();
+    gfx.setScrollFactor(0.15);
+    gfx.setDepth(-8);
+
+    if (worldNum === 1) {
+      // Jungle mountains
+      gfx.fillStyle(0x1B3A2A, 1);
+      const peakY = height * 0.6;
+      for (let x = 0; x < width * 3; x += 100) {
+        const h = Math.sin(x * 0.01) * 80 + Math.cos(x * 0.03) * 40;
+        gfx.fillTriangle(x, peakY, x + 50, peakY - h - 20, x + 100, peakY);
+      }
+    } else if (worldNum === 2) {
+      // Village houses
+      gfx.fillStyle(0x4A3F3A, 1);
+      const houseY = height * 0.55;
+      for (let x = 50; x < width * 3; x += 160) {
+        gfx.fillRect(x, houseY, 60, 50);
+        gfx.fillStyle(0x3D2E52, 1);
+        gfx.fillTriangle(x - 5, houseY, x + 30, houseY - 35, x + 65, houseY);
+        gfx.fillStyle(0x4A3F3A, 1);
+        // Window
+        gfx.fillStyle(0xFFD700, 0.4);
+        gfx.fillRect(x + 15, houseY + 12, 10, 10);
+        gfx.fillRect(x + 35, houseY + 12, 10, 10);
+        gfx.fillStyle(0x4A3F3A, 1);
+      }
+    } else if (worldNum === 3) {
+      // Palace pillars
+      const pillarY = height * 0.5;
+      for (let x = 20; x < width * 3; x += 200) {
+        gfx.fillStyle(0x4A4A7A, 0.6);
+        gfx.fillRect(x, pillarY, 20, 120);
+        gfx.fillStyle(0xFFD700, 0.3);
+        gfx.fillRect(x - 4, pillarY, 28, 8);
+        gfx.fillRect(x - 4, pillarY + 112, 28, 8);
+      }
     }
 
-    const sunGlow = this.add.circle(900, 150, 200, 0xFFE4B5, 0.08);
-    sunGlow.setScrollFactor(0.02);
-    sunGlow.setDepth(-9);
-    const sun = this.add.circle(900, 150, 40, 0xFFD700, 0.4);
-    sun.setScrollFactor(0.02);
-    sun.setDepth(-8);
+    if (worldNum <= 2) {
+      const sunGlow = this.add.circle(900, 150, 200, 0xFFE4B5, 0.08);
+      sunGlow.setScrollFactor(0.02);
+      sunGlow.setDepth(-9);
+      const sun = this.add.circle(900, 150, 40, 0xFFD700, 0.4);
+      sun.setScrollFactor(0.02);
+      sun.setDepth(-8);
+    } else {
+      // Moon for palace world
+      const moonGlow = this.add.circle(900, 150, 200, 0x8888CC, 0.08);
+      moonGlow.setScrollFactor(0.02);
+      moonGlow.setDepth(-9);
+      const moon = this.add.circle(900, 150, 35, 0xCCCCFF, 0.3);
+      moon.setScrollFactor(0.02);
+      moon.setDepth(-8);
+      const moonShadow = this.add.circle(915, 140, 30, 0x0A0A1E, 0.8);
+      moonShadow.setScrollFactor(0.018);
+      moonShadow.setDepth(-7);
+    }
   }
 
   private createFloatingPlatform(x: number, y: number, width: number, height: number): void {
@@ -796,13 +973,10 @@ export class GameScene extends Phaser.Scene {
 
     const stolen = this.collectedLetters.pop()!;
 
-    const uiScene = this.scene.get('UIScene');
-    if (uiScene) {
-      uiScene.events.emit('letterStolen', {
-        letter: stolen.letter,
-        totalLetters: this.collectedLetters.length,
-      });
-    }
+    this.events.emit('letterStolen', {
+      letter: stolen.letter,
+      totalLetters: this.collectedLetters.length,
+    });
 
     this.playSFX('sfx-hurt');
 
@@ -826,15 +1000,22 @@ export class GameScene extends Phaser.Scene {
     droppedLetter.setScale(1.1);
     droppedLetter.setDepth(8);
     droppedLetter.setBounce(0.4);
-    (droppedLetter.body as Phaser.Physics.Arcade.Body).allowGravity = true;
     (droppedLetter as any).charValue = stolen.letter;
     (droppedLetter as any).wordId = stolen.wordId;
     (droppedLetter as any).wordScript = stolen.wordScript;
     (droppedLetter as any).audioPath = stolen.audioPath;
     (droppedLetter as any).stolen = true;
     (droppedLetter as any)._stolenAt = this.time.now;
-    (droppedLetter as any).lifespan = this.time.now + 30000;
+    (droppedLetter as any).lifespan = this.time.now + 60000;
     (droppedLetter as any).isStolenDrop = true;
+    (droppedLetter as any)._warnedExpiry = false;
+
+    // Add to group BEFORE setting gravity — group.add() resets body properties
+    this.lettersGroup.add(droppedLetter);
+    (droppedLetter.body as Phaser.Physics.Arcade.Body).allowGravity = true;
+    (droppedLetter.body as Phaser.Physics.Arcade.Body).immovable = false;
+    droppedLetter.setCollideWorldBounds(true);
+
     const spreadX = Phaser.Math.Between(-300, 300);
     const spreadY = -280 - Phaser.Math.Between(0, 150);
     droppedLetter.setVelocity(spreadX, spreadY);
@@ -860,9 +1041,53 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(9);
     (droppedLetter as any).charText = charText;
 
-    this.lettersGroup.add(droppedLetter);
-
     this.showMessage(`A shadow stole "${stolen.letter}"! Grab it back!`);
+  }
+
+  private respawnLetter(char: string, wordId: string, wordScript: string, audioPath: string, x: number, y: number): void {
+    const letter = this.physics.add.sprite(x, y, 'letter-placeholder');
+    letter.setScale(1.1);
+    letter.setDepth(8);
+    (letter.body as Phaser.Physics.Arcade.Body).allowGravity = false;
+    (letter.body as Phaser.Physics.Arcade.Body).setImmovable(true);
+    this.lettersGroup.add(letter);
+
+    (letter as any).charValue = char;
+    (letter as any).wordId = wordId;
+    (letter as any).wordScript = wordScript;
+    (letter as any).audioPath = audioPath;
+
+    const charText = this.add.text(x, y, char, {
+      fontFamily: 'Noto Sans Devanagari, system-ui, sans-serif',
+      fontSize: '18px',
+      color: '#FFFFFF',
+      stroke: '#000000',
+      strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(9);
+    (letter as any).charText = charText;
+
+    // Blue glow to distinguish respawned letters from originals
+    const glow = this.add.circle(x, y, 18, 0x66AAFF, 0.25);
+    glow.setDepth(5);
+    (letter as any).glow = glow;
+
+    // Float animation
+    const tween = this.tweens.add({
+      targets: [letter, charText, glow],
+      y: y - 12,
+      duration: 1800,
+      yoyo: true, repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+    (letter as any).floatTween = tween;
+
+    // Fade in
+    letter.setAlpha(0);
+    this.tweens.add({ targets: letter, alpha: 1, duration: 500 });
+    charText.setAlpha(0);
+    this.tweens.add({ targets: charText, alpha: 1, duration: 500 });
+
+    this.showMessage(`"${char}" reappeared nearby!`);
   }
 
   private spawnCheckpoints(checkpoints: any[]): void {
@@ -916,6 +1141,120 @@ export class GameScene extends Phaser.Scene {
       });
 
       this.showMessage('Checkpoint reached!');
+    });
+  }
+
+  private spawnHealthPickups(): void {
+    this.healthPickupsGroup.clear(true, true);
+
+    const positions = [
+      { x: 500, y: 590 }, { x: 800, y: 430 },
+    ];
+
+    positions.forEach((pos) => {
+      const pickup = this.physics.add.sprite(pos.x, pos.y, 'letter-placeholder');
+      pickup.setScale(0.8);
+      pickup.setTint(0xCC3333);
+      pickup.setDepth(8);
+      (pickup.body as Phaser.Physics.Arcade.Body).setSize(28, 28);
+      (pickup.body as Phaser.Physics.Arcade.Body).allowGravity = false;
+      this.healthPickupsGroup.add(pickup);
+
+      // Heart label
+      const label = this.add.text(pos.x, pos.y, '❤️', {
+        fontSize: '18px',
+      }).setOrigin(0.5).setDepth(9);
+
+      this.tweens.add({
+        targets: [pickup, label],
+        y: pos.y - 8,
+        duration: 1200 + Math.random() * 300,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+
+      (pickup as any).label = label;
+    });
+
+    this.physics.add.overlap(this.player, this.healthPickupsGroup, (_, pickupObj) => {
+      const pickup = pickupObj as any;
+      if (this.health >= 3) return;
+
+      this.health++;
+      this.playSFX('sfx-collect');
+
+      if (pickup.label) pickup.label.destroy();
+      pickup.destroy();
+
+      this.showMessage('+1 HP recovered!');
+    });
+  }
+
+  private spawnGems(): void {
+    this.gemsGroup.clear(true, true);
+
+    // Default gem positions across the level
+    const positions = [
+      { x: 350, y: 590 }, { x: 650, y: 440 }, { x: 900, y: 360 },
+      { x: 1050, y: 280 }, { x: 550, y: 580 },
+    ];
+
+    positions.forEach((pos) => {
+      const gem = this.physics.add.sprite(pos.x, pos.y, 'letter-placeholder');
+      gem.setScale(0.7);
+      gem.setTint(0xFFD700);
+      gem.setDepth(8);
+      (gem.body as Phaser.Physics.Arcade.Body).setSize(20, 20);
+      (gem.body as Phaser.Physics.Arcade.Body).allowGravity = false;
+      this.gemsGroup.add(gem);
+
+      // Diamond label rendered on top
+      const label = this.add.text(pos.x, pos.y, '💎', {
+        fontSize: '16px',
+      }).setOrigin(0.5).setDepth(9);
+
+      // Float animation
+      this.tweens.add({
+        targets: [gem, label],
+        y: pos.y - 8,
+        duration: 1500 + Math.random() * 500,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+
+      (gem as any).label = label;
+    });
+
+    this.physics.add.overlap(this.player, this.gemsGroup, (_, gemObj) => {
+      const gem = gemObj as any;
+      this.gemsCollected++;
+      this.playSFX('sfx-collect');
+
+      // Burst particles
+      const bx = gem.x;
+      const by = gem.y;
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        const p = this.add.circle(bx, by, 2, 0xFFD700, 1);
+        p.setDepth(12);
+        this.tweens.add({
+          targets: p,
+          x: bx + Math.cos(a) * 30,
+          y: by + Math.sin(a) * 30,
+          alpha: 0,
+          duration: 400,
+          onComplete: () => p.destroy(),
+        });
+      }
+
+      // Emit on GameScene events so UIScene receives it
+      this.events.emit('gemCollected', this.gemsCollected);
+
+      // Destroy label
+      if (gem.label) gem.label.destroy();
+      gem.destroy();
     });
   }
 
@@ -976,6 +1315,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private respawnAtCheckpoint(): void {
+    this.deathsThisLevel++;
     this.health = 3;
     this.isInvincible = false;
     this.player.clearTint();
@@ -1004,13 +1344,10 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    const uiScene = this.scene.get('UIScene');
-    if (uiScene) {
-      uiScene.events.emit('letterStolen', {
-        letter: '',
-        totalLetters: this.collectedLetters.length,
-      });
-    }
+    this.events.emit('letterStolen', {
+      letter: '',
+      totalLetters: this.collectedLetters.length,
+    });
   }
 
   private handleNPCInteraction(): void {
@@ -1148,7 +1485,7 @@ export class GameScene extends Phaser.Scene {
       }
     });
 
-    // Clean up stolen letters that timed out
+    // Clean up stolen letters — animate position + check expiry
     this.lettersGroup.getChildren().forEach((letter: any) => {
       if (letter.stolen) {
         if (letter.charText) {
@@ -1157,10 +1494,51 @@ export class GameScene extends Phaser.Scene {
         if (letter.glow) {
           letter.glow.setPosition(letter.x, letter.y);
         }
+
+        // Flash warning when about to expire (last 10 seconds)
+        const remaining = letter.lifespan - now;
+        if (remaining < 10000 && remaining > 0) {
+          if (!letter._warnedExpiry) {
+            letter._warnedExpiry = true;
+            // Speed up the glow pulse to warn player
+            if (letter.glow) {
+              this.tweens.killTweensOf(letter.glow);
+              this.tweens.add({
+                targets: letter.glow,
+                alpha: 0.05,
+                duration: 200,
+                yoyo: true,
+                repeat: -1,
+              });
+            }
+            // Flash the letter red
+            this.tweens.add({
+              targets: letter,
+              alpha: 0.3,
+              duration: 250,
+              yoyo: true,
+              repeat: -1,
+            });
+          }
+        }
+
         if (now > letter.lifespan) {
+          // Expired — respawn the letter so player isn't soft-locked
+          const char = letter.charValue;
+          const wid = letter.wordId;
+          const ws = letter.wordScript;
+          const ap = letter.audioPath;
+
+          // Destroy old letter visuals
           if (letter.charText) letter.charText.destroy();
           if (letter.glow) letter.glow.destroy();
           letter.destroy();
+
+          // Spawn the letter at the player's camera position so it's always reachable
+          const cam = this.cameras.main;
+          const rx = cam.scrollX + (cam.width * 0.2) + Phaser.Math.Between(-60, 60);
+          const ry = cam.scrollY + (cam.height * 0.25) + Phaser.Math.Between(0, 120);
+          this.respawnLetter(char, wid, ws, ap, rx, ry);
         }
       }
     });
@@ -1168,6 +1546,7 @@ export class GameScene extends Phaser.Scene {
 
   getPlayer(): Phaser.Physics.Arcade.Sprite { return this.player; }
   getHealth(): number { return this.health; }
+  getGemsCollected(): number { return this.gemsCollected; }
   getCollectedLetters(): Array<{ letter: string; wordId: string }> { return this.collectedLetters; }
   getLevelWords(): any[] { return this.levelWords; }
 }
