@@ -12,21 +12,44 @@
 - Devanagari letters render as text on sprites
 - Letter collection with Howler.js pronunciation audio + SFX
 - WordBar HUD showing collected letter tiles
-- WordPuzzle overlay (drag letters to spell, close button, caller-aware for BossScene)
+- WordPuzzle overlay (drag letters to spell, close button, caller-aware)
 - Doors auto-trigger puzzle on touch (6 door positions, all words covered)
+- Collected letters consumed on door solve, tiles removed from WordBar
 - Level completion saves to localStorage with star rating
 - NPC dialogue triggers + audio
 - Shadow Creeper enemies (patrol, steal letters, damage, per-enemy cooldown)
+- Stolen letters: 60s lifespan, fall with gravity, land on platforms, respawn on expiry
 - Player animations (idle 2-frame, run 4-frame spritesheets)
 - Checkpoint/respawn system with death counter
 - SFX + level music (placeholder audio)
-- **Boss fights wired** — BossScene launches when boss level doors are all done
-- **WordPuzzle in BossScene** — player spells required word to damage boss
 - **Health pickups** — floating ❤️ restores 1 HP (max 3)
 - **WisdomGems** — collectible gems with particle effects, shown in UI
 - **Star rating** — calculated from deaths + gems collected (not hardcoded 3)
 - **World-2/3 parallax backgrounds** — village houses, palace pillars + moon
 - **LevelSelectScene level buttons** — per-world sub-menu with individual level access
+
+### ⚠️ BOSS FIGHT — NEEDS MAJOR WORK
+The BossScene currently has a **placeholder simulated auto-win** mechanic:
+- Boss arena appears (boss sprite, player sprite, health bar, attack patterns)
+- Attacks fire (shadow bolts, ground waves, minions) — player can dodge
+- After each attack, boss shows vulnerability text: `Spell: "X"`
+- **After 2 seconds it auto-damages the boss** (simulated win, no real puzzle)
+- Boss defeated → "Continue" button → returns to LevelSelectScene
+- **WordPuzzleScene integration was attempted and reverted** — broke the scene
+
+**What needs to be built:**
+1. Replace simulated auto-win in `showSpellPrompt()` with actual WordPuzzleScene launch
+2. WordPuzzleScene needs boss word data (splitLetters for the required word)
+3. On correct spell → damage boss (1 HP per correct spell)
+4. Boss sentences reference words from ALL levels, not just current level
+5. Clear UI: boss turns green when vulnerable, show which word to spell, countdown timer
+6. Keep the dodge/attack mechanic working (player HP, invincibility frames)
+
+**Key code locations:**
+- `BossScene.showSpellPrompt()` (line ~270) — simulated auto-win timer
+- `GameScene.levelComplete()` (line ~612) — launches BossScene with `{ bossConfig, collectedWords }`
+- `BossScene.bossDefeated()` — uses `onBossDefeatedCallback` if provided, else navigates to LevelSelectScene
+- Boss sentences in `hindi.json` reference words from different levels (e.g., world-1-level-2 boss requires "baagh" from level-1)
 
 ### Recent Changes (May 4 — Phase 4 Implementation)
 - [x] BossScene launched from GameScene.levelComplete() when level.boss exists
@@ -68,8 +91,9 @@
 - Vite dev port: **5174**
 - Font: Noto Sans Devanagari via Google Fonts in index.html
 - JSON must be synced: `cp src/config/languages/hindi.json public/data/hindi.json`
-- **BossScene data flow**: GameScene passes `{ bossConfig, levelWords, collectedWordIds, onBossDefeated }`
-- **WordPuzzleScene `caller` param**: set to 'BossScene' to resume correct scene after puzzle
+- **BossScene data flow**: GameScene passes `{ bossConfig, collectedWords, onBossDefeated }` — `collectedWords` is string[] of word IDs the player has learned
+- **WordPuzzleScene `caller` param**: supports 'BossScene' to resume correct scene after puzzle (set via `caller` data field)
+- **Boss sentences reference words from any level** — e.g. world-1-level-2 boss requires "baagh" which is from level-1. Need to pass ALL words from the language data when integrating real puzzle.
 - **Event emission**: always use `this.events` in GameScene for events UIScene listens to
 - **Group defaults override**: always set `allowGravity`/`immovable` AFTER `group.add()`
 - **Stolen letter flow**: `stealLetter()` → pop from `collectedLetters` → add to group → set gravity → respawn on expiry

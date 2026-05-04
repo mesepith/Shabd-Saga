@@ -613,7 +613,7 @@ export class GameScene extends Phaser.Scene {
     // If this level has a boss and doors are all done, launch boss fight
     if (this.levelBoss && this.activeDoors.length === 0) {
       console.log('[GameScene] Launching BossScene for level:', this.levelId);
-      const collectedWordIds = [...new Set(this.collectedLetters.map((l) => l.wordId))];
+      const collectedWords = [...new Set(this.collectedLetters.map((l) => l.wordId))];
 
       this.scene.pause('UIScene');
       this.scene.pause('GameScene');
@@ -625,9 +625,7 @@ export class GameScene extends Phaser.Scene {
 
       this.scene.launch('BossScene', {
         bossConfig: this.levelBoss,
-        levelWords: this.levelWords,
-        collectedWordIds,
-        levelId: this.levelId,
+        collectedWords,
         onBossDefeated: () => {
           this.scene.stop('BossScene');
           this.events.emit('bossDefeated');

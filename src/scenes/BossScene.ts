@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { Howl } from 'howler';
 
 interface BossConfig {
   name: string;
@@ -7,28 +6,11 @@ interface BossConfig {
   spriteKey: string;
   health: number;
   sentences: Array<{
-    id: string;
     script: string;
     translation: string;
     requiredWords: string[];
     timeLimit: number;
   }>;
-}
-
-interface LevelWord {
-  id: string;
-  script: string;
-  splitLetters: string[];
-  transliteration: string;
-  translation: string;
-}
-
-interface BossSceneData {
-  bossConfig: BossConfig;
-  levelWords: LevelWord[];
-  collectedWordIds: string[];
-  levelId: string;
-  onBossDefeated: () => void;
 }
 
 export class BossScene extends Phaser.Scene {
@@ -41,16 +23,9 @@ export class BossScene extends Phaser.Scene {
   private currentSentenceIndex: number = 0;
   private isVulnerable: boolean = false;
   private bossConfig!: BossConfig;
-  private levelWords: LevelWord[] = [];
-  private collectedWordIds: string[] = [];
-  private onBossDefeated!: () => void;
-  private playerHealth: number = 3;
-  private isPlayerInvincible: boolean = false;
-  private vulnerableTimer: number = 0;
-  private spellPromptText!: Phaser.GameObjects.Text;
-  private timerText!: Phaser.GameObjects.Text;
-  private arenaGround!: Phaser.Physics.Arcade.Sprite;
+  private onBossDefeatedCallback?: () => void;
 
+  // Player movement in arena
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: any;
 
@@ -58,23 +33,17 @@ export class BossScene extends Phaser.Scene {
     super({ key: 'BossScene' });
   }
 
-  create(data: BossSceneData): void {
+  create(data: { bossConfig: BossConfig; collectedWords: string[]; onBossDefeated?: () => void }): void {
     const { width, height } = this.cameras.main;
 
     this.bossConfig = data.bossConfig;
-    this.levelWords = data.levelWords || [];
-    this.collectedWordIds = data.collectedWordIds || [];
-    this.onBossDefeated = data.onBossDefeated;
+    this.onBossDefeatedCallback = data.onBossDefeated;
     this.bossHealth = data.bossConfig.health;
     this.bossMaxHealth = data.bossConfig.health;
-    this.currentSentenceIndex = 0;
-    this.isVulnerable = false;
-    this.playerHealth = 3;
-    this.isPlayerInvincible = false;
 
     this.cameras.main.fadeIn(500);
 
-    // Arena background
+    // Arena background — dramatic gradient
     const bg = this.add.graphics();
     bg.fillGradientStyle(0x0a0a1e, 0x0a0a1e, 0x1a0a2e, 0x1a0a2e, 1);
     bg.fillRect(0, 0, width, height);
@@ -110,7 +79,7 @@ export class BossScene extends Phaser.Scene {
     });
     bossSub.setOrigin(0.5);
 
-    // Boss entity
+    // Boss entity (placeholder)
     this.boss = this.physics.add.sprite(width * 0.75, height * 0.45, 'enemy-placeholder');
     this.boss.setScale(3);
     this.boss.setAlpha(0);
@@ -125,6 +94,7 @@ export class BossScene extends Phaser.Scene {
       ease: 'Bounce.easeOut',
     });
 
+    // Continuous floating animation
     this.tweens.add({
       targets: this.boss,
       y: height * 0.5 + 15,
@@ -135,43 +105,16 @@ export class BossScene extends Phaser.Scene {
       delay: 1500,
     });
 
+    // Boss health bar
     this.createHealthBar();
 
-    // Player
+    // Player in arena
     this.player = this.physics.add.sprite(150, height - 80, 'player-placeholder');
     this.player.setCollideWorldBounds(true);
     this.physics.add.collider(this.player, ground);
 
     // Projectiles group
     this.projectiles = this.physics.add.group();
-
-    // Spell prompt (hidden initially)
-    this.spellPromptText = this.add.text(width / 2, 60, '', {
-      fontFamily: 'Noto Sans, system-ui, sans-serif',
-      fontSize: '20px',
-      color: '#FFD700',
-      stroke: '#000000',
-      strokeThickness: 3,
-      backgroundColor: '#00000088',
-      padding: { x: 15, y: 8 },
-    });
-    this.spellPromptText.setOrigin(0.5);
-    this.spellPromptText.setScrollFactor(0);
-    this.spellPromptText.setDepth(500);
-    this.spellPromptText.setVisible(false);
-
-    // Timer text
-    this.timerText = this.add.text(width / 2, 95, '', {
-      fontFamily: 'Noto Sans, system-ui, sans-serif',
-      fontSize: '16px',
-      color: '#FFAA44',
-      stroke: '#000000',
-      strokeThickness: 2,
-    });
-    this.timerText.setOrigin(0.5);
-    this.timerText.setScrollFactor(0);
-    this.timerText.setDepth(500);
-    this.timerText.setVisible(false);
 
     // Input
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -181,26 +124,18 @@ export class BossScene extends Phaser.Scene {
       W: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W),
     };
 
-    // Instruction
-    const instruction = this.add.text(width / 2, height - 50, 'Dodge attacks! Spell words to damage the boss!', {
+    // Instructions
+    const instruction = this.add.text(width / 2, height - 80, 'Dodge attacks! Spell sentences to damage the boss!', {
       fontFamily: 'Noto Sans, system-ui, sans-serif',
-      fontSize: '14px',
+      fontSize: '16px',
       color: '#FFD700',
       stroke: '#000000',
       strokeThickness: 2,
     });
     instruction.setOrigin(0.5);
 
-    // Listen for wordSpelled event from WordPuzzleScene
-    this.events.on('wordSpelled', (spellData: { word: string }) => {
-      if (this.isVulnerable && this.bossHealth > 0) {
-        const sentence = this.bossConfig.sentences[this.currentSentenceIndex];
-        this.dealDamage(sentence.script);
-      }
-    });
-
-    // Start boss fight after intro
-    this.time.delayedCall(3500, () => {
+    // Start boss attack cycle after intro
+    this.time.delayedCall(3000, () => {
       this.startBossFight();
     });
   }
@@ -210,31 +145,6 @@ export class BossScene extends Phaser.Scene {
     this.healthBar.setDepth(500);
     this.healthBar.setScrollFactor(0);
     this.updateHealthBar();
-
-    // Player health on left side
-    const playerHealthLabel = this.add.text(10, 10, `❤️ ${this.playerHealth}`, {
-      fontFamily: 'system-ui, sans-serif',
-      fontSize: '18px',
-      color: '#FF6666',
-    });
-    playerHealthLabel.setScrollFactor(0);
-    playerHealthLabel.setDepth(500);
-    playerHealthLabel.setName('playerHealthText');
-
-    // Boss label on right
-    const bossHealthLabel = this.add.text(
-      this.cameras.main.width - 10,
-      10,
-      `${this.bossConfig.name} ❤️`,
-      {
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '13px',
-        color: '#FF4444',
-      }
-    );
-    bossHealthLabel.setOrigin(1, 0);
-    bossHealthLabel.setScrollFactor(0);
-    bossHealthLabel.setDepth(500);
   }
 
   private updateHealthBar(): void {
@@ -246,23 +156,23 @@ export class BossScene extends Phaser.Scene {
 
     this.healthBar.clear();
 
+    // Background
     this.healthBar.fillStyle(0x333333, 1);
     this.healthBar.fillRoundedRect(x, y, barWidth, barHeight, 6);
 
+    // Health fill
     const healthRatio = this.bossHealth / this.bossMaxHealth;
     const healthColor = healthRatio > 0.5 ? 0xFF4444 : healthRatio > 0.25 ? 0xFFAA00 : 0xFF0000;
     this.healthBar.fillStyle(healthColor, 1);
     this.healthBar.fillRoundedRect(x, y, barWidth * healthRatio, barHeight, 6);
 
+    // Border
     this.healthBar.lineStyle(2, 0xFFFFFF, 0.5);
     this.healthBar.strokeRoundedRect(x, y, barWidth, barHeight, 6);
-  }
 
-  private updatePlayerHealth(): void {
-    const text = this.children.getByName('playerHealthText') as Phaser.GameObjects.Text;
-    if (text) {
-      text.setText(`❤️ ${this.playerHealth}`);
-    }
+    // Label
+    this.healthBar.fillStyle(0xFFFFFF, 1);
+    // The depth ensures text is drawn on top
   }
 
   private startBossFight(): void {
@@ -286,7 +196,7 @@ export class BossScene extends Phaser.Scene {
         break;
     }
 
-    // Vulnerable period after attack
+    // Vulnerable period after attack — player can spell to deal damage
     this.time.delayedCall(1500, () => {
       this.isVulnerable = true;
       this.showSpellPrompt();
@@ -294,6 +204,7 @@ export class BossScene extends Phaser.Scene {
   }
 
   private shadowBoltAttack(): void {
+    // Boss shoots 3 shadow bolts at the player
     for (let i = 0; i < 3; i++) {
       this.time.delayedCall(i * 500, () => {
         const bolt = this.add.circle(this.boss.x, this.boss.y, 10, 0xFF4444, 1);
@@ -307,6 +218,7 @@ export class BossScene extends Phaser.Scene {
         bolt.body!.velocity.x = Math.cos(angle) * speed;
         bolt.body!.velocity.y = Math.sin(angle) * speed;
 
+        // Destroy after 3 seconds
         this.time.delayedCall(3000, () => {
           if (bolt.active) bolt.destroy();
         });
@@ -315,6 +227,7 @@ export class BossScene extends Phaser.Scene {
   }
 
   private groundWaveAttack(): void {
+    // Ground wave travels across the arena — player must jump
     const wave = this.add.rectangle(0, this.cameras.main.height - 40, 30, 20, 0xFF6600, 0.8);
     this.physics.add.existing(wave);
     this.projectiles.add(wave);
@@ -325,7 +238,8 @@ export class BossScene extends Phaser.Scene {
       duration: 2000,
       onUpdate: () => {
         if (wave.body && this.physics.overlap(wave, this.player)) {
-          this.hitPlayer();
+          // Player hit by ground wave
+          this.cameras.main.shake(200, 0.01);
         }
       },
       onComplete: () => wave.destroy(),
@@ -333,6 +247,7 @@ export class BossScene extends Phaser.Scene {
   }
 
   private spawnMinions(): void {
+    // Spawn 2 small shadow minions
     for (let i = 0; i < 2; i++) {
       const minion = this.add.circle(
         Phaser.Math.Between(100, 300),
@@ -342,66 +257,16 @@ export class BossScene extends Phaser.Scene {
       this.physics.add.existing(minion);
       this.projectiles.add(minion);
 
+      // Bob towards player
       this.tweens.add({
         targets: minion,
         x: this.player.x + Phaser.Math.Between(-50, 50),
         duration: 2000,
-        onUpdate: () => {
-          if (minion.body && this.physics.overlap(minion, this.player)) {
-            this.hitPlayer();
-          }
-        },
         onComplete: () => {
           if (minion.active) minion.destroy();
         },
       });
     }
-  }
-
-  private hitPlayer(): void {
-    if (this.isPlayerInvincible) return;
-    this.isPlayerInvincible = true;
-    this.playerHealth--;
-    this.updatePlayerHealth();
-    this.cameras.main.shake(200, 0.01);
-    this.player.setTint(0xFF0000);
-
-    this.time.delayedCall(1000, () => {
-      this.isPlayerInvincible = false;
-      this.player.clearTint();
-    });
-
-    if (this.playerHealth <= 0) {
-      this.playerDied();
-    }
-  }
-
-  private playerDied(): void {
-    this.isVulnerable = false;
-    this.spellPromptText.setVisible(false);
-    this.timerText.setVisible(false);
-
-    const dieText = this.add.text(
-      this.cameras.main.width / 2,
-      this.cameras.main.height / 2,
-      'Defeated...\nThe boss wins this round.',
-      {
-        fontFamily: 'Noto Sans, system-ui, sans-serif',
-        fontSize: '30px',
-        color: '#FF4444',
-        stroke: '#000000',
-        strokeThickness: 3,
-        align: 'center',
-      }
-    );
-    dieText.setOrigin(0.5);
-    dieText.setDepth(500);
-
-    this.time.delayedCall(3000, () => {
-      this.scene.stop('BossScene');
-      this.scene.resume('GameScene');
-      this.scene.resume('UIScene');
-    });
   }
 
   private showSpellPrompt(): void {
@@ -410,69 +275,46 @@ export class BossScene extends Phaser.Scene {
     }
 
     const sentence = this.bossConfig.sentences[this.currentSentenceIndex];
-    const { width } = this.cameras.main;
 
-    // Find the required word data in levelWords
-    const requiredWordId = sentence.requiredWords[0];
-    const wordData = this.levelWords.find((w) => w.id === requiredWordId);
+    // Show the sentence to spell
+    const prompt = this.add.text(
+      this.cameras.main.width / 2,
+      60,
+      `Spell: "${sentence.translation}"`,
+      {
+        fontFamily: 'Noto Sans, system-ui, sans-serif',
+        fontSize: '20px',
+        color: '#FFD700',
+        stroke: '#000000',
+        strokeThickness: 3,
+        backgroundColor: '#00000088',
+        padding: { x: 15, y: 8 },
+      }
+    );
+    prompt.setOrigin(0.5);
+    prompt.setScrollFactor(0);
+    prompt.setDepth(500);
 
-    if (!wordData) {
-      // No word data found, skip to next attack
+    // Auto-vanish after 5 seconds
+    this.time.delayedCall(5000, () => {
+      if (prompt.active) prompt.destroy();
       this.isVulnerable = false;
       this.time.delayedCall(1000, () => this.attackCycle());
-      return;
-    }
-
-    // Show sentence instruction
-    this.spellPromptText.setText(`Spell: "${sentence.translation}"`);
-    this.spellPromptText.setVisible(true);
-
-    // Start countdown timer
-    this.vulnerableTimer = sentence.timeLimit;
-    this.timerText.setText(`⏱ ${this.vulnerableTimer}s`);
-    this.timerText.setVisible(true);
-
-    const timerEvent = this.time.addEvent({
-      delay: 1000,
-      repeat: sentence.timeLimit - 1,
-      callback: () => {
-        this.vulnerableTimer--;
-        if (this.vulnerableTimer > 0) {
-          this.timerText.setText(`⏱ ${this.vulnerableTimer}s`);
-        }
-      },
     });
 
-    // Auto-fail after time limit
-    this.time.delayedCall(sentence.timeLimit * 1000 + 500, () => {
-      if (this.isVulnerable) {
-        this.spellPromptText.setVisible(false);
-        this.timerText.setVisible(false);
-        this.isVulnerable = false;
-        timerEvent.remove();
-        this.time.delayedCall(1000, () => this.attackCycle());
+    // Simulate a successful spell cast for the placeholder
+    // In the real game, this would launch WordPuzzleScene
+    this.time.delayedCall(2000, () => {
+      if (this.isVulnerable && this.bossHealth > 0) {
+        this.dealDamage(sentence.script);
+        prompt.destroy();
       }
-    });
-
-    // Launch WordPuzzleScene with the required word's splitLetters
-    this.scene.pause('BossScene');
-    this.scene.launch('WordPuzzleScene', {
-      word: wordData.script,
-      translation: wordData.translation,
-      letters: wordData.splitLetters,
-      correctOrder: wordData.splitLetters,
-      caller: 'BossScene',
     });
   }
 
   private dealDamage(sentence: string): void {
     this.bossHealth--;
     this.updateHealthBar();
-    this.isVulnerable = false;
-    this.spellPromptText.setVisible(false);
-    this.timerText.setVisible(false);
-
-    // WordPuzzleScene handles its own cleanup and scene resume
 
     // Boss hurt flash
     this.boss.setTint(0xFF0000);
@@ -498,6 +340,7 @@ export class BossScene extends Phaser.Scene {
     if (this.bossHealth <= 0) {
       this.time.delayedCall(1000, () => this.bossDefeated());
     } else {
+      this.isVulnerable = false;
       this.currentSentenceIndex++;
       this.time.delayedCall(1500, () => this.attackCycle());
     }
@@ -506,6 +349,7 @@ export class BossScene extends Phaser.Scene {
   private bossDefeated(): void {
     const { width, height } = this.cameras.main;
 
+    // Boss defeat animation
     this.tweens.add({
       targets: this.boss,
       alpha: 0,
@@ -516,6 +360,7 @@ export class BossScene extends Phaser.Scene {
       ease: 'Quad.easeIn',
     });
 
+    // Victory text
     const victoryText = this.add.text(width / 2, height / 2, '🎉 विजय! 🎉\nVictory!', {
       fontFamily: 'Noto Sans Devanagari, system-ui, sans-serif',
       fontSize: '42px',
@@ -538,7 +383,7 @@ export class BossScene extends Phaser.Scene {
       delay: 500,
     });
 
-    // Particles
+    // Celebration particles
     for (let i = 0; i < 40; i++) {
       this.time.delayedCall(i * 30, () => {
         const x = Phaser.Math.Between(100, width - 100);
@@ -557,11 +402,29 @@ export class BossScene extends Phaser.Scene {
       });
     }
 
+    // Return button
     this.time.delayedCall(3000, () => {
-      this.cameras.main.fadeOut(500, 0, 0, 0);
-      this.cameras.main.once('camerafadeoutcomplete', () => {
-        this.scene.stop('BossScene');
-        this.onBossDefeated();
+      const continueBtn = this.add.text(width / 2, height - 60, 'Continue →', {
+        fontFamily: 'Noto Sans, system-ui, sans-serif',
+        fontSize: '24px',
+        color: '#FFD700',
+        backgroundColor: '#00000088',
+        padding: { x: 20, y: 10 },
+      });
+      continueBtn.setOrigin(0.5);
+      continueBtn.setDepth(500);
+      continueBtn.setInteractive({ useHandCursor: true });
+
+      continueBtn.on('pointerdown', () => {
+        this.cameras.main.fadeOut(500, 0, 0, 0);
+        this.cameras.main.once('camerafadeoutcomplete', () => {
+          this.scene.stop('BossScene');
+          if (this.onBossDefeatedCallback) {
+            this.onBossDefeatedCallback();
+          } else {
+            this.scene.start('LevelSelectScene');
+          }
+        });
       });
     });
   }
@@ -569,20 +432,20 @@ export class BossScene extends Phaser.Scene {
   update(): void {
     if (!this.player || !this.player.body) return;
 
-    const speed = 240;
+    // Player movement in arena
+    const speed = 220;
     if (this.cursors.left?.isDown || this.wasd.A.isDown) {
       this.player.setVelocityX(-speed);
-      this.player.setFlipX(true);
     } else if (this.cursors.right?.isDown || this.wasd.D.isDown) {
       this.player.setVelocityX(speed);
-      this.player.setFlipX(false);
     } else {
       this.player.setVelocityX(0);
     }
 
+    // Jump
     const onGround = this.player.body.blocked.down || this.player.body.touching.down;
     if ((this.cursors.up?.isDown || this.wasd.W.isDown) && onGround) {
-      this.player.setVelocityY(-420);
+      this.player.setVelocityY(-400);
     }
   }
 }
