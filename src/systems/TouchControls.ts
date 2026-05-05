@@ -224,6 +224,17 @@ export class TouchControls {
 
   // ── Lifecycle ──
 
+  /** Reset all state immediately — call before launching overlays (WordPuzzle, dialogue). */
+  reset(): void {
+    this.activeJoystickPointer = -1;
+    this.activeJumpPointer = -1;
+    this.movementForce.x = 0;
+    this.jumpHeld = false;
+    this.interactPressed = false;
+    this.hideJoystick();
+    this.jumpBtn.setFillStyle(0x000000, 0.25);
+  }
+
   destroy(): void {
     this.scene.input.off('pointerdown');
     this.scene.input.off('pointermove');

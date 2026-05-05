@@ -408,6 +408,12 @@ export class BossScene extends Phaser.Scene {
     const shuffled = Phaser.Utils.Array.Shuffle([...allLetters]);
 
     this.scene.pause('BossScene');
+
+    // Stop player movement so they don't walk into attacks when puzzle closes
+    this.player.setVelocityX(0);
+    this.player.setVelocityY(0);
+    this.touchControls?.reset();
+
     this.scene.launch('WordPuzzleScene', {
       word: targetWord,
       translation,

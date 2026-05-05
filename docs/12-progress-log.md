@@ -493,6 +493,43 @@ src/systems/TouchControls.ts (reusable class)
 
 ---
 
+## 2026-05-06 — Mobile Bugfixes: HUD Visibility, Blank Space, Auto-Move After Modal
+
+### Issues Found (Mobile Testing Round 1)
+1. HUD elements (hearts, diamonds, score) invisible on mobile — visible on desktop
+2. 15% blank space on left side of mobile screen
+3. After closing WordPuzzle modal, character auto-walked in last held direction (walked into enemy)
+
+### Root Causes & Fixes
+
+**1. HUD not visible on mobile**
+- **Root cause**: CSS `height: 100%` on `html, body, #game-container` doesn't account for mobile browser address bar. The address bar takes space → viewport smaller than 100% → game letterboxed → HUD (at y=20) cut off.
+- **Fix**: Changed to `height: 100dvh` (dynamic viewport height) with `-webkit-fill-available` fallback. Added `position: fixed; inset: 0` on `#game-container`.
+
+**2. 15% blank space on left side**
+- **Root cause**: iPhone safe area insets (notch in landscape) + Scale.FIT letterboxing combined to create asymmetric blank space.
+- **Fix**: Added `padding-left/right/top/bottom: env(safe-area-inset-*, 0px)` to `#game-container`. Added `width: 100vw`. Works with existing `viewport-fit=cover` meta.
+
+**3. Auto-movement after closing WordPuzzle/Dialogue**
+- **Root cause**: Player was holding movement direction when overlay opened. GameScene paused but input state persisted. On resume, `handleMovement()` applied the still-active input → character continued walking.
+- **Fix**: Added `TouchControls.reset()` method (clears movementForce, jumpHeld, interactPressed, hides joystick). Called in `openDoor()`, `openGuardPuzzle()`, `handleNPCInteraction()`, `launchBossPuzzle()` alongside `setVelocity(0,0)` BEFORE pausing.
+
+### Files Modified
+- `src/systems/TouchControls.ts` — added `reset()` method
+- `src/scenes/GameScene.ts` — stop+reset in `openDoor()`, `openGuardPuzzle()`, `handleNPCInteraction()`
+- `src/scenes/BossScene.ts` — stop+reset in `launchBossPuzzle()`
+- `index.html` — `100dvh` + `-webkit-fill-available` + `position: fixed` + `safe-area-inset` paddings
+- `docs/AI-SESSION-HANDOFF.md` — updated
+- `docs/12-progress-log.md` — this entry
+
+### Build
+```
+tsc --noEmit  ✓  (zero errors)
+vite build    ✓  (2.88s, 23 modules)
+```
+
+---
+
 ## Template for Future Entries
 
 ```

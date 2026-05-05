@@ -20,6 +20,9 @@
     html, body {
       width: 100%;
       height: 100%;
+      /* Use dynamic viewport height to account for mobile browser UI */
+      height: 100dvh;
+      height: -webkit-fill-available;
       overflow: hidden;
       background: #1a1a2e;
       font-family: 'Noto Sans Devanagari', 'Noto Sans', system-ui, sans-serif;
@@ -27,9 +30,21 @@
     #game-container {
       width: 100%;
       height: 100%;
+      /* Fill full viewport including safe areas (iPhone notch) */
+      width: 100vw;
+      height: 100dvh;
+      height: -webkit-fill-available;
       display: flex;
       align-items: center;
       justify-content: center;
+      /* Extend into safe area insets */
+      padding-left: env(safe-area-inset-left, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      /* Prevent address bar from resizing viewport on scroll */
+      position: fixed;
+      inset: 0;
     }
     canvas {
       display: block;

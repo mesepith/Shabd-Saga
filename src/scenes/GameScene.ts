@@ -633,6 +633,12 @@ export class GameScene extends Phaser.Scene {
 
     this.scene.pause('GameScene');
     this.scene.pause('UIScene');
+
+    // Stop player movement so they don't walk away when puzzle closes
+    this.player.setVelocityX(0);
+    this.player.setVelocityY(0);
+    this.touchControls?.reset();
+
     this.scene.launch('WordPuzzleScene', {
       word: word.script,
       translation: word.translation,
@@ -1519,6 +1525,11 @@ export class GameScene extends Phaser.Scene {
     this.scene.pause('GameScene');
     this.scene.pause('UIScene');
 
+    // Stop player movement so they don't walk away when dialogue closes
+    this.player.setVelocityX(0);
+    this.player.setVelocityY(0);
+    this.touchControls?.reset();
+
     this.scene.launch('DialogueScene', {
       dialogue: npcData.dialogues,
       onComplete: () => {
@@ -1742,6 +1753,12 @@ export class GameScene extends Phaser.Scene {
 
     this.scene.pause('GameScene');
     this.scene.pause('UIScene');
+
+    // Stop player movement so they don't walk away when puzzle closes
+    this.player.setVelocityX(0);
+    this.player.setVelocityY(0);
+    this.touchControls?.reset();
+
     this.scene.launch('WordPuzzleScene', {
       word: word.script,
       translation: word.translation,

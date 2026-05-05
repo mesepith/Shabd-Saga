@@ -3,17 +3,14 @@
 > **READ THIS FIRST** when starting a new AI session on Shabd Saga.
 > The AI should read `docs/12-progress-log.md` for full details.
 
-## Quick Status (May 6, 2026) — Floating Joystick + Mobile Polish
+## Quick Status (May 6, 2026) — Mobile Bugfixes: HUD, Blank Space, Auto-Move
 
-### NEXT TASK: Mobile Testing (iPhone Safari + Android Chrome)
-1. Test on real devices via LAN: `http://<mac-IP>:5174/` (vite.config has `host: '0.0.0.0'`)
-2. Verify floating joystick (left-half bottom zone) works — drag to walk left/right
-3. Verify jump button (right side ▲) works — tap and hold for variable-height jump
-4. Verify interact button (right side 💬) works in BossScene
-5. Verify drag-to-spell works on mobile in WordPuzzleScene
-6. Verify landscape lock + rotate prompt appears when phone is in portrait
-7. Verify layout on small screens (Phaser Scale.FIT handles most)
-8. Fix any mobile-specific bugs found
+### NEXT TASK: Mobile Testing Round 2 (iPhone Safari + Android Chrome)
+1. Verify HUD (hearts, diamonds, score) now visible at top of screen on mobile
+2. Verify no blank space on left side — canvas fills full screen including notch area
+3. Verify player does NOT auto-move after closing WordPuzzle or Dialogue overlays
+4. Verify floating joystick + jump/interact buttons work correctly
+5. Fix any remaining mobile-specific bugs
 
 ### Priority After Mobile
 | Order | Task | Why |
