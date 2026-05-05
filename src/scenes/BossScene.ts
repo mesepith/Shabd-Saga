@@ -609,57 +609,108 @@ export class BossScene extends Phaser.Scene {
 
   private spawnMinionsAttack(pattern: any): void {
     const duration = pattern.duration || 3000;
-    const { width, height } = this.cameras.main;
+    const bossX = this.boss.x;
+    const bossY = this.boss.y;
 
-    for (let i = 0; i < 2; i++) {
-      const side = i === 0 ? 50 : width - 50;
+    for (let i = 0; i < 3; i++) {
+      this.time.delayedCall(i * 400, () => {
+        if (this.state === BossState.DEFEATED) return;
 
-      // Spawn flash
-      const spawnFlash = this.add.circle(side, height - 120, 24, 0xFF44FF, 0.7);
-      spawnFlash.setDepth(12);
-      this.tweens.add({
-        targets: spawnFlash, scale: 2, alpha: 0, duration: 500,
-        onComplete: () => spawnFlash.destroy(),
-      });
+        // Spawn from boss position with slight spread
+        const spawnX = bossX + Phaser.Math.Between(-30, 30);
+        const spawnY = bossY + 20;
 
-      // Minion — bright magenta with glow
-      const minion = this.physics.add.sprite(side, height - 120, 'letter-placeholder');
-      minion.setDisplaySize(24, 24);
-      minion.setTint(0xFF44FF);
-      minion.setAlpha(0.9);
-      minion.setDepth(7);
-      this.minionsGroup.add(minion);
-      const mBody = minion.body as Phaser.Physics.Arcade.Body;
-      mBody.setSize(18, 18);
-      mBody.allowGravity = true;
-      minion.setCollideWorldBounds(true);
+        // Spawn flash at boss
+        const spawnFlash = this.add.circle(spawnX, spawnY, 20, 0xFF44FF, 0.8);
+        spawnFlash.setDepth(12);
+        this.tweens.add({
+          targets: spawnFlash, scale: 2.5, alpha: 0, duration: 500,
+          onComplete: () => spawnFlash.destroy(),
+        });
 
-      // Glow around minion
-      const minionGlow = this.add.circle(side, height - 120, 14, 0xFF66FF, 0.3);
-      minionGlow.setDepth(6);
+        // Minion floats (no gravity), chases player
+        const minion = this.physics.add.sprite(spawnX, spawnY, 'letter-placeholder');
+        minion.setDisplaySize(22, 22);
+        minion.setTint(0xFF44FF);
+        minion.setAlpha(0.9);
+        minion.setDepth(7);
+        this.minionsGroup.add(minion);
+        const mBody = minion.body as Phaser.Physics.Arcade.Body;
+        mBody.setSize(16, 16);
+        mBody.allowGravity = false;
+        mBody.setImmovable(false);
+        minion.setCollideWorldBounds(true);
 
-      // Trail particles
-      const minionTrail = this.time.addEvent({
-        delay: 100,
-        repeat: Math.floor(duration / 100),
-        callback: () => {
-          if (!minion.active) { minionTrail.remove(); minionGlow.destroy(); return; }
-          minionGlow.x = minion.x;
-          minionGlow.y = minion.y;
-          minionGlow.setAlpha(0.15 + Math.sin(Date.now() * 0.02) * 0.15);
-          const trail = this.add.circle(minion.x, minion.y, Phaser.Math.Between(2, 4), 0xFF88FF, 0.5);
-          trail.setDepth(5);
-          this.tweens.add({
-            targets: trail, alpha: 0, scale: 0.3, duration: 300,
-            onComplete: () => trail.destroy(),
-          });
-        },
-      });
+        // Eject minions outward from boss toward player direction
+        const toPlayer = Phaser.Math.Angle.Between(bossX, bossY, this.player.x, this.player.y);
+        const ejectAngle = toPlayer + (i - 1) * 0.4;
+        mBody.velocity.x = Math.cos(ejectAngle) * 200;
+        mBody.velocity.y = Math.sin(ejectAngle) * 200;
 
-      this.time.delayedCall(duration, () => {
-        if (minion.active) minion.destroy();
-        minionTrail.remove();
-        minionGlow.destroy();
+        // Glow around minion (created AFTER velocity set so initial pos is correct)
+        const minionGlow = this.add.circle(spawnX, spawnY, 14, 0xFF66FF, 0.35);
+        minionGlow.setDepth(6);
+
+        // Track how long this minion lives
+        const startTime = this.time.now;
+        let chasing = false;
+
+        // Trail particles + glow update
+        const minionTrail = this.time.addEvent({
+          delay: 80,
+          repeat: Math.floor(duration / 80),
+          callback: () => {
+            if (!minion.active) { minionTrail.remove(); minionGlow.destroy(); return; }
+
+            minionGlow.x = minion.x;
+            minionGlow.y = minion.y;
+            minionGlow.setAlpha(0.15 + Math.sin(Date.now() * 0.02) * 0.15);
+
+            // After 500ms spread, start homing toward player
+            if (this.time.now - startTime > 500) {
+              chasing = true;
+              const angle = Phaser.Math.Angle.Between(minion.x, minion.y, this.player.x, this.player.y);
+              mBody.velocity.x += Math.cos(angle) * 15;
+              mBody.velocity.y += Math.sin(angle) * 15;
+              // Clamp speed
+              const spd = Math.sqrt(mBody.velocity.x ** 2 + mBody.velocity.y ** 2);
+              if (spd > 250) {
+                mBody.velocity.x = (mBody.velocity.x / spd) * 250;
+                mBody.velocity.y = (mBody.velocity.y / spd) * 250;
+              }
+            }
+
+            // Trail spark
+            const trail = this.add.circle(minion.x, minion.y, Phaser.Math.Between(2, 5), 0xFF88FF, 0.5);
+            trail.setDepth(5);
+            this.tweens.add({
+              targets: trail, alpha: 0, scale: 0.3, duration: 400,
+              onComplete: () => trail.destroy(),
+            });
+          },
+        });
+
+        // Minion expires after duration
+        this.time.delayedCall(duration, () => {
+          // Burst particles on expire
+          if (minion.active) {
+            for (let j = 0; j < 8; j++) {
+              const burst = this.add.circle(minion.x, minion.y, Phaser.Math.Between(3, 6), 0xFF66FF, 0.7);
+              burst.setDepth(8);
+              const ba = (j / 8) * Math.PI * 2;
+              this.tweens.add({
+                targets: burst,
+                x: burst.x + Math.cos(ba) * 40,
+                y: burst.y + Math.sin(ba) * 40,
+                alpha: 0, scale: 0, duration: 500,
+                onComplete: () => burst.destroy(),
+              });
+            }
+          }
+          if (minion.active) minion.destroy();
+          minionTrail.remove();
+          minionGlow.destroy();
+        });
       });
     }
   }
@@ -942,16 +993,6 @@ export class BossScene extends Phaser.Scene {
         this.launchBossPuzzle();
       }
     }
-
-    // Track minions toward player
-    this.minionsGroup.getChildren().forEach((child) => {
-      const m = child as Phaser.Physics.Arcade.Sprite;
-      if (!m.active) return;
-      const mBody = m.body as Phaser.Physics.Arcade.Body;
-      const angle = Phaser.Math.Angle.Between(m.x, m.y, this.player.x, this.player.y);
-      mBody.velocity.x = Math.cos(angle) * 80;
-      mBody.velocity.y = Math.sin(angle) * 80;
-    });
 
     // Blink player when invincible
     if (this.isPlayerInvincible) {
