@@ -3,10 +3,10 @@
 > **READ THIS FIRST** when starting a new AI session on Shabd Saga.
 > The AI should read `docs/12-progress-log.md` for full details.
 
-## Quick Status (May 5, 2026) — Boss Code Removed (Revisit Later)
+## Quick Status (May 5, 2026) — Letter Guard Done, Boss Remains
 
-### NEXT TASK: Letter Guard Enemy
-The Letter Guard enemy type (Phase 3 leftover) blocks players from using collected letters — the player must spell a word to defeat it. Follow the existing Shadow Creeper pattern in `src/scenes/GameScene.ts` `spawnEnemies()`.
+### NEXT TASK: Boss Fight (Rebuild)
+Boss fight was removed May 5 (non-functional placeholder). Rebuild from scratch using the multi-phase spell-to-damage mechanic described in the design docs. WordPuzzleScene already supports `caller` param for scene resume.
 
 ### What's Working
 - All 8 Phaser scenes load and function (BossScene removed)
@@ -30,6 +30,15 @@ The Letter Guard enemy type (Phase 3 leftover) blocks players from using collect
 - Star rating — calculated from deaths + gems collected (not hardcoded 3)
 - World-2/3 parallax backgrounds — village houses, palace pillars + moon
 - LevelSelectScene level buttons — per-world sub-menu with individual level access
+- **Letter Guard enemies** — block door access, require spelling to defeat (5 guards across 5 levels)
+
+### Letter Guard Architecture
+- `type: 'letter-guard'` entries in `hindi.json` with `guardWordId` field
+- Guards share `enemiesGroup` but use dedicated methods: `spawnGuard()`, `updateGuards()`, `openGuardPuzzle()`, `defeatGuard()`
+- Proximity check (70x80px zone) sets `nearGuard` — doors blocked while `nearGuard` is set
+- Guard interaction priority > NPC interaction in `handleNPCInteraction()`
+- `spawnDoors()` overlap checks `this.nearGuard` before opening puzzle
+- Defeated guards tracked in `defeatedGuards` Set (persists across respawns)
 
 ### Boss Fight — Planned (Code Removed May 5, Rebuild Later)
 The BossScene was removed because the initial implementation was non-functional (placeholder auto-win, no real WordPuzzleScene integration, broken physics). The boss concept remains planned — see design doc for the intended multi-phase spell-to-damage mechanic.
@@ -46,8 +55,8 @@ The BossScene was removed because the initial implementation was non-functional 
 - [ ] Enemy difficulty balancing per level
 
 ### Phase 5 Remaining
-1. **Letter Guard enemy** (word-blocking mechanic) — NEXT TASK
-2. **Boss fight** — rebuild from scratch (code removed May 5, design preserved)
+1. ~~Letter Guard enemy~~ DONE
+2. **Boss fight** — rebuild from scratch (code removed May 5, design preserved) — NEXT
 3. Enemy difficulty balancing per level
 4. Tiled level maps
 5. Real audio assets (music + SFX)
@@ -62,14 +71,14 @@ npm run dev        # Frontend at http://localhost:5174
 | File | Purpose |
 |------|---------|
 | `src/main.ts` | Entry point, Phaser bootstrap |
-| `src/scenes/GameScene.ts` | Core gameplay (~1500 lines, pickups, gems, stars, letter respawn) |
+| `src/scenes/GameScene.ts` | Core gameplay (~1700 lines, pickups, gems, stars, letter respawn, guards) |
 | `src/scenes/WordPuzzleScene.ts` | Spelling puzzle overlay |
 | `src/scenes/UIScene.ts` | HUD (health, WordBar, score, gem count, letterConsumed handler) |
 | `src/scenes/DialogueScene.ts` | NPC conversation overlay |
 | `src/scenes/MenuScene.ts` | Animated menu |
 | `src/scenes/LevelSelectScene.ts` | World + level select with sub-menus |
 | `src/scenes/PreloadScene.ts` | Asset loading |
-| `src/config/languages/hindi.json` | Source of truth for Hindi words |
+| `src/config/languages/hindi.json` | Source of truth for Hindi words + enemy/guard data |
 | `public/data/hindi.json` | Copy for runtime fetch |
 | `src/systems/LanguageManager.ts` | Fetches /data/hindi.json |
 | `src/systems/SaveManager.ts` | localStorage progress |

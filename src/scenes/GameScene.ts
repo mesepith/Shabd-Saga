@@ -55,6 +55,12 @@ export class GameScene extends Phaser.Scene {
   private doorsOverlapRegistered: boolean = false;
   private lettersOverlapRegistered: boolean = false;
 
+  // Letter Guard system
+  private nearGuard: any = null;
+  private guardPrompt!: Phaser.GameObjects.Text;
+  private activeGuards: Map<string, Phaser.Physics.Arcade.Sprite> = new Map();
+  private defeatedGuards: Set<string> = new Set();
+
   // Player animations
   private currentAnim: string = '';
 
@@ -79,6 +85,9 @@ export class GameScene extends Phaser.Scene {
     this.doorsOverlapRegistered = false;
     this.nearDoor = null;
     this.nearNPC = null;
+    this.nearGuard = null;
+    this.activeGuards.clear();
+    this.defeatedGuards.clear();
     this.currentAnim = '';
     this.currentDialogue = null;
     this.gemsCollected = 0;
@@ -159,6 +168,17 @@ export class GameScene extends Phaser.Scene {
       backgroundColor: '#000000cc',
       padding: { x: 10, y: 5 },
       stroke: '#4488FF',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(150).setVisible(false);
+
+    // Letter Guard prompt
+    this.guardPrompt = this.add.text(0, 0, '🛡️ Spell to break the barrier! Press E', {
+      fontFamily: 'Noto Sans, system-ui, sans-serif',
+      fontSize: '17px',
+      color: '#FF8844',
+      backgroundColor: '#000000cc',
+      padding: { x: 10, y: 5 },
+      stroke: '#FF4400',
       strokeThickness: 3,
     }).setOrigin(0.5).setDepth(150).setVisible(false);
 
@@ -335,23 +355,52 @@ export class GameScene extends Phaser.Scene {
         stroke: '#000000', strokeThickness: 2,
       }).setOrigin(0.5).setDepth(90);
 
+      console.log('[spawnDoors] Door', i, 'wordId:', word.id, 'translation:', word.translation, 'at x:', pos.x);
+
       this.activeDoors.push({ wordId: word.id, door });
 
       // Auto-trigger word puzzle on overlap with cooldown
       this.physics.add.overlap(this.player, door, () => {
         const d = door as any;
         const now = this.time.now;
+
         if (now - d._lastTrigger < 2000) return; // 2s cooldown
         d._lastTrigger = now;
         console.log('[door overlap] Player touched door:', d.wordId);
+        console.log('[door overlap] collectedLetters total:', this.collectedLetters.length,
+          'wordIds:', this.collectedLetters.map((l: any) => l.wordId),
+          'letters:', this.collectedLetters.map((l: any) => l.letter));
 
-        // Check required letters
+        // Check if a guard is blocking this specific door
+        let guarded = false;
+        this.activeGuards.forEach((g: any) => {
+          if (g.guardWordId === d.wordId && !this.defeatedGuards.has(g.enemyData?.id)) {
+            guarded = true;
+          }
+        });
+        if (guarded) {
+          this.showMessage(`A Letter Guard blocks this door! Defeat the guard first!`);
+          return;
+        }
+
         const wordLetters = this.collectedLetters
-          .filter((l: any) => l.wordId === d.wordId)
-          .map((l: any) => l.letter);
+        .filter((l: any) => l.wordId === d.wordId)
+        .map((l: any) => l.letter);
+
+      console.log('[door overlap] wordLetters for', d.wordId, ':', wordLetters, 'need:', d.wordLetters?.length);
 
         if (wordLetters.length < (d.wordLetters?.length || 0)) {
-          this.showMessage(`Need more letters for "${d.wordTranslation}"! (${wordLetters.length}/${d.wordLetters.length})`);
+          // Check if these letters are still on the ground somewhere
+          let groundCount = 0;
+          this.lettersGroup.getChildren().forEach((letter: any) => {
+            if (letter.active && letter.wordId === d.wordId && !letter.isStolenDrop) groundCount++;
+            if (letter.stolen && letter.wordId === d.wordId) groundCount++;
+          });
+          if (groundCount > 0) {
+            this.showMessage(`Your "${d.wordTranslation}" letters were stolen! Find the red/blue glow! (${wordLetters.length}/${d.wordLetters.length})`);
+          } else {
+            this.showMessage(`Need more letters for "${d.wordTranslation}"! (${wordLetters.length}/${d.wordLetters.length})`);
+          }
           return;
         }
 
@@ -463,6 +512,8 @@ export class GameScene extends Phaser.Scene {
     char: string, wordId: string, audioPath: string,
     wordScript: string, translation: string
   ): void {
+    console.log('[collectLetter] char:', char, 'wordId:', wordId, 'total before:', this.collectedLetters.length);
+
     // Defensive: recover correct wordId if missing or fallback
     if (!wordId || wordId === 'fallback') {
       for (const w of this.levelWords) {
@@ -515,6 +566,7 @@ export class GameScene extends Phaser.Scene {
   update(): void {
     if (!this.player || !this.player.body) return;
     this.handleMovement();
+    this.updateGuards();
     this.handleNPCInteraction();
     this.updateEnemies();
   }
@@ -914,6 +966,11 @@ export class GameScene extends Phaser.Scene {
       const { x, y } = enemy.position;
       const range = enemy.patrolRange || 150;
 
+      if (enemy.type === 'letter-guard') {
+        this.spawnGuard(enemy);
+        return;
+      }
+
       const enemySprite = this.physics.add.sprite(x, y, enemy.type || 'shadow-creeper');
       enemySprite.setDisplaySize(40, 40);
       (enemySprite.body as Phaser.Physics.Arcade.Body).setSize(40, 40);
@@ -946,6 +1003,69 @@ export class GameScene extends Phaser.Scene {
     });
 
     // Overlap registration removed — now checked manually in updateEnemies()
+  }
+
+  private spawnGuard(guardData: any): void {
+    if (this.defeatedGuards.has(guardData.id)) return;
+
+    const { x, y } = guardData.position;
+    const guardWordId = guardData.guardWordId;
+
+    const guardWord = this.levelWords.find((w: any) => w.id === guardWordId);
+    if (!guardWord) {
+      console.warn('[spawnGuard] Guard word not found:', guardWordId);
+      return;
+    }
+
+    const guard = this.physics.add.sprite(x, y, 'letter-placeholder');
+    guard.setDisplaySize(50, 50);
+    (guard.body as Phaser.Physics.Arcade.Body).setSize(50, 50);
+    (guard.body as Phaser.Physics.Arcade.Body).allowGravity = false;
+    guard.setTint(0xCC4422);
+    guard.setDepth(8);
+
+    (guard as any).enemyData = guardData;
+    (guard as any).type = 'letter-guard';
+    (guard as any).guardWordId = guardWordId;
+    (guard as any)._lastPuzzle = 0;
+
+    this.enemiesGroup.add(guard);
+    this.activeGuards.set(guardData.id, guard);
+
+    this.tweens.add({
+      targets: guard,
+      y: y - 5,
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    const zone = this.add.rectangle(x, y + 30, 120, 4, 0xCC4422, 0.3);
+    zone.setDepth(4);
+    (guard as any).blockZone = zone;
+
+    const label = this.add.text(x, y - 40, `🛡️ ${guardWord.translation}`, {
+      fontFamily: 'Noto Sans, system-ui, sans-serif',
+      fontSize: '11px',
+      color: '#FF8844',
+      stroke: '#000000',
+      strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(9);
+    (guard as any).guardLabel = label;
+    this.tweens.add({
+      targets: label,
+      y: y - 45,
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    const shield = this.add.text(x, y - 20, '🛡️', {
+      fontSize: '20px',
+    }).setOrigin(0.5).setDepth(10);
+    (guard as any).shieldIcon = shield;
   }
 
   private stealLetter(): void {
@@ -1337,6 +1457,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleNPCInteraction(): void {
+    if (this.nearGuard) {
+      this.guardPrompt.setVisible(true);
+      const justPressed = this.eKey && Phaser.Input.Keyboard.JustDown(this.eKey);
+      if (justPressed || this.touchInteract) {
+        this.touchInteract = false;
+        this.guardPrompt.setVisible(false);
+        this.openGuardPuzzle(this.nearGuard);
+      }
+      return;
+    }
+
+    this.guardPrompt.setVisible(false);
+
     if (!this.nearNPC) {
       this.npcPrompt.setVisible(false);
       return;
@@ -1430,6 +1563,7 @@ export class GameScene extends Phaser.Scene {
 
     this.enemiesGroup.getChildren().forEach((enemy: any) => {
       if (!enemy.active) return;
+      if (enemy.type === 'letter-guard') return; // guards handled in updateGuards()
 
       // Patrol movement
       const left = enemy.patrolLeft;
@@ -1528,6 +1662,98 @@ export class GameScene extends Phaser.Scene {
         }
       }
     });
+  }
+
+  private updateGuards(): void {
+    this.nearGuard = null;
+
+    this.activeGuards.forEach((guard: any) => {
+      if (!guard.active || (guard as any).type !== 'letter-guard') return;
+
+      guard.guardLabel?.setPosition(guard.x, guard.y - 40);
+      guard.shieldIcon?.setPosition(guard.x, guard.y - 20);
+      guard.blockZone?.setPosition(guard.x, guard.y + 30);
+
+      const dx = this.player.x - guard.x;
+      const dy = this.player.y - guard.y;
+      if (Math.abs(dx) < 70 && Math.abs(dy) < 80) {
+        this.nearGuard = guard;
+        this.guardPrompt.setPosition(guard.x, guard.y - 60);
+      }
+    });
+  }
+
+  private openGuardPuzzle(guard: any): void {
+    const now = this.time.now;
+    if (guard._lastPuzzle && now - guard._lastPuzzle < 3000) return;
+    guard._lastPuzzle = now;
+
+    const guardWordId = guard.guardWordId;
+    const word = this.levelWords.find((w: any) => w.id === guardWordId);
+    if (!word) {
+      console.warn('[openGuardPuzzle] Word not found:', guardWordId);
+      return;
+    }
+
+    const wordLetters = this.collectedLetters
+      .filter((l) => l.wordId === guardWordId)
+      .map((l) => l.letter);
+
+    if (wordLetters.length < (word.splitLetters || []).length) {
+      this.showMessage(`Collect letters for "${word.translation}" to defeat the guard!`);
+      return;
+    }
+
+    this.events.once('wordSpelled', (data: any) => {
+      this.defeatGuard(guard);
+    });
+
+    this.scene.pause('GameScene');
+    this.scene.pause('UIScene');
+    this.scene.launch('WordPuzzleScene', {
+      word: word.script,
+      translation: word.translation,
+      letters: wordLetters,
+      correctOrder: word.splitLetters,
+    });
+  }
+
+  private defeatGuard(guard: any): void {
+    if (!guard.active) return;
+
+    const guardWordId = guard.guardWordId;
+    const word = this.levelWords.find((w: any) => w.id === guardWordId);
+
+    this.playSFX('sfx-door-open');
+    this.showMessage(`Guard defeated! "${word?.translation || guardWordId}" — path unblocked!`);
+
+    for (let i = 0; i < 16; i++) {
+      const angle = (i / 16) * Math.PI * 2;
+      const p = this.add.circle(guard.x, guard.y, 3, 0xFF8844, 1);
+      p.setDepth(12);
+      this.tweens.add({
+        targets: p,
+        x: guard.x + Math.cos(angle) * 60,
+        y: guard.y + Math.sin(angle) * 60,
+        alpha: 0,
+        scaleX: 0.3,
+        scaleY: 0.3,
+        duration: 500,
+        onComplete: () => p.destroy(),
+      });
+    }
+
+    if (guard.guardLabel) guard.guardLabel.destroy();
+    if (guard.shieldIcon) guard.shieldIcon.destroy();
+    if (guard.blockZone) guard.blockZone.destroy();
+    guard.destroy();
+
+    this.activeGuards.delete(guard.enemyData?.id);
+    if (guard.enemyData?.id) {
+      this.defeatedGuards.add(guard.enemyData.id);
+    }
+    this.nearGuard = null;
+    this.guardPrompt.setVisible(false);
   }
 
   getPlayer(): Phaser.Physics.Arcade.Sprite { return this.player; }

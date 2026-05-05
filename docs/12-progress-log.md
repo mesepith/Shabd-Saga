@@ -258,6 +258,39 @@ No collision with platforms/ground meant letters fell through world. Fixed via #
 
 ---
 
+## 2026-05-05 — Letter Guard Enemy Implemented
+
+### Completed
+- [x] Letter Guard enemy type added: `type: 'letter-guard'` with `guardWordId` field in hindi.json
+- [x] Guards spawn in `spawnEnemies()` via `spawnGuard()` — stationary, tinted red-orange, with shield icon + label
+- [x] Block mechanic: when player is near a guard, doors cannot be opened (shows "Defeat the Letter Guard first!")
+- [x] Interact: press E / tap interact button while near guard → launches WordPuzzle with guard's word
+- [x] Defeat: correct spell → particle burst, guard destroyed, letters consumed, activeDoors check retriggered
+- [x] 5 guards added across 5 levels: ped (world-1-1), ghaas (1-2), doodh (2-1), phal (2-2), neela (3-1)
+- [x] Guard prompt (🔤 Press E to spell the word!) with orange styling
+- [x] Guard state survives respawn; `defeatedGuards` Set prevents respawn after defeat
+- [x] Zero TypeScript errors, clean Vite build
+
+### Architecture Notes
+- Letter Guards use `enemiesGroup` alongside creepers but are handled by separate methods (`updateGuards`, `spawnGuard`, `openGuardPuzzle`, `defeatGuard`)
+- `updateGuards()` runs before `handleNPCInteraction()` — guard interaction takes priority over NPC interaction
+- `spawnDoors()` overlap checks `this.nearGuard` before opening puzzle — guard blocks door access
+- Guards require collected letters to spell — encourages exploration before confrontation
+- Guard word letters consumed on defeat (emit `letterConsumed`) — same pattern as doors
+
+### Files Modified
+- `src/scenes/GameScene.ts` — +160 lines: guard fields, `spawnGuard()`, `updateGuards()`, `openGuardPuzzle()`, `defeatGuard()`, door block check, prompt text
+- `src/config/languages/hindi.json` — 5 letter-guard entries added
+- `public/data/hindi.json` — synced copy
+
+### Pending (Phase 5)
+- Boss fight — rebuild from scratch (code removed May 5, design preserved)
+- Enemy difficulty balancing per level
+- Tiled level maps
+- Real audio assets (music + SFX)
+
+---
+
 ## 2026-05-05 — Boss Code Removed (Rebuild Planned) & Puzzle Fixes
 
 ### Completed
