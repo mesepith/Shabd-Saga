@@ -455,51 +455,155 @@ export class BossScene extends Phaser.Scene {
 
   private shadowBoltAttack(pattern: any): void {
     const speed = pattern.speed || 300;
-    const { width, height } = this.cameras.main;
     const bossX = this.boss.x;
     const bossY = this.boss.y;
+
+    // Telegraph: boss flashes before firing
+    this.boss.setTint(0xFF2200);
+    this.time.delayedCall(300, () => {
+      if (this.state !== BossState.DEFEATED && this.state !== BossState.VULNERABLE) {
+        this.boss.setTint(0x440000);
+      }
+    });
 
     for (let i = 0; i < 3; i++) {
       this.time.delayedCall(i * 600, () => {
         if (this.state === BossState.DEFEATED) return;
 
-        const bolt = this.physics.add.sprite(bossX, bossY + 20, 'letter-placeholder');
-        bolt.setDisplaySize(18, 18);
-        bolt.setTint(0x000000);
-        bolt.setDepth(7);
-        this.projectilesGroup.add(bolt);
-        const boltBody = bolt.body as Phaser.Physics.Arcade.Body;
-        boltBody.setSize(14, 14);
-
         const angle = Phaser.Math.Angle.Between(bossX, bossY, this.player.x, this.player.y);
         const spread = (i - 1) * 0.3;
-        boltBody.velocity.x = Math.cos(angle + spread) * speed;
-        boltBody.velocity.y = Math.sin(angle + spread) * speed;
+        const travelAngle = angle + spread;
 
-        this.time.delayedCall(3000, () => { if (bolt.active) bolt.destroy(); });
+        // Muzzle flash at boss position
+        const flash = this.add.circle(bossX, bossY + 20, 16, 0xFF4400, 0.9);
+        flash.setDepth(12);
+        this.tweens.add({
+          targets: flash, scale: 2, alpha: 0, duration: 400,
+          onComplete: () => flash.destroy(),
+        });
+
+        // Main bolt — elongated in travel direction, bright fiery red-orange
+        const bolt = this.physics.add.sprite(bossX, bossY + 20, 'letter-placeholder');
+        bolt.setDisplaySize(32, 12);
+        bolt.setTint(0xFF6600);
+        bolt.setAlpha(1);
+        bolt.setDepth(7);
+        bolt.setRotation(travelAngle);
+        this.projectilesGroup.add(bolt);
+        const boltBody = bolt.body as Phaser.Physics.Arcade.Body;
+        boltBody.setSize(28, 12);
+
+        boltBody.velocity.x = Math.cos(travelAngle) * speed;
+        boltBody.velocity.y = Math.sin(travelAngle) * speed;
+
+        // Glow behind bolt
+        const glow = this.add.circle(bossX, bossY + 20, 10, 0xFF4400, 0.6);
+        glow.setDepth(6);
+
+        // Trail particles (fire sparks behind the bolt)
+        const trailTimer = this.time.addEvent({
+          delay: 60,
+          repeat: 20,
+          callback: () => {
+            if (!bolt.active) { trailTimer.remove(); return; }
+            const spark = this.add.circle(bolt.x, bolt.y, Phaser.Math.Between(2, 5), 0xFF8800, 0.7);
+            spark.setDepth(5);
+            this.tweens.add({
+              targets: spark, alpha: 0, scale: 0.3, duration: 400,
+              onComplete: () => spark.destroy(),
+            });
+          },
+        });
+
+        // Update glow position each frame
+        const glowUpdater = this.time.addEvent({
+          delay: 16, repeat: 100,
+          callback: () => {
+            if (!bolt.active) { glowUpdater.remove(); glow.destroy(); return; }
+            glow.x = bolt.x;
+            glow.y = bolt.y;
+          },
+        });
+
+        this.time.delayedCall(3000, () => {
+          if (bolt.active) bolt.destroy();
+          trailTimer.remove();
+          glowUpdater.remove();
+          glow.destroy();
+        });
       });
     }
   }
 
   private groundSlamAttack(pattern: any): void {
     const spd = pattern.speed || 150;
-    const { height } = this.cameras.main;
+    const { width, height } = this.cameras.main;
 
-    this.time.delayedCall(400, () => {
+    // Boss telegraph: shakes briefly
+    this.tweens.add({
+      targets: this.boss, x: this.boss.x - 10, duration: 100,
+      yoyo: true, repeat: 2,
+    });
+
+    this.time.delayedCall(600, () => {
       if (this.state === BossState.DEFEATED) return;
 
+      // Ground crack flash at boss feet
+      const crackFlash = this.add.rectangle(this.boss.x, height - 75, 80, 20, 0xFF4400, 0.7);
+      crackFlash.setDepth(12);
+      this.tweens.add({
+        targets: crackFlash, alpha: 0, scaleX: 3, duration: 800,
+        onComplete: () => crackFlash.destroy(),
+      });
+
+      // Main shockwave — wide red bar traveling across arena
       const wave = this.physics.add.sprite(50, height - 100, 'letter-placeholder');
-      wave.setDisplaySize(60, 30);
-      wave.setTint(0xFF2200);
-      wave.setAlpha(0.7);
+      wave.setDisplaySize(80, 36);
+      wave.setTint(0xFF2400);
+      wave.setAlpha(0.9);
       wave.setDepth(7);
       this.projectilesGroup.add(wave);
       const waveBody = wave.body as Phaser.Physics.Arcade.Body;
-      waveBody.setSize(60, 30);
+      waveBody.setSize(80, 36);
       waveBody.velocity.x = spd;
       waveBody.allowGravity = false;
 
-      this.time.delayedCall(5000, () => { if (wave.active) wave.destroy(); });
+      // Flickering glow around wave
+      const waveGlow = this.add.circle(50, height - 100, 30, 0xFF4400, 0.3);
+      waveGlow.setDepth(6);
+
+      const glowUpdater = this.time.addEvent({
+        delay: 16, repeat: 200,
+        callback: () => {
+          if (!wave.active) { glowUpdater.remove(); waveGlow.destroy(); return; }
+          waveGlow.x = wave.x;
+          waveGlow.y = wave.y;
+          // Pulsing brightness
+          waveGlow.setAlpha(0.2 + Math.sin(Date.now() * 0.01) * 0.2);
+        },
+      });
+
+      // Ground sparks trailing behind wave
+      const sparkTimer = this.time.addEvent({
+        delay: 80, repeat: 30,
+        callback: () => {
+          if (!wave.active) { sparkTimer.remove(); return; }
+          const sx = wave.x - Phaser.Math.Between(30, 50);
+          const spark = this.add.circle(sx, height - 90 + Phaser.Math.Between(-15, 15), Phaser.Math.Between(2, 6), 0xFF6600, 0.7);
+          spark.setDepth(5);
+          this.tweens.add({
+            targets: spark, alpha: 0, y: spark.y + 20, duration: 500,
+            onComplete: () => spark.destroy(),
+          });
+        },
+      });
+
+      this.time.delayedCall(5000, () => {
+        if (wave.active) wave.destroy();
+        glowUpdater.remove();
+        waveGlow.destroy();
+        sparkTimer.remove();
+      });
     });
   }
 
@@ -509,17 +613,54 @@ export class BossScene extends Phaser.Scene {
 
     for (let i = 0; i < 2; i++) {
       const side = i === 0 ? 50 : width - 50;
+
+      // Spawn flash
+      const spawnFlash = this.add.circle(side, height - 120, 24, 0xFF44FF, 0.7);
+      spawnFlash.setDepth(12);
+      this.tweens.add({
+        targets: spawnFlash, scale: 2, alpha: 0, duration: 500,
+        onComplete: () => spawnFlash.destroy(),
+      });
+
+      // Minion — bright magenta with glow
       const minion = this.physics.add.sprite(side, height - 120, 'letter-placeholder');
-      minion.setDisplaySize(20, 20);
-      minion.setTint(0x880088);
+      minion.setDisplaySize(24, 24);
+      minion.setTint(0xFF44FF);
+      minion.setAlpha(0.9);
       minion.setDepth(7);
       this.minionsGroup.add(minion);
       const mBody = minion.body as Phaser.Physics.Arcade.Body;
-      mBody.setSize(16, 16);
+      mBody.setSize(18, 18);
       mBody.allowGravity = true;
       minion.setCollideWorldBounds(true);
 
-      this.time.delayedCall(duration, () => { if (minion.active) minion.destroy(); });
+      // Glow around minion
+      const minionGlow = this.add.circle(side, height - 120, 14, 0xFF66FF, 0.3);
+      minionGlow.setDepth(6);
+
+      // Trail particles
+      const minionTrail = this.time.addEvent({
+        delay: 100,
+        repeat: Math.floor(duration / 100),
+        callback: () => {
+          if (!minion.active) { minionTrail.remove(); minionGlow.destroy(); return; }
+          minionGlow.x = minion.x;
+          minionGlow.y = minion.y;
+          minionGlow.setAlpha(0.15 + Math.sin(Date.now() * 0.02) * 0.15);
+          const trail = this.add.circle(minion.x, minion.y, Phaser.Math.Between(2, 4), 0xFF88FF, 0.5);
+          trail.setDepth(5);
+          this.tweens.add({
+            targets: trail, alpha: 0, scale: 0.3, duration: 300,
+            onComplete: () => trail.destroy(),
+          });
+        },
+      });
+
+      this.time.delayedCall(duration, () => {
+        if (minion.active) minion.destroy();
+        minionTrail.remove();
+        minionGlow.destroy();
+      });
     }
   }
 
