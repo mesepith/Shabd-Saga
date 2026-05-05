@@ -12,49 +12,27 @@
   <title>Shabd Saga — Learn Hindi Through Adventure</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap');
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
     html, body {
       width: 100%;
       height: 100%;
-      /* Use dynamic viewport height to account for mobile browser UI */
-      height: 100dvh;
-      height: -webkit-fill-available;
+      margin: 0;
+      padding: 0;
       overflow: hidden;
       background: #1a1a2e;
       font-family: 'Noto Sans Devanagari', 'Noto Sans', system-ui, sans-serif;
-    }
-    #game-container {
-      width: 100%;
-      height: 100%;
-      /* Fill full viewport including safe areas (iPhone notch) */
-      width: 100vw;
-      height: 100dvh;
-      height: -webkit-fill-available;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      /* Extend into safe area insets */
-      padding-left: env(safe-area-inset-left, 0px);
-      padding-right: env(safe-area-inset-right, 0px);
-      padding-top: env(safe-area-inset-top, 0px);
-      padding-bottom: env(safe-area-inset-bottom, 0px);
-      /* Prevent address bar from resizing viewport on scroll */
-      position: fixed;
-      inset: 0;
-    }
-    canvas {
-      display: block;
-      image-rendering: auto;
-    }
-    /* Prevent text selection and touch callout on mobile */
-    * {
       -webkit-touch-callout: none;
       -webkit-user-select: none;
       user-select: none;
+    }
+
+    /* Game container — sized by JS via visualViewport API for accurate
+       cross-browser viewport fill (Android nav bar, iOS safe areas). */
+    #game-container {
+      position: relative;
+      /* width + height set by main.ts */
     }
 
     /* Rotate prompt — shown when device is in portrait */
@@ -76,7 +54,7 @@
     }
     @keyframes rotate-hint {
       0%, 100% { transform: rotate(0deg); }
-      50% { transform: rotate(90deg); }
+      50%      { transform: rotate(90deg); }
     }
     #rotate-prompt .rotate-text {
       color: #ffffff;

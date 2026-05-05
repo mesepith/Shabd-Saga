@@ -17,37 +17,49 @@ export class UIScene extends Phaser.Scene {
   }
 
   create(data?: { gameScene: GameScene }): void {
+    // Ensure UIScene camera is transparent so GameScene shows through
+    this.cameras.main.setBackgroundColor('rgba(0,0,0,0)');
+    this.cameras.main.transparent = true;
+
     this.gameScene = data?.gameScene || this.scene.get('GameScene') as GameScene;
     this.wordBarTiles = [];
 
-    const { width } = this.cameras.main;
+    const { width, height } = this.cameras.main;
     const padding = 20;
 
+    // HUD background bar (top) — ensures text stays readable over any background
+    const hudBg = this.add.rectangle(width / 2, 0, width, 54, 0x000000, 0.55);
+    hudBg.setOrigin(0.5, 0).setScrollFactor(0).setDepth(199);
+
+    // DEBUG: red bar to verify UIScene renders (remove once confirmed working)
+    this.add.rectangle(width / 2, height * 0.15, 200, 10, 0xff0000, 0.9)
+      .setScrollFactor(0).setDepth(998);
+
     // Health (top-left)
-    this.healthDisplay = this.add.text(padding, padding, '♥ ♥ ♥', {
+    this.healthDisplay = this.add.text(padding, padding, '\u2665 \u2665 \u2665', {
       fontFamily: 'system-ui, sans-serif',
-      fontSize: '28px',
+      fontSize: '26px',
       color: '#FF4444',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setScrollFactor(0).setDepth(200);
+
+    // Letter counter
+    this.letterCountText = this.add.text(padding, padding + 32, 'Letters: 0', {
+      fontFamily: 'Noto Sans, system-ui, sans-serif',
+      fontSize: '15px',
+      color: '#FFD700',
       stroke: '#000000',
       strokeThickness: 2,
     }).setScrollFactor(0).setDepth(200);
 
-    // Letter counter
-    this.letterCountText = this.add.text(padding, padding + 40, 'Letters: 0', {
-      fontFamily: 'Noto Sans, system-ui, sans-serif',
-      fontSize: '16px',
-      color: '#FFD700',
-      stroke: '#000000',
-      strokeThickness: 1,
-    }).setScrollFactor(0).setDepth(200);
-
     // Gem counter
-    this.gemDisplay = this.add.text(padding + 130, padding + 40, '💎 0', {
+    this.gemDisplay = this.add.text(padding + 110, padding + 32, '\uD83D\uDC8E 0', {
       fontFamily: 'Noto Sans, system-ui, sans-serif',
-      fontSize: '16px',
+      fontSize: '15px',
       color: '#FFD700',
       stroke: '#000000',
-      strokeThickness: 1,
+      strokeThickness: 2,
     }).setScrollFactor(0).setDepth(200);
 
     // Score (top-right)
@@ -56,22 +68,72 @@ export class UIScene extends Phaser.Scene {
       fontSize: '20px',
       color: '#FFFFFF',
       stroke: '#000000',
-      strokeThickness: 2,
+      strokeThickness: 3,
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(200);
 
     // Pause button
-    const pauseBtn = this.add.text(width - padding, padding + 35, '⏸ Pause', {
+    const pauseBtn = this.add.text(width - padding, padding + 32, '\u23F8 Pause', {
       fontFamily: 'Noto Sans, system-ui, sans-serif',
-      fontSize: '16px',
+      fontSize: '15px',
       color: '#AAAACC',
       stroke: '#000000',
-      strokeThickness: 1,
+      strokeThickness: 2,
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(200).setInteractive({ useHandCursor: true });
 
     pauseBtn.on('pointerdown', () => {
       this.scene.pause('GameScene');
       this.showPauseMenu();
     });
+
+    // Fullscreen button (touch devices — hides browser chrome for app-like feel)
+    if (this.sys.game.device.input.touch) {
+      const deviceInfo = (window as any).__shabd_device || {};
+      const isIOS = deviceInfo.isIOS;
+      const isAndroid = deviceInfo.isAndroid;
+
+      const fsX = padding;
+      const fsY = padding + 68;
+      const btnW = isIOS ? 90 : 68;
+      const label = isIOS ? '📲 Add' : '⛶ Full';
+
+      const fsBtn = this.add.rectangle(fsX + btnW / 2, fsY, btnW, 28, 0x334466, 0.8)
+        .setStrokeStyle(2, 0x556688).setScrollFactor(0).setDepth(200)
+        .setInteractive({ useHandCursor: true });
+
+      const fsTxt = this.add.text(fsX + btnW / 2, fsY, label, {
+        fontFamily: 'Noto Sans, system-ui, sans-serif',
+        fontSize: '12px',
+        color: '#CCCCEE',
+        stroke: '#000000',
+        strokeThickness: 2,
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(200);
+
+      fsBtn.on('pointerdown', () => {
+        if (isIOS) {
+          // iOS Safari doesn't support Fullscreen API outside PWA mode.
+          // Best we can do: show instruction + scroll-to-hide address bar.
+          window.scrollTo(0, 1);
+          // Brief message (reuse existing showMessage pattern — fallback alert)
+          const msg = this.add.text(this.cameras.main.width / 2, this.cameras.main.height * 0.5,
+            'Add to Home Screen\nfor fullscreen 📲',
+            {
+              fontFamily: 'Noto Sans, system-ui, sans-serif',
+              fontSize: '20px', color: '#FFD700',
+              backgroundColor: '#000000cc',
+              padding: { x: 16, y: 10 },
+              align: 'center',
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(500);
+          this.time.delayedCall(2500, () => msg.destroy());
+        } else if (!document.fullscreenElement) {
+          // Android Chrome / other browsers: Fullscreen API works
+          document.documentElement.requestFullscreen().catch(() => {
+            window.scrollTo(0, 1);
+          });
+        } else {
+          document.exitFullscreen().catch(() => {});
+        }
+      });
+    }
 
     // WordBar background (bottom of screen)
     this.createWordBar();
