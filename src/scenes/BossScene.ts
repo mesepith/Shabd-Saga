@@ -164,7 +164,6 @@ export class BossScene extends Phaser.Scene {
     // Cleanup on scene shutdown
     this.events.on('shutdown', () => {
       this.clearTimers();
-      this.cleanupAttack();
       this.events.off('wordSpelled');
     });
 
@@ -775,6 +774,10 @@ export class BossScene extends Phaser.Scene {
   }
 
   private cleanupAttack(): void {
+    // Guard: groups might be destroyed if scene is shutting down
+    if (!this.projectilesGroup || !this.minionsGroup) return;
+    if (!this.projectilesGroup.getChildren || !this.minionsGroup.getChildren) return;
+
     // Fade out projectiles — keep full velocity so waves sweep arena edges
     this.projectilesGroup.getChildren().forEach((child) => {
       const p = child as Phaser.Physics.Arcade.Sprite;
