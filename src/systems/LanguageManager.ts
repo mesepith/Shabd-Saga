@@ -6,7 +6,7 @@
  * — swapping the language JSON changes everything without code modifications.
  */
 
-interface WordEntry {
+export interface WordEntry {
   id: string;
   script: string;
   transliteration: string;
@@ -30,24 +30,6 @@ interface NPCData {
   teachesWords: string[];
 }
 
-interface BossSentence {
-  id: string;
-  script: string;
-  translation: string;
-  requiredWords: string[];
-  timeLimit: number;
-}
-
-interface BossData {
-  id: string;
-  name: string;
-  nameEnglish: string;
-  spriteKey: string;
-  health: number;
-  sentences: BossSentence[];
-  attackPatterns: any[];
-}
-
 interface LevelData {
   id: string;
   worldNumber: number;
@@ -63,7 +45,6 @@ interface LevelData {
   words: WordEntry[];
   npcs: NPCData[];
   enemies?: any[];
-  boss: BossData | null;
   checkpoints: any[];
 }
 

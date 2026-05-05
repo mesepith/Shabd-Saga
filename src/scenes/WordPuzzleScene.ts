@@ -84,13 +84,18 @@ export class WordPuzzleScene extends Phaser.Scene {
     // Available letters (draggable)
     this.createAvailableLetters(width, height);
 
+    // Auto-fill single-letter puzzles
+    if (this.collectedLetters.length === 1 && this.correctOrder.length === 1) {
+      this.time.delayedCall(200, () => this.autoFillSingleLetter());
+    }
+
     // Buttons row
     this.createButtons(width, height);
   }
 
   private createLetterSlots(width: number, height: number): void {
-    const slotSize = 58;
-    const gap = 8;
+    const slotSize = 64;
+    const gap = 10;
     const totalW = this.correctOrder.length * (slotSize + gap) - gap;
     const startX = width / 2 - totalW / 2 + slotSize / 2;
     const slotY = height / 2 - 5;
@@ -118,21 +123,21 @@ export class WordPuzzleScene extends Phaser.Scene {
   }
 
   private createAvailableLetters(width: number, height: number): void {
-    const letterW = 52;
-    const gap = 6;
+    const letterW = 60;
+    const gap = 8;
     const totalW = this.collectedLetters.length * (letterW + gap) - gap;
     const startX = width / 2 - totalW / 2 + letterW / 2;
-    const rowY = height / 2 + 75;
+    const rowY = height / 2 + 80;
 
     this.collectedLetters.forEach((letter, i) => {
       const x = startX + i * (letterW + gap);
 
       const bg = this.add.rectangle(0, 0, letterW, letterW, 0x3D3D6B, 1);
-      bg.setStrokeStyle(2, 0x6666AA);
+      bg.setStrokeStyle(3, 0x8888CC);
 
       const txt = this.add.text(0, 0, letter, {
         fontFamily: 'Noto Sans Devanagari, system-ui, sans-serif',
-        fontSize: '22px', color: '#FFFFFF',
+        fontSize: '26px', color: '#FFFFFF',
       }).setOrigin(0.5);
 
       const container = this.add.container(x, rowY, [bg, txt]);
@@ -161,6 +166,30 @@ export class WordPuzzleScene extends Phaser.Scene {
     });
   }
 
+  private autoFillSingleLetter(): void {
+    if (this.availableContainers.length !== 1 || this.correctOrder.length !== 1) return;
+
+    const container = this.availableContainers[0];
+    const letterVal = (container as any).letterValue as string;
+
+    // Auto-place at slot position
+    const slotSize = 64;
+    const gap = 10;
+    const totalW = this.correctOrder.length * (slotSize + gap) - gap;
+    const startX = this.cameras.main.width / 2 - totalW / 2 + slotSize / 2;
+    const slotY = this.cameras.main.height / 2 - 5;
+
+    container.x = startX;
+    container.y = slotY;
+    this.currentSlots[0] = letterVal;
+    (container as any).slotIndex = 0;
+
+    this.tweens.add({
+      targets: container, scaleX: 1.15, scaleY: 1.15,
+      duration: 150, yoyo: true, repeat: 2,
+    });
+  }
+
   private removeFromSlot(slotIndex: number): void {
     const letterVal = this.currentSlots[slotIndex];
     if (!letterVal) return;
@@ -173,11 +202,11 @@ export class WordPuzzleScene extends Phaser.Scene {
     if (container) {
       (container as any).slotIndex = -1;
       const idx = (container as any).origIndex;
-      const letterW = 52;
-      const gap = 6;
+      const letterW = 60;
+      const gap = 8;
       const totalW = this.collectedLetters.length * (letterW + gap) - gap;
       const startX = this.cameras.main.width / 2 - totalW / 2 + letterW / 2;
-      const rowY = this.cameras.main.height / 2 + 75;
+      const rowY = this.cameras.main.height / 2 + 80;
 
       this.tweens.add({
         targets: container,
@@ -200,8 +229,8 @@ export class WordPuzzleScene extends Phaser.Scene {
       (obj as any).slotIndex = -1;
     }
 
-    const slotSize = 58;
-    const gap = 8;
+    const slotSize = 64;
+    const gap = 10;
     const totalW = this.correctOrder.length * (slotSize + gap) - gap;
     const startX = this.cameras.main.width / 2 - totalW / 2 + slotSize / 2;
     const slotY = this.cameras.main.height / 2 - 5;
@@ -226,11 +255,11 @@ export class WordPuzzleScene extends Phaser.Scene {
 
     if (!dropped) {
       const idx = (obj as any).origIndex;
-      const letterW = 52;
-      const gap2 = 6;
+      const letterW = 60;
+      const gap2 = 8;
       const totalW2 = this.collectedLetters.length * (letterW + gap2) - gap2;
       const startX2 = this.cameras.main.width / 2 - totalW2 / 2 + letterW / 2;
-      const rowY = this.cameras.main.height / 2 + 75;
+      const rowY = this.cameras.main.height / 2 + 80;
 
       this.tweens.add({
         targets: obj,
@@ -329,11 +358,11 @@ export class WordPuzzleScene extends Phaser.Scene {
     this.availableContainers.forEach((c) => {
       (c as any).slotIndex = -1;
       const idx = (c as any).origIndex;
-      const letterW = 52;
-      const gap = 6;
+      const letterW = 60;
+      const gap = 8;
       const totalW = this.collectedLetters.length * (letterW + gap) - gap;
       const startX = this.cameras.main.width / 2 - totalW / 2 + letterW / 2;
-      const rowY = this.cameras.main.height / 2 + 75;
+      const rowY = this.cameras.main.height / 2 + 80;
       this.tweens.add({
         targets: c,
         x: startX + idx * (letterW + gap),

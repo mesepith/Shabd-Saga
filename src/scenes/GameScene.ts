@@ -58,10 +58,10 @@ export class GameScene extends Phaser.Scene {
   // Player animations
   private currentAnim: string = '';
 
-  // Boss data
-  private levelBoss: any = null;
   private gemsCollected: number = 0;
   private deathsThisLevel: number = 0;
+  private levelCompleteGuard: boolean = false;
+  private levelCompleteTimer?: Phaser.Time.TimerEvent;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -81,9 +81,11 @@ export class GameScene extends Phaser.Scene {
     this.nearNPC = null;
     this.currentAnim = '';
     this.currentDialogue = null;
-    this.levelBoss = null;
     this.gemsCollected = 0;
     this.deathsThisLevel = 0;
+    this.levelCompleteGuard = false;
+    if (this.levelCompleteTimer) this.levelCompleteTimer.remove();
+    this.levelCompleteTimer = undefined;
 
     this.cameras.main.fadeIn(500);
 
@@ -192,7 +194,6 @@ export class GameScene extends Phaser.Scene {
         });
         this.lettersGroup.clear(true, true);
         this.levelWords = level.words;
-        this.levelBoss = level.boss || null;
         this.spawnLetters(level.words);
         this.spawnDoors(level.words);
         this.spawnNPCs(level.npcs || []);
@@ -568,7 +569,7 @@ export class GameScene extends Phaser.Scene {
       this.showMessage(`Correct! "${data.word}" means "${data.translation}"`);
 
       if (this.activeDoors.length === 0) {
-        this.time.delayedCall(2000, () => this.levelComplete());
+        this.levelCompleteTimer = this.time.delayedCall(2000, () => this.levelComplete());
       }
     });
 
@@ -610,30 +611,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private levelComplete(): void {
-    // If this level has a boss and doors are all done, launch boss fight
-    if (this.levelBoss && this.activeDoors.length === 0) {
-      console.log('[GameScene] Launching BossScene for level:', this.levelId);
-      const collectedWords = [...new Set(this.collectedLetters.map((l) => l.wordId))];
-
-      this.scene.pause('UIScene');
-      this.scene.pause('GameScene');
-
-      this.events.once('bossDefeated', () => {
-        this.scene.resume('GameScene');
-        this.completeLevelAndProgress();
-      });
-
-      this.scene.launch('BossScene', {
-        bossConfig: this.levelBoss,
-        collectedWords,
-        onBossDefeated: () => {
-          this.scene.stop('BossScene');
-          this.events.emit('bossDefeated');
-        },
-      });
+    if (this.levelCompleteGuard) {
+      console.warn('[GameScene] levelComplete suppressed: already called');
       return;
     }
-
+    this.levelCompleteGuard = true;
     this.completeLevelAndProgress();
   }
 
@@ -1336,9 +1318,15 @@ export class GameScene extends Phaser.Scene {
 
     this.showMessage('Respawned! Stay alert!');
 
+    // Cancel any pending level complete timer from openDoor
+    if (this.levelCompleteTimer) {
+      this.levelCompleteTimer.remove();
+      this.levelCompleteTimer = undefined;
+    }
+
     // If all doors are already opened, trigger level completion
-    if (this.activeDoors.length === 0 && this.levelWords.length > 0) {
-      this.time.delayedCall(1500, () => this.levelComplete());
+    if (this.activeDoors.length === 0 && this.levelWords.length > 0 && !this.levelCompleteGuard) {
+      this.levelCompleteTimer = this.time.delayedCall(1500, () => this.levelComplete());
       return;
     }
 

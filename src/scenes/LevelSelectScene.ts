@@ -8,7 +8,6 @@ interface WorldNode {
   y: number;
   unlocked: boolean;
   stars: number;
-  isBoss: boolean;
 }
 
 interface LevelInfo {
@@ -18,7 +17,6 @@ interface LevelInfo {
   nameEnglish: string;
   stars: number;
   completed: boolean;
-  hasBoss: boolean;
 }
 
 export class LevelSelectScene extends Phaser.Scene {
@@ -78,7 +76,6 @@ export class LevelSelectScene extends Phaser.Scene {
         y: height * 0.35,
         unlocked: true,
         stars: this.getWorldStars('world-1'),
-        isBoss: false,
       },
       {
         id: 'world-2',
@@ -88,7 +85,6 @@ export class LevelSelectScene extends Phaser.Scene {
         y: height * 0.48,
         unlocked: this.getProgress('world-1-level-1') !== null || this.getProgress('world-1-level-2') !== null,
         stars: this.getWorldStars('world-2'),
-        isBoss: false,
       },
       {
         id: 'world-3',
@@ -98,7 +94,6 @@ export class LevelSelectScene extends Phaser.Scene {
         y: height * 0.35,
         unlocked: this.getProgress('world-2-level-1') !== null || this.getProgress('world-2-level-2') !== null,
         stars: this.getWorldStars('world-3'),
-        isBoss: true,
       },
     ];
 
@@ -196,17 +191,6 @@ export class LevelSelectScene extends Phaser.Scene {
       });
       engText.setOrigin(0.5);
       this.currentMenuObjects.push(engText);
-    }
-
-    // Boss indicator
-    if (world.isBoss && world.unlocked) {
-      const bossTag = this.add.text(world.x, world.y - 40, '👑 BOSS', {
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '11px',
-        color: '#FF6666',
-      });
-      bossTag.setOrigin(0.5);
-      this.currentMenuObjects.push(bossTag);
     }
 
     // Interaction
@@ -322,10 +306,10 @@ export class LevelSelectScene extends Phaser.Scene {
       }).setOrigin(0, 0.5).setDepth(53);
       this.currentMenuObjects.push(levelText);
 
-      const engText = this.add.text(width / 2 - 150, y + btnH / 2 + 18, level.nameEnglish + (level.hasBoss ? '  👑' : ''), {
+      const engText = this.add.text(width / 2 - 150, y + btnH / 2 + 18, level.nameEnglish, {
         fontFamily: 'Noto Sans, system-ui, sans-serif',
         fontSize: '12px',
-        color: level.hasBoss ? '#FF6666' : '#8888AA',
+        color: '#8888AA',
       }).setOrigin(0, 0.5).setDepth(53);
       this.currentMenuObjects.push(engText);
 
@@ -356,12 +340,12 @@ export class LevelSelectScene extends Phaser.Scene {
 
   private getWorldLevels(worldId: string): LevelInfo[] {
     // Level names from the language data
-    const levelNames: Record<string, { name: string; nameEnglish: string; hasBoss: boolean }> = {
-      'world-1-level-1': { name: 'जंगल का मार्ग', nameEnglish: 'The Jungle Path', hasBoss: false },
-      'world-1-level-2': { name: 'जंगल की चुनौती', nameEnglish: 'The Jungle Challenge', hasBoss: true },
-      'world-2-level-1': { name: 'गाँव की यात्रा', nameEnglish: 'The Village Journey', hasBoss: false },
-      'world-2-level-2': { name: 'गाँव की चुनौती', nameEnglish: 'The Village Challenge', hasBoss: true },
-      'world-3-level-1': { name: 'राजमहल का रहस्य', nameEnglish: 'Secret of the Palace', hasBoss: true },
+    const levelNames: Record<string, { name: string; nameEnglish: string }> = {
+      'world-1-level-1': { name: 'जंगल का मार्ग', nameEnglish: 'The Jungle Path' },
+      'world-1-level-2': { name: 'जंगल की चुनौती', nameEnglish: 'The Jungle Challenge' },
+      'world-2-level-1': { name: 'गाँव की यात्रा', nameEnglish: 'The Village Journey' },
+      'world-2-level-2': { name: 'गाँव की चुनौती', nameEnglish: 'The Village Challenge' },
+      'world-3-level-1': { name: 'राजमहल का रहस्य', nameEnglish: 'Secret of the Palace' },
     };
 
     const levels: LevelInfo[] = [];
@@ -386,7 +370,6 @@ export class LevelSelectScene extends Phaser.Scene {
           nameEnglish: info.nameEnglish,
           stars: levelProgress?.stars || 0,
           completed,
-          hasBoss: info.hasBoss,
         });
 
         // Next level only accessible if previous was completed OR it's the first level
@@ -404,7 +387,6 @@ export class LevelSelectScene extends Phaser.Scene {
           nameEnglish: info.nameEnglish,
           stars: 0,
           completed: false,
-          hasBoss: info.hasBoss,
         });
       }
     }
@@ -420,7 +402,6 @@ export class LevelSelectScene extends Phaser.Scene {
           nameEnglish: info.nameEnglish,
           stars: 0,
           completed: false,
-          hasBoss: info.hasBoss,
         });
       }
     }

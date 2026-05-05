@@ -258,6 +258,32 @@ No collision with platforms/ground meant letters fell through world. Fixed via #
 
 ---
 
+## 2026-05-05 — Boss Code Removed (Rebuild Planned) & Puzzle Fixes
+
+### Completed
+- [x] BossScene.ts deleted — boss fight implementation removed (was non-functional, will rebuild later)
+- [x] GameConfig.ts — BossScene import and scene registration removed (now 8 scenes)
+- [x] GameScene.ts — all boss-related code removed (levelBoss, bossLaunched, levelComplete no longer launches BossScene)
+- [x] GameScene.ts — levelComplete() simplified: guard → completeLevelAndProgress() directly
+- [x] LanguageManager.ts — BossSentence, BossData interfaces removed; boss field removed from LevelData
+- [x] LevelSelectScene.ts — isBoss from WorldNode, hasBoss from LevelInfo, boss indicators, crown emoji removed
+- [x] WordPuzzleScene.ts — puzzleClosed event removed (was boss-specific)
+- [x] hindi.json (both copies) — all boss objects removed (3 bosses across 3 levels)
+- [x] Letter tile hit area fix — removed custom hitArea/Phaser.Geom.Rectangle from containers, reverted to default setSize-based input
+- [x] Letter tile sizes increased: 52px→60px for better mobile touch targets
+- [x] Slot sizes increased: 58px→64px for easier drop targets
+- [x] Single-letter puzzle auto-fill: words with only 1 letter (e.g., "maa" = "माँ") auto-place into slot, just press Submit
+- [x] AI-SESSION-HANDOFF.md — fully rewritten, boss section marked as removed
+- [x] Zero TypeScript errors, clean Vite build
+
+### Decisions Made
+1. Boss fight code fully removed (was placeholder auto-win, not functional) — design preserved in docs for later rebuild from scratch.
+2. Level completion now goes directly to star display + Next Level button while boss is unbuilt.
+3. Puzzle drag hit areas use Phaser defaults (setSize) — custom hitArea was causing misaligned click targets.
+4. Single-letter words auto-fill — reduces friction for words like "maa" with only one Devanagari character.
+
+---
+
 ## Template for Future Entries
 
 ```
