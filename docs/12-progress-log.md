@@ -376,6 +376,61 @@ No collision with platforms/ground meant letters fell through world. Fixed via #
 
 ---
 
+## 2026-05-05 — Boss Fight Polish & Bugfix Session (3 rounds of live testing)
+
+### Round 1 — Attack Visual Clarity
+- [x] Shadow bolts were invisible (black on dark background) → changed to bright red-orange arrows with muzzle flash, orange glow, fire trail sparks, elongated shape rotated to travel direction
+- [x] Ground slam wave spawned at x=50 (left edge) instead of boss → changed to emanate from boss position
+- [x] Ground slam wave killed by cleanupAttack after ~135px travel (150 speed × 0.9s) → increased to 2 waves (left+right) at 450 speed, fade instead of instant destroy
+- [x] Minions spawned at screen edges (x=50, x=width-50) instead of boss → changed to spawn from boss, float (no gravity), homing acceleration toward player after 500ms spread
+- [x] 3 minions instead of 2, with expire burst particles, pink trails
+- [x] Removed conflicting minion tracking in update() that fought against trail-timer homing
+
+### Round 2 — Boss Slam Animation & Visual Connection
+- [x] Ground slam looked like random fire from floor (no visual connection to boss) → added full slam sequence:
+  1. Boss shakes (telegraph)
+  2. Boss drops 250px to floor (Power2 ease)
+  3. Vertical energy beam from boss to floor on impact
+  4. Impact explosion + screen shake + rock particles burst upward
+  5. Two shockwaves radiate left + right from impact point
+  6. Boss rises back to floating position (Back.easeOut)
+- [x] Attack warning text updated: "Ground Slam! Jump!"
+
+### Round 3 — Gameplay Balance & Critical Bugfixes
+- [x] Ground slam waves still not reaching screen edges → removed velocity slowdown from cleanupAttack() (was `velocity.x *= 0.3`), now fade at full speed
+- [x] Shadow bolts too easy to dodge at screen edges → added mild homing: bolts blend angle 3% toward player each frame, accelerate +4 speed/frame, rotation updates, lifespan 3s→3.5s
+- [x] **Continue button broken** — GameScene callback used `this.time.delayedCall(100, ...)` on paused scene → paused scenes don't process timers → never fired. Fixed: GameScene listens for `this.events.once('resume', ...)` then calls `completeLevelAndProgress()` after 200ms
+- [x] Added Enter/Space keyboard fallback for Continue button
+- [x] **Cleanup crash on victory** — `cleanupAttack()` called in shutdown event handler, but Phaser destroys groups before listener fires → `group.getChildren()` crashes. Fixed: removed `cleanupAttack()` from shutdown (Phaser auto-cleans), added null guards to `cleanupAttack()`
+
+### Architecture Notes From Polish Session
+- GameScene's `time.delayedCall` does NOT fire on paused scenes — use `events.once('resume')` pattern instead
+- Phaser scene shutdown lifecycle destroys physics groups BEFORE firing the `shutdown` event
+- Attack projectiles must have `allowGravity: false` and no `collideWorldBounds` to travel freely
+- Homing projectiles: blend velocity angle toward target position each frame (3% blend factor works well)
+- Ground slam flow: boss.y tween down → impact effects → waves spawn → boss.y tween back up (~1300ms total)
+
+### BossScene Final Stats
+- Lines: ~1120 (up from ~400 initial)
+- 3 attack patterns with unique visual effects (muzzle flash, trails, particles, homing)
+- Boss slam animation sequence with 4 visual layers (beam, impact, rocks, waves)
+- All attacks visibly originate from boss entity
+
+### Files Modified This Session
+- `src/scenes/BossScene.ts` — 3 rounds of polish: attack visuals, slam animation, homing, Continue fix, cleanup guard
+- `src/scenes/GameScene.ts` — Continue button fix (resume event instead of time.delayedCall)
+- `docs/AI-SESSION-HANDOFF.md` — fully rewritten
+- `docs/12-progress-log.md` — this entry
+
+### Decisions Made
+1. Ground slam waves use `cleanupAttack()` fade (not instant destroy) to reach edges — velocity kept at full speed
+2. Shadow bolt homing uses gentle blend factor (3%/frame) — aggressive enough to threaten, not unfair
+3. Minions eject outward then home — prevents instant swarm, adds tactical delay
+4. `events.once('resume', ...)` pattern is the correct way to chain logic after scene unpause in Phaser
+5. Keyboard fallback (Enter/Space) on Continue as universal accessibility
+
+---
+
 ## Template for Future Entries
 
 ```
