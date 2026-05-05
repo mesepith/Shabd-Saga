@@ -258,6 +258,27 @@ No collision with platforms/ground meant letters fell through world. Fixed via #
 
 ---
 
+## 2026-05-05 — Letter Guard Fixes & Polish
+
+### Issues Resolved
+- [x] Guard no longer consumes letters on defeat — verify only, letters preserved for door
+- [x] Guard now blocks its SPECIFIC word's door (not proximity-based) — must defeat guard before that door works
+- [x] Door overlap shows "Letter Guard blocks this door!" when undefeated guard exists for that word
+- [x] Stolen letter hint broadened — detects both stolen drops AND respawned letters in lettersGroup
+- [x] Guard prompt clarified: "🛡️ Spell to break the barrier! Press E"
+- [x] Proximity-based guard block removed (was at x=1100, doors at x=350-950, so never triggered)
+- [x] Guard gameplay loop: collect letters → defeat guard (letters kept) → open door (letters consumed)
+
+### Decisions Made
+1. Guard verify-not-consume: player collects ped letters once, spells twice (guard + door) — more satisfying
+2. WordId-specific blocking replaces proximity — guard now meaningfully gates its matching door
+3. Stolen letter detection now catches respawned letters (expired 60s drops get `respawnLetter()` which lacks `stolen` flag)
+
+### Files Modified
+- `src/scenes/GameScene.ts` — defeatGuard() letter consumption removed, door overlap guard check rewritten, stolen hint broadened, guard prompt text updated
+
+---
+
 ## 2026-05-05 — Letter Guard Enemy Implemented
 
 ### Completed

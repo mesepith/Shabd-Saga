@@ -3,7 +3,7 @@
 > **READ THIS FIRST** when starting a new AI session on Shabd Saga.
 > The AI should read `docs/12-progress-log.md` for full details.
 
-## Quick Status (May 5, 2026) — Letter Guard Done, Boss Remains
+## Quick Status (May 5, 2026) — Letter Guard Complete, Boss Next
 
 ### NEXT TASK: Boss Fight (Rebuild)
 Boss fight was removed May 5 (non-functional placeholder). Rebuild from scratch using the multi-phase spell-to-damage mechanic described in the design docs. WordPuzzleScene already supports `caller` param for scene resume.
@@ -34,11 +34,13 @@ Boss fight was removed May 5 (non-functional placeholder). Rebuild from scratch 
 
 ### Letter Guard Architecture
 - `type: 'letter-guard'` entries in `hindi.json` with `guardWordId` field
-- Guards share `enemiesGroup` but use dedicated methods: `spawnGuard()`, `updateGuards()`, `openGuardPuzzle()`, `defeatGuard()`
-- Proximity check (70x80px zone) sets `nearGuard` — doors blocked while `nearGuard` is set
-- Guard interaction priority > NPC interaction in `handleNPCInteraction()`
-- `spawnDoors()` overlap checks `this.nearGuard` before opening puzzle
-- Defeated guards tracked in `defeatedGuards` Set (persists across respawns)
+- Guards share `enemiesGroup` but skipped in `updateEnemies()` via type check — handled by dedicated methods
+- `spawnGuard()` creates guard sprite (orange-red tint, 🛡️ icon, word label, block zone marker)
+- `updateGuards()` sets `nearGuard` for prompt display (70x80px detection zone)
+- `openGuardPuzzle()` launches WordPuzzle with guard's word (E key / touch interact, 3s cooldown)
+- `defeatGuard()` plays SFX, particle burst, destroys guard — letters NOT consumed (verify only)
+- Doors check `activeGuards` Map: if undefeated guard exists for door's wordId, door blocked
+- `defeatedGuards` Set persists across respawns; cleared on `create()`
 
 ### Boss Fight — Planned (Code Removed May 5, Rebuild Later)
 The BossScene was removed because the initial implementation was non-functional (placeholder auto-win, no real WordPuzzleScene integration, broken physics). The boss concept remains planned — see design doc for the intended multi-phase spell-to-damage mechanic.
@@ -71,7 +73,7 @@ npm run dev        # Frontend at http://localhost:5174
 | File | Purpose |
 |------|---------|
 | `src/main.ts` | Entry point, Phaser bootstrap |
-| `src/scenes/GameScene.ts` | Core gameplay (~1700 lines, pickups, gems, stars, letter respawn, guards) |
+| `src/scenes/GameScene.ts` | Core gameplay (~1760 lines, pickups, gems, stars, letter respawn, guards) |
 | `src/scenes/WordPuzzleScene.ts` | Spelling puzzle overlay |
 | `src/scenes/UIScene.ts` | HUD (health, WordBar, score, gem count, letterConsumed handler) |
 | `src/scenes/DialogueScene.ts` | NPC conversation overlay |
