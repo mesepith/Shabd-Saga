@@ -31,10 +31,6 @@ export class UIScene extends Phaser.Scene {
     const hudBg = this.add.rectangle(width / 2, 0, width, 54, 0x000000, 0.55);
     hudBg.setOrigin(0.5, 0).setScrollFactor(0).setDepth(199);
 
-    // DEBUG: red bar to verify UIScene renders (remove once confirmed working)
-    this.add.rectangle(width / 2, height * 0.15, 200, 10, 0xff0000, 0.9)
-      .setScrollFactor(0).setDepth(998);
-
     // Health (top-left)
     this.healthDisplay = this.add.text(padding, padding, '\u2665 \u2665 \u2665', {
       fontFamily: 'system-ui, sans-serif',
