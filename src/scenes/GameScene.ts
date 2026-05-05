@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { Howl } from 'howler';
+import { BossData } from '../systems/LanguageManager';
 
 export class GameScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -35,6 +36,7 @@ export class GameScene extends Phaser.Scene {
   private nearNPC: any = null;
   private npcPrompt!: Phaser.GameObjects.Text;
   private currentDialogue: Phaser.Scene | null = null;
+  private levelBoss: BossData | null = null;
 
   // Enemy system
   private enemiesGroup!: Phaser.Physics.Arcade.Group;
@@ -92,6 +94,7 @@ export class GameScene extends Phaser.Scene {
     this.currentDialogue = null;
     this.gemsCollected = 0;
     this.deathsThisLevel = 0;
+    this.levelBoss = null;
     this.levelCompleteGuard = false;
     if (this.levelCompleteTimer) this.levelCompleteTimer.remove();
     this.levelCompleteTimer = undefined;
@@ -206,6 +209,7 @@ export class GameScene extends Phaser.Scene {
       const level = lm.getLevel(this.levelId);
       console.log('[GameScene] Level found:', level?.name, 'words:', level?.words?.length);
       if (level && level.words && level.words.length > 0) {
+        this.levelBoss = level.boss || null;
         // Remove fallback letters and their visuals
         this.lettersGroup.getChildren().forEach((child: any) => {
           if (child.charText) child.charText.destroy();
@@ -668,6 +672,45 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.levelCompleteGuard = true;
+
+    // Check if level has a boss fight
+    if (this.levelBoss && this.activeDoors.length === 0) {
+      console.log('[GameScene] Launching BossScene for level:', this.levelId);
+      this.scene.pause('UIScene');
+      this.scene.pause('GameScene');
+
+      // Pre-resolve word data for boss sentences
+      import('../systems/LanguageManager').then(({ LanguageManager }) => {
+        const lm = LanguageManager.getInstance();
+        const wordMap: Record<string, { script: string; translation: string; splitLetters: string[] }> = {};
+
+        // Look up all required words from boss sentences
+        for (const sentence of this.levelBoss!.sentences) {
+          for (const wid of sentence.requiredWords) {
+            if (!wordMap[wid]) {
+              const word = lm.getWord(wid);
+              if (word) {
+                wordMap[wid] = { script: word.script, translation: word.translation, splitLetters: word.splitLetters };
+              }
+            }
+          }
+        }
+
+        this.scene.launch('BossScene', {
+          bossConfig: this.levelBoss,
+          resolvedWords: wordMap,
+          onBossDefeated: () => {
+            this.scene.stop('BossScene');
+            this.scene.resume('GameScene');
+            this.time.delayedCall(100, () => {
+              this.completeLevelAndProgress();
+            });
+          },
+        });
+      });
+      return;
+    }
+
     this.completeLevelAndProgress();
   }
 

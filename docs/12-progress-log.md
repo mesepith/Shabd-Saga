@@ -338,6 +338,44 @@ No collision with platforms/ground meant letters fell through world. Fixed via #
 
 ---
 
+## 2026-05-05 — Boss Fight Rebuilt from Scratch
+
+### Completed
+- [x] Boss data restored to hindi.json (both copies) — 3 bosses: jungle, village, palace
+- [x] LanguageManager interfaces: BossData, BossSentence, AttackPattern added; boss field on LevelData
+- [x] BossScene.ts (~400 lines) — full implementation from scratch
+- [x] GameScene.levelComplete() wired: checks level.boss, pre-resolves word data, launches BossScene
+- [x] GameConfig.ts — BossScene registered (9 scenes total)
+- [x] vite.config.ts — `host: '0.0.0.0'` for LAN mobile testing
+- [x] Zero TypeScript errors, clean Vite build
+
+### Boss Fight Architecture
+- **Arena**: Dark radial gradient background, floor platform, dark theme
+- **Player**: Same spritesheet as GameScene, WASD/arrows + touch controls (◀ ▶ ▲ 💬)
+- **Boss**: Scaled enemy-placeholder (3x), tinted dark red, floating animation, health bar
+- **State machine**: ATTACKING → VULNERABLE → (SPELLING) → repeat until HP=0
+- **Attack patterns** (from JSON data): shadow_bolt (3 aimed projectiles), ground_slam (horizontal wave), spawn_minions (2 chasing orbs)
+- **Vulnerability phase**: 6s window, boss glows amber, sentence displayed with required words, E/tap launches WordPuzzleScene with `caller: 'BossScene'`
+- **WordPuzzleScene integration**: Pre-resolved word data passed from GameScene (LanguageManager cross-level lookup), puzzle uses splitLetters directly
+- **Edge cases handled**: puzzle close → attack resumes; player death → arena reset (full HP, same sentence); vulnerable timer expiry → attack resumes; boss defeated → victory particles + continue button
+- **Player**: 3 HP, 1s invincibility (blinking), knockback on hit; Boss: 3 HP, color-coded health bar
+
+### Decisions Made
+1. Pre-resolve word data in GameScene (async import of LanguageManager) before launching BossScene — avoids flaky singleton timing issues
+2. BossScene detects puzzle close via `!this.scene.isActive('WordPuzzleScene')` in update loop — no need for custom puzzleClosed event
+3. On boss defeated, `completeLevelAndProgress()` called directly (not through levelComplete()) — bypasses levelCompleteGuard since guard is already set
+4. Boss uses `enemy-placeholder` sprite (Phase 5 asset pending) — same as pre-removal approach
+
+### Files Modified
+- `src/scenes/BossScene.ts` — NEW: full boss fight implementation
+- `src/scenes/GameScene.ts` — levelBoss field, boss wire in levelComplete(), BossData import
+- `src/systems/LanguageManager.ts` — BossData, BossSentence, AttackPattern interfaces; boss field on LevelData
+- `src/config/GameConfig.ts` — BossScene import + registration
+- `src/config/languages/hindi.json` + `public/data/hindi.json` — boss data restored
+- `vite.config.ts` — host: '0.0.0.0' added
+
+---
+
 ## Template for Future Entries
 
 ```

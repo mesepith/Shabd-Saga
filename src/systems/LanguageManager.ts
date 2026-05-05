@@ -30,6 +30,31 @@ interface NPCData {
   teachesWords: string[];
 }
 
+export interface BossSentence {
+  id: string;
+  script: string;
+  translation: string;
+  requiredWords: string[];
+  timeLimit: number;
+}
+
+export interface AttackPattern {
+  name: string;
+  duration: number;
+  damage: number;
+  speed: number;
+}
+
+export interface BossData {
+  id: string;
+  name: string;
+  nameEnglish: string;
+  spriteKey: string;
+  health: number;
+  sentences: BossSentence[];
+  attackPatterns: AttackPattern[];
+}
+
 interface LevelData {
   id: string;
   worldNumber: number;
@@ -45,6 +70,7 @@ interface LevelData {
   words: WordEntry[];
   npcs: NPCData[];
   enemies?: any[];
+  boss?: BossData;
   checkpoints: any[];
 }
 

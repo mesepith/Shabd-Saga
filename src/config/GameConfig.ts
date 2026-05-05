@@ -7,6 +7,7 @@ import { GameScene } from '../scenes/GameScene';
 import { UIScene } from '../scenes/UIScene';
 import { WordPuzzleScene } from '../scenes/WordPuzzleScene';
 import { DialogueScene } from '../scenes/DialogueScene';
+import { BossScene } from '../scenes/BossScene';
 
 export const GameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -40,6 +41,7 @@ export const GameConfig: Phaser.Types.Core.GameConfig = {
     MenuScene,
     LevelSelectScene,
     GameScene,
+    BossScene,
     UIScene,
     WordPuzzleScene,
     DialogueScene,
