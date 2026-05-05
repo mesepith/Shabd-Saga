@@ -530,6 +530,68 @@ vite build    ✓  (2.88s, 23 modules)
 
 ---
 
+## 2026-05-06 — Mobile Verified: Viewport, Fullscreen, Audio (iPhone 12 + OnePlus Nord CE3)
+
+### Testing Results (Live Testing Round 2)
+Tested on real devices:
+- **iPhone 12, iOS 18.7.8** (Safari)
+- **OnePlus Nord CE3 5G, OxygenOS 15 / Android 15** (Chrome)
+
+### Issues Found & Fixed
+
+**1. Bottom screen cropped on Android phone**
+- **Root cause**: Android gesture nav bar overlays bottom 24px. `position: fixed; inset: 0` fills viewport but nav bar sits on top.
+- **Fix**: DOM fullscreen button — tap enters fullscreen, hides status + nav bars, game gets full screen. Also simplified CSS: `#game-container { position: fixed; top:0; left:0; right:0; bottom:0; }` — no flexbox, no JS viewport sizing.
+
+**2. Fullscreen button not working on Android**
+- **Root cause**: `requestFullscreen()` called from Phaser's canvas `pointerdown` event. Android Chrome doesn't recognize canvas synthetic events as "user gesture."
+- **Fix**: Replaced with real DOM `<button id="fs-btn">` in `index.html`. Genuine DOM `click` event → `document.documentElement.requestFullscreen()` → works.
+- On fullscreen exit (swipe-to-exit): `fullscreenchange` listener re-shows button.
+
+**3. iPhone audio not playing (letter pronunciations)**
+- **Root cause**: iOS Safari suspends Web Audio API context until user gesture. Previous fix used `(window as any).Howler` which is `undefined` in Vite bundle. Also: just `ctx.resume()` is NOT enough on iOS 18 — browser requires actual audio data flowing through context.
+- **Fix in main.ts**:
+  - Direct import: `import { Howler } from 'howler'`
+  - On first `touchend`/`pointerdown` on `document.body`:
+    1. Resume Phaser's AudioContext
+    2. Create + play a silent 1-sample AudioBuffer (truly unlocks iOS)
+    3. Resume Howler's AudioContext separately
+  - Retries on every tap until both contexts are running
+  - Also resumes on `visibilitychange` (tab switch)
+
+### Files Modified This Session
+- `index.html` — DOM fullscreen button (#fs-btn, #fs-tip), simplified CSS (position:fixed container, no flex centering), viewport meta
+- `src/main.ts` — Full rewrite: DOM fullscreen handler, audio unlock (Howler import + silent buffer), orientation check, iOS scroll-hide, scale.refresh on load
+- `src/scenes/UIScene.ts` — Camera transparent, removed Phaser fullscreen button (replaced by DOM)
+- `src/systems/TouchControls.ts` — Added `reset()` method for overlay-open cleanup
+- `src/scenes/GameScene.ts` — stop+reset before overlay open (openDoor, openGuardPuzzle, handleNPCInteraction)
+- `src/scenes/BossScene.ts` — stop+reset before launchBossPuzzle
+- `docs/AI-SESSION-HANDOFF.md` — Fully rewritten
+- `docs/12-progress-log.md` — This entry
+
+### Architecture Decisions
+1. **DOM button for fullscreen** over Phaser game object — most reliable cross-browser user gesture
+2. **Silent AudioBuffer playback** for iOS unlock — `ctx.resume()` alone fails on iOS 18
+3. **Direct Howler import** over `window.Howler` — Vite bundler doesn't set globals
+4. **`document.body` listener** for gestures (not `document` or canvas) — avoids Phaser event capture issues
+5. **Simplest possible CSS** — `position: fixed` on container, let Phaser handle scaling
+
+### Build
+```
+tsc --noEmit  ✓  (zero errors)
+vite build    ✓  (2.85s, 23 modules)
+```
+
+### Pending
+- [ ] Boss fights: NOT tested on mobile
+- [ ] WordPuzzle drag-to-spell: NOT tested on mobile
+- [ ] Real audio assets (silent placeholders)
+- [ ] Enemy difficulty balancing
+- [ ] Boss sprites
+- [ ] Tiled level maps
+
+---
+
 ## Template for Future Entries
 
 ```
