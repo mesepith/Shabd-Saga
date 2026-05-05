@@ -16,23 +16,73 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     html, body {
-      width: 100%;
-      height: 100%;
       margin: 0;
       padding: 0;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
       background: #1a1a2e;
       font-family: 'Noto Sans Devanagari', 'Noto Sans', system-ui, sans-serif;
       -webkit-touch-callout: none;
       -webkit-user-select: none;
       user-select: none;
+      /* Prevent pull-to-refresh and overscroll on mobile */
+      overscroll-behavior: none;
+      -webkit-overflow-scrolling: auto;
     }
 
-    /* Game container — sized by JS via visualViewport API for accurate
-       cross-browser viewport fill (Android nav bar, iOS safe areas). */
+    /* Game container — Phaser appends canvas here.
+       position:fixed + all 4 edges = fills viewport on every browser. */
     #game-container {
-      position: relative;
-      /* width + height set by main.ts */
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: block;
+    }
+
+    /* Fullscreen button — real DOM element (NOT Phaser) so
+       requestFullscreen() is a genuine user gesture on Android. */
+    #fs-btn {
+      display: none;                /* hidden by default, shown on mobile */
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 10000;
+      margin: 0;
+      padding: 5px 12px;
+      background: rgba(30, 30, 60, 0.85);
+      border: 1px solid rgba(85, 102, 136, 0.8);
+      border-radius: 6px;
+      color: #ccccff;
+      font-size: 13px;
+      font-family: 'Noto Sans', system-ui, sans-serif;
+      cursor: pointer;
+      white-space: nowrap;
+      /* Push below status bar if needed (Android) */
+      top: max(env(safe-area-inset-top, 2px), 2px);
+      left: max(env(safe-area-inset-left, 4px), 4px);
+    }
+    #fs-btn:active {
+      background: rgba(60, 60, 100, 0.9);
+    }
+
+    #fs-tip {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10001;
+      background: rgba(0, 0, 0, 0.85);
+      color: #ffd700;
+      font-size: 18px;
+      font-family: 'Noto Sans', system-ui, sans-serif;
+      padding: 18px 28px;
+      border-radius: 10px;
+      text-align: center;
+      pointer-events: none;
     }
 
     /* Rotate prompt — shown when device is in portrait */
@@ -76,6 +126,8 @@
     <span class="rotate-text">Please rotate your device</span>
     <span class="rotate-sub">Shabd Saga works best in landscape mode</span>
   </div>
+  <button id="fs-btn">⛶ Fullscreen</button>
+  <div id="fs-tip"></div>
   <div id="game-container"></div>
   <script type="module" src="/src/main.ts"></script>
 </body>

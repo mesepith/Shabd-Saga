@@ -85,56 +85,6 @@ export class UIScene extends Phaser.Scene {
       this.showPauseMenu();
     });
 
-    // Fullscreen button (touch devices — hides browser chrome for app-like feel)
-    if (this.sys.game.device.input.touch) {
-      const deviceInfo = (window as any).__shabd_device || {};
-      const isIOS = deviceInfo.isIOS;
-      const isAndroid = deviceInfo.isAndroid;
-
-      const fsX = padding;
-      const fsY = padding + 68;
-      const btnW = isIOS ? 90 : 68;
-      const label = isIOS ? '📲 Add' : '⛶ Full';
-
-      const fsBtn = this.add.rectangle(fsX + btnW / 2, fsY, btnW, 28, 0x334466, 0.8)
-        .setStrokeStyle(2, 0x556688).setScrollFactor(0).setDepth(200)
-        .setInteractive({ useHandCursor: true });
-
-      const fsTxt = this.add.text(fsX + btnW / 2, fsY, label, {
-        fontFamily: 'Noto Sans, system-ui, sans-serif',
-        fontSize: '12px',
-        color: '#CCCCEE',
-        stroke: '#000000',
-        strokeThickness: 2,
-      }).setOrigin(0.5).setScrollFactor(0).setDepth(200);
-
-      fsBtn.on('pointerdown', () => {
-        if (isIOS) {
-          // iOS Safari doesn't support Fullscreen API outside PWA mode.
-          // Best we can do: show instruction + scroll-to-hide address bar.
-          window.scrollTo(0, 1);
-          // Brief message (reuse existing showMessage pattern — fallback alert)
-          const msg = this.add.text(this.cameras.main.width / 2, this.cameras.main.height * 0.5,
-            'Add to Home Screen\nfor fullscreen 📲',
-            {
-              fontFamily: 'Noto Sans, system-ui, sans-serif',
-              fontSize: '20px', color: '#FFD700',
-              backgroundColor: '#000000cc',
-              padding: { x: 16, y: 10 },
-              align: 'center',
-            }).setOrigin(0.5).setScrollFactor(0).setDepth(500);
-          this.time.delayedCall(2500, () => msg.destroy());
-        } else if (!document.fullscreenElement) {
-          // Android Chrome / other browsers: Fullscreen API works
-          document.documentElement.requestFullscreen().catch(() => {
-            window.scrollTo(0, 1);
-          });
-        } else {
-          document.exitFullscreen().catch(() => {});
-        }
-      });
-    }
-
     // WordBar background (bottom of screen)
     this.createWordBar();
 

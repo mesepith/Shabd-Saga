@@ -3,41 +3,72 @@ import { GameConfig } from './config/GameConfig';
 
 const game = new Phaser.Game(GameConfig);
 
-// ── Viewport sizing (visualViewport API — correct on all browsers) ─────
-
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 const isAndroid = /android/i.test(navigator.userAgent);
+const isTouch = isIOS || isAndroid || (navigator.maxTouchPoints > 0);
 
-function applyViewportSize(): void {
-  const container = document.getElementById('game-container');
-  if (!container) return;
+// ── DOM Fullscreen button (real DOM click = genuine user gesture) ─────
 
-  // visualViewport gives the ACTUAL visible area (excludes system UI overlays
-  // like Android nav bar, iOS Safari toolbars). Widely supported on mobile.
-  const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
-  const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+const fsBtn = document.getElementById('fs-btn') as HTMLButtonElement | null;
 
-  container.style.width = vw + 'px';
-  container.style.height = vh + 'px';
+function showFsTip(msg: string): void {
+  const tip = document.getElementById('fs-tip');
+  if (!tip) return;
+  tip.textContent = msg;
+  tip.style.display = 'block';
+  setTimeout(() => { tip.style.display = 'none'; }, 2500);
 }
 
-// Resize handlers
-window.addEventListener('resize', applyViewportSize);
-if (window.visualViewport) {
-  window.visualViewport.addEventListener('resize', applyViewportSize);
-  window.visualViewport.addEventListener('scroll', applyViewportSize);
-}
+if (fsBtn && isTouch) {
+  // Show only on touch devices
+  fsBtn.style.display = 'block';
 
-// Apply ASAP, then again after layout settles
-applyViewportSize();
-window.addEventListener('load', () => {
-  // Re-measure after CSS/fonts loaded
-  setTimeout(applyViewportSize, 50);
-  setTimeout(applyViewportSize, 250);
-  // Force Phaser Scale manager to recalculate from the now-correct parent size
-  if ((game.scale as any).refresh) {
-    (game.scale as any).refresh();
+  if (isIOS) {
+    fsBtn.textContent = '📲 Add to Home Screen';
   }
+
+  fsBtn.addEventListener('click', () => {
+    if (isIOS) {
+      // iOS Safari: Fullscreen API not supported outside PWA mode
+      showFsTip('Add to Home Screen\nfor fullscreen 📲');
+      window.scrollTo(0, 1);
+      return;
+    }
+
+    // Android / other: Fullscreen API works with real DOM click
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen()
+        .then(() => {
+          if (fsBtn) fsBtn.style.display = 'none';
+        })
+        .catch(() => {
+          window.scrollTo(0, 1);
+        });
+    } else {
+      document.exitFullscreen()
+        .then(() => {
+          if (fsBtn) fsBtn.style.display = 'block';
+        })
+        .catch(() => {});
+    }
+  });
+}
+
+// Re-show button when exiting fullscreen (e.g. swipe-to-exit on Android)
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement && fsBtn && isTouch) {
+    fsBtn.style.display = 'block';
+  }
+});
+
+// ── Phaser scale re-measure after page fully settles ──────────────────
+
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    if ((game.scale as any).refresh) {
+      (game.scale as any).refresh();
+    }
+  }, 100);
 });
 
 // ── Orientation / rotate-prompt ──────────────────────────────────────
@@ -55,11 +86,7 @@ window.addEventListener('orientationchange', () => {
 });
 checkOrientation();
 
-// ── Expose device info for UIScene fullscreen button ──────────────────
-
-(window as any).__shabd_device = { isIOS, isAndroid };
-
-// ── iOS Safari: hide address bar on first tap (Fullscreen API unsupported) ──
+// ── iOS Safari: hide address bar on first tap ─────────────────────────
 
 if (isIOS) {
   document.addEventListener('pointerdown', () => {
