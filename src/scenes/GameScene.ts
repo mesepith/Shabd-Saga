@@ -679,6 +679,13 @@ export class GameScene extends Phaser.Scene {
       this.scene.pause('UIScene');
       this.scene.pause('GameScene');
 
+      // Listen for resume — fired when BossScene stops and resumes us
+      this.events.once('resume', () => {
+        this.time.delayedCall(200, () => {
+          this.completeLevelAndProgress();
+        });
+      });
+
       // Pre-resolve word data for boss sentences
       import('../systems/LanguageManager').then(({ LanguageManager }) => {
         const lm = LanguageManager.getInstance();
@@ -702,9 +709,6 @@ export class GameScene extends Phaser.Scene {
           onBossDefeated: () => {
             this.scene.stop('BossScene');
             this.scene.resume('GameScene');
-            this.time.delayedCall(100, () => {
-              this.completeLevelAndProgress();
-            });
           },
         });
       });

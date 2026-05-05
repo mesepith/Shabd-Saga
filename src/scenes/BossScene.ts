@@ -515,17 +515,28 @@ export class BossScene extends Phaser.Scene {
           },
         });
 
-        // Update glow position each frame
+        // Update glow + mild homing toward player each frame
         const glowUpdater = this.time.addEvent({
           delay: 16, repeat: 100,
           callback: () => {
             if (!bolt.active) { glowUpdater.remove(); glow.destroy(); return; }
             glow.x = bolt.x;
             glow.y = bolt.y;
+
+            // Mild homing: curve toward player's current position
+            const curAngle = Phaser.Math.Angle.Between(bolt.x, bolt.y, this.player.x, this.player.y);
+            const curSpeed = Math.sqrt(boltBody.velocity.x ** 2 + boltBody.velocity.y ** 2);
+            const newSpeed = curSpeed + 4; // Slightly accelerate
+            const blendFactor = 0.03; // Gentle curve
+            const velAngle = Math.atan2(boltBody.velocity.y, boltBody.velocity.x);
+            const blendedAngle = velAngle + (curAngle - velAngle) * blendFactor;
+            boltBody.velocity.x = Math.cos(blendedAngle) * newSpeed;
+            boltBody.velocity.y = Math.sin(blendedAngle) * newSpeed;
+            bolt.setRotation(blendedAngle);
           },
         });
 
-        this.time.delayedCall(3000, () => {
+        this.time.delayedCall(3500, () => {
           if (bolt.active) bolt.destroy();
           trailTimer.remove();
           glowUpdater.remove();
@@ -764,26 +775,23 @@ export class BossScene extends Phaser.Scene {
   }
 
   private cleanupAttack(): void {
-    // Fade out projectiles quickly instead of destroying instantly
-    // Ground slam waves get a moment to finish their sweep
+    // Fade out projectiles — keep full velocity so waves sweep arena edges
     this.projectilesGroup.getChildren().forEach((child) => {
       const p = child as Phaser.Physics.Arcade.Sprite;
       if (!p.active) return;
-      const pBody = p.body as Phaser.Physics.Arcade.Body;
-      pBody.velocity.x *= 0.3; // Slow down
       this.tweens.add({
-        targets: p, alpha: 0, duration: 600,
+        targets: p, alpha: 0, duration: 800,
         onComplete: () => { if (p.active) p.destroy(); },
       });
     });
 
-    // Minions fade and disperse
+    // Minions fade and disperse upward
     this.minionsGroup.getChildren().forEach((child) => {
       const m = child as Phaser.Physics.Arcade.Sprite;
       if (!m.active) return;
       const mBody = m.body as Phaser.Physics.Arcade.Body;
-      mBody.velocity.x = Phaser.Math.Between(-100, 100);
-      mBody.velocity.y = -150;
+      mBody.velocity.x = Phaser.Math.Between(-60, 60);
+      mBody.velocity.y = -200;
       this.tweens.add({
         targets: m, alpha: 0, scale: 0.5, duration: 500,
         onComplete: () => { if (m.active) m.destroy(); },
@@ -998,12 +1006,21 @@ export class BossScene extends Phaser.Scene {
         continueBtn.setScrollFactor(0);
         continueBtn.setInteractive({ useHandCursor: true });
 
-        continueBtn.on('pointerdown', () => {
+        const doContinue = () => {
+          if (this.state !== BossState.DEFEATED) return;
           this.onBossDefeated();
           this.scene.stop('BossScene');
-        });
+        };
+
+        continueBtn.on('pointerdown', doContinue);
         continueBtn.on('pointerover', () => continueBtn.setColor('#88FF88'));
         continueBtn.on('pointerout', () => continueBtn.setColor('#44FF44'));
+
+        // Keyboard fallback: Enter or Space to continue
+        const enterKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+        const spaceContinue = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+        enterKey.once('down', doContinue);
+        spaceContinue.once('down', doContinue);
       });
     });
   }
