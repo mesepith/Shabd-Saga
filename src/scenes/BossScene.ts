@@ -336,7 +336,7 @@ export class BossScene extends Phaser.Scene {
     const { width, height } = this.cameras.main;
     const names: Record<string, string> = {
       shadow_bolt: 'Shadow Bolts!',
-      ground_slam: 'Ground Slam!',
+      ground_slam: 'Ground Slam! Jump!',
       spawn_minions: 'Shadow Minions!',
     };
     const txt = this.add.text(width / 2, height / 2, names[patternName] || 'Attack!', {
@@ -536,76 +536,120 @@ export class BossScene extends Phaser.Scene {
   }
 
   private groundSlamAttack(pattern: any): void {
-    const spd = 450; // Fast enough to sweep arena before cleanup
+    const spd = 450;
     const { width, height } = this.cameras.main;
-    const bossFeetY = height - 75;
+    const floorY = height - 100;
+    const originalY = this.boss.y;
 
-    // Boss telegraph: shake + flash
+    // Boss telegraph: shake, then SLAM DOWN to floor
     this.boss.setTint(0xFF4400);
     this.tweens.add({
       targets: this.boss, x: this.boss.x - 12, duration: 80,
       yoyo: true, repeat: 3,
     });
-    this.time.delayedCall(400, () => {
+
+    // Boss slams down to floor level (250px drop in 300ms)
+    this.time.delayedCall(500, () => {
       if (this.state !== BossState.ATTACKING) return;
-      this.boss.setTint(0x440000);
-    });
-
-    this.time.delayedCall(700, () => {
-      if (this.state === BossState.DEFEATED) return;
-
-      // Ground crack flash at boss feet
-      const crackFlash = this.add.rectangle(this.boss.x, bossFeetY, 100, 20, 0xFF4400, 0.8);
-      crackFlash.setDepth(12);
       this.tweens.add({
-        targets: crackFlash, alpha: 0, scaleX: 4, scaleY: 2, duration: 900,
-        onComplete: () => crackFlash.destroy(),
+        targets: this.boss,
+        y: floorY - 30,
+        duration: 300,
+        ease: 'Power2',
+        onComplete: () => {
+          if (this.state === BossState.DEFEATED) return;
+
+          // IMPACT: vertical crack beam from boss to floor
+          const beamY = (this.boss.y + floorY) / 2;
+          const beam = this.add.rectangle(this.boss.x, beamY, 16, Math.abs(this.boss.y - floorY) + 20, 0xFF4400, 0.8);
+          beam.setDepth(12);
+          this.tweens.add({
+            targets: beam, alpha: 0, scaleY: 1.5, duration: 600,
+            onComplete: () => beam.destroy(),
+          });
+
+          // Impact explosion at floor
+          const impact = this.add.circle(this.boss.x, floorY, 24, 0xFF4400, 0.9);
+          impact.setDepth(13);
+          this.tweens.add({
+            targets: impact, scale: 3, alpha: 0, duration: 500,
+            onComplete: () => impact.destroy(),
+          });
+
+          // Screen shake on impact
+          this.cameras.main.shake(200, 0.015);
+
+          // Rock particles burst upward from impact
+          for (let j = 0; j < 12; j++) {
+            const rock = this.add.circle(
+              this.boss.x + Phaser.Math.Between(-30, 30),
+              floorY - Phaser.Math.Between(0, 10),
+              Phaser.Math.Between(3, 7),
+              0xFF6600, 0.8
+            );
+            rock.setDepth(8);
+            const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI;
+            const dist = Phaser.Math.Between(60, 150);
+            this.tweens.add({
+              targets: rock,
+              x: rock.x + Math.cos(angle) * dist,
+              y: rock.y + Math.sin(angle) * dist,
+              alpha: 0, scale: 0.5, duration: 800,
+              onComplete: () => rock.destroy(),
+            });
+          }
+
+          // Spawn TWO waves from impact point
+          [-1, 1].forEach((dir) => {
+            const wave = this.physics.add.sprite(this.boss.x, floorY, 'letter-placeholder');
+            wave.setDisplaySize(80, 36);
+            wave.setTint(0xFF2400);
+            wave.setAlpha(0.95);
+            wave.setDepth(7);
+            wave.setFlipX(dir < 0);
+            this.projectilesGroup.add(wave);
+            const waveBody = wave.body as Phaser.Physics.Arcade.Body;
+            waveBody.setSize(80, 36);
+            waveBody.velocity.x = spd * dir;
+            waveBody.allowGravity = false;
+
+            const waveGlow = this.add.circle(this.boss.x, floorY, 30, 0xFF4400, 0.35);
+            waveGlow.setDepth(6);
+
+            const glowAndSparkTimer = this.time.addEvent({
+              delay: 50, repeat: 60,
+              callback: () => {
+                if (!wave.active) { glowAndSparkTimer.remove(); waveGlow.destroy(); return; }
+                waveGlow.x = wave.x;
+                waveGlow.y = wave.y;
+                waveGlow.setAlpha(0.2 + Math.sin(Date.now() * 0.015) * 0.2);
+                const behindX = wave.x - (dir * Phaser.Math.Between(40, 70));
+                const spark = this.add.circle(behindX, floorY + Phaser.Math.Between(-10, 10), Phaser.Math.Between(3, 7), 0xFF6600, 0.8);
+                spark.setDepth(5);
+                this.tweens.add({
+                  targets: spark, alpha: 0, y: spark.y + 25, duration: 500,
+                  onComplete: () => spark.destroy(),
+                });
+              },
+            });
+
+            this.time.delayedCall(4000, () => {
+              if (wave.active) wave.destroy();
+              glowAndSparkTimer.remove();
+              waveGlow.destroy();
+            });
+          });
+        },
       });
 
-      // Spawn TWO waves: left-going and right-going from the boss
-      [-1, 1].forEach((dir) => {
-        const wave = this.physics.add.sprite(this.boss.x, height - 100, 'letter-placeholder');
-        wave.setDisplaySize(80, 36);
-        wave.setTint(0xFF2400);
-        wave.setAlpha(0.95);
-        wave.setDepth(7);
-        wave.setFlipX(dir < 0);
-        this.projectilesGroup.add(wave);
-        const waveBody = wave.body as Phaser.Physics.Arcade.Body;
-        waveBody.setSize(80, 36);
-        waveBody.velocity.x = spd * dir;
-        waveBody.allowGravity = false;
-
-        // Glow
-        const waveGlow = this.add.circle(this.boss.x, height - 100, 30, 0xFF4400, 0.35);
-        waveGlow.setDepth(6);
-
-        // Sparks trailing behind wave
-        const glowAndSparkTimer = this.time.addEvent({
-          delay: 50,
-          repeat: 60,
-          callback: () => {
-            if (!wave.active) { glowAndSparkTimer.remove(); waveGlow.destroy(); return; }
-            waveGlow.x = wave.x;
-            waveGlow.y = wave.y;
-            waveGlow.setAlpha(0.2 + Math.sin(Date.now() * 0.015) * 0.2);
-
-            // Sparks behind the wave
-            const behindX = wave.x - (dir * Phaser.Math.Between(40, 70));
-            const spark = this.add.circle(behindX, height - 88 + Phaser.Math.Between(-10, 10), Phaser.Math.Between(3, 7), 0xFF6600, 0.8);
-            spark.setDepth(5);
-            this.tweens.add({
-              targets: spark, alpha: 0, y: spark.y + 25, duration: 500,
-              onComplete: () => spark.destroy(),
-            });
+      // Boss rises back up
+      this.time.delayedCall(800, () => {
+        if (this.state === BossState.DEFEATED) return;
+        this.tweens.add({
+          targets: this.boss, y: originalY, duration: 500, ease: 'Back.easeOut',
+          onComplete: () => {
+            if (this.state !== BossState.VULNERABLE) this.boss.setTint(0x440000);
           },
-        });
-
-        // Self-destruct after sweeping arena
-        this.time.delayedCall(4000, () => {
-          if (wave.active) wave.destroy();
-          glowAndSparkTimer.remove();
-          waveGlow.destroy();
         });
       });
     });
