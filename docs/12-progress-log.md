@@ -431,6 +431,68 @@ No collision with platforms/ground meant letters fell through world. Fixed via #
 
 ---
 
+## 2026-05-06 — Floating Joystick Touch Controls + Resize Fix + Landscape Lock
+
+### Completed
+- [x] Browser resize bug fixed — removed `game.scale.resize(window.innerWidth, window.innerHeight)` from `main.ts` that was breaking game layout on window resize. Phaser's `Scale.FIT` + `CENTER_BOTH` handles canvas scaling natively.
+- [x] `GameConfig.ts`: Added `min: { 640, 360 }` and `max: { 1920, 1080 }` scale limits
+- [x] Landscape lock + rotate prompt: `<meta name="screen-orientation" content="landscape">` in `index.html`, `#rotate-prompt` CSS overlay div, `checkOrientation()` in `main.ts` on `resize` + `orientationchange` (50ms defer for Safari)
+- [x] Apple meta tags added: `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`
+- [x] `NEW: src/systems/TouchControls.ts` (~170 lines) — reusable floating joystick + jump/interact buttons
+- [x] Mobile detection: `TouchControls.isTouchDevice(scene)` — Phaser device API + `navigator.maxTouchPoints` fallback
+- [x] Floating joystick: left half of screen (bottom 48%), drag → `movementForce.x` (-1 to 1), 12px dead zone, pointerId multitouch tracking
+- [x] Jump button: right side, 72px circle, ▲ label, hold for variable-height jump
+- [x] Interact button: right side, 60px circle, 💬 label, one-shot (consumer resets flag)
+- [x] `GameScene.ts`: Replaced `touchLeft/Right/Jump/Interact` booleans + `createTouchControls()` with `touchControls?: TouchControls` instance. Removed ~20 lines, added ~5.
+- [x] `BossScene.ts`: Same TouchControls replacement. Removed ~25 lines, added ~5.
+- [x] `GameConfig.ts`: `activePointers: 2 → 3` for joystick + jump + extra touch
+- [x] Zero TypeScript errors, clean Vite build (tsc --noEmit + vite build)
+
+### Touch Controls Architecture
+```
+src/systems/TouchControls.ts (reusable class)
+├── movementForce: { x }       // -1..1 from joystick
+├── jumpHeld: boolean          // continuous, for variable-height jump
+├── interactPressed: boolean   // one-shot, consumer resets to false
+├── isTouchDevice(scene)       // static: Chrome/Safari/Android/iPhone detection
+└── destroy()                  // cleanup called in scene shutdown
+```
+
+### Controls Mapping (migration from old d-pad)
+| Old (bool flags) | New (TouchControls) |
+|---|---|
+| `touchLeft` | `touchControls.movementForce.x < -0.3` |
+| `touchRight` | `touchControls.movementForce.x > 0.3` |
+| `touchJump` | `touchControls.jumpHeld` |
+| `touchInteract` | `touchControls.interactPressed` then set to `false` |
+
+### Cross-browser / Cross-device
+- Chrome desktop: keyboard only (no touch controls)
+- Chrome Android: floating joystick + buttons
+- Safari desktop: keyboard only
+- Safari iPhone: floating joystick + buttons + `lockOrientation('landscape')`
+- Touch laptops: controls appear alongside keyboard
+- All: `Scale.FIT` + `min`/`max` prevents extreme scaling
+
+### Files Modified
+- `src/systems/TouchControls.ts` — NEW: full implementation
+- `src/scenes/GameScene.ts` — import TouchControls, replace 4 booleans + createTouchControls(), modify handleMovement() and handleNPCInteraction(), add shutdown cleanup
+- `src/scenes/BossScene.ts` — same pattern as GameScene
+- `src/config/GameConfig.ts` — min/max scale, activePointers 3
+- `src/main.ts` — remove scale.resize(), add checkOrientation() + resize/orientationchange listeners
+- `index.html` — rotate prompt overlay + CSS, screen-orientation meta, apple meta tags
+- `docs/AI-SESSION-HANDOFF.md` — fully rewritten
+- `docs/12-progress-log.md` — this entry
+
+### Pending
+- [ ] Mobile testing on real devices (iPhone Safari + Android Chrome)
+- [ ] Enemy difficulty balancing
+- [ ] Boss sprites (proper art)
+- [ ] Real audio assets
+- [ ] Tiled level maps
+
+---
+
 ## Template for Future Entries
 
 ```

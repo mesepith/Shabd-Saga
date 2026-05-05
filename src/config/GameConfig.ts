@@ -18,6 +18,8 @@ export const GameConfig: Phaser.Types.Core.GameConfig = {
     autoCenter: Phaser.Scale.CENTER_BOTH,
     width: 1280,
     height: 720,
+    min: { width: 640, height: 360 },
+    max: { width: 1920, height: 1080 },
   },
   physics: {
     default: 'arcade',
@@ -27,7 +29,7 @@ export const GameConfig: Phaser.Types.Core.GameConfig = {
     },
   },
   input: {
-    activePointers: 2, // Support multi-touch
+    activePointers: 3, // Support multi-touch (joystick + jump + extra)
     keyboard: true,
   },
   render: {

@@ -3,15 +3,26 @@ import { GameConfig } from './config/GameConfig';
 
 const game = new Phaser.Game(GameConfig);
 
-// Handle window resize for responsive scaling
-window.addEventListener('resize', () => {
-  game.scale.resize(window.innerWidth, window.innerHeight);
-});
+// ── Orientation / rotate-prompt ──────────────────────────────────────
 
-// Handle visibility change — resume audio context on return
+function checkOrientation(): void {
+  const prompt = document.getElementById('rotate-prompt');
+  if (!prompt) return;
+  const isPortrait = window.innerWidth < window.innerHeight;
+  prompt.style.display = isPortrait ? 'flex' : 'none';
+}
+
+window.addEventListener('resize', checkOrientation);
+window.addEventListener('orientationchange', () => {
+  // orientationchange fires before resize on some browsers — defer
+  setTimeout(checkOrientation, 50);
+});
+checkOrientation();
+
+// ── Visibility — resume audio context on return ──────────────────────
+
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
-    // Resume audio context if suspended
     const gameInstance = game;
     if (gameInstance && gameInstance.sound && (gameInstance.sound as any).context) {
       try {

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BossData, BossSentence } from '../systems/LanguageManager';
+import { TouchControls } from '../systems/TouchControls';
 
 interface BossSceneData {
   bossConfig: BossData;
@@ -44,10 +45,7 @@ export class BossScene extends Phaser.Scene {
   private sentenceTranslationText!: Phaser.GameObjects.Text;
   private promptText!: Phaser.GameObjects.Text;
 
-  private touchLeft: boolean = false;
-  private touchRight: boolean = false;
-  private touchJump: boolean = false;
-  private touchInteract: boolean = false;
+  private touchControls?: TouchControls;
   private interactCooldown: number = 0;
 
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -165,6 +163,7 @@ export class BossScene extends Phaser.Scene {
     this.events.on('shutdown', () => {
       this.clearTimers();
       this.events.off('wordSpelled');
+      this.touchControls?.destroy();
     });
 
     // Camera
@@ -183,27 +182,10 @@ export class BossScene extends Phaser.Scene {
     };
     this.spaceBar = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.eKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.E);
-    this.createTouchControls();
-  }
 
-  private createTouchControls(): void {
-    const { width, height } = this.cameras.main;
-    const btnStyle = { fontSize: '36px', color: '#FFFFFF' };
-
-    const makeBtn = (x: number, label: string, onDown: () => void, onUp: () => void) => {
-      const bg = this.add.rectangle(x, height - 80, 100, 100, 0x000000, 0.3);
-      bg.setScrollFactor(0).setDepth(500).setInteractive();
-      bg.on('pointerdown', onDown);
-      bg.on('pointerup', onUp);
-      bg.on('pointerout', onUp);
-      const txt = this.add.text(x, height - 80, label, btnStyle);
-      txt.setOrigin(0.5).setScrollFactor(0).setDepth(501);
-    };
-
-    makeBtn(80, '\u25C0', () => { this.touchLeft = true; }, () => { this.touchLeft = false; });
-    makeBtn(200, '\u25B6', () => { this.touchRight = true; }, () => { this.touchRight = false; });
-    makeBtn(width - 80, '\u25B2', () => { this.touchJump = true; }, () => { this.touchJump = false; });
-    makeBtn(width - 200, '\uD83D\uDCAC', () => { this.touchInteract = true; }, () => { this.touchInteract = false; });
+    if (TouchControls.isTouchDevice(this)) {
+      this.touchControls = new TouchControls(this);
+    }
   }
 
   private createUI(): void {
@@ -1078,8 +1060,8 @@ export class BossScene extends Phaser.Scene {
     // Handle interact input
     if (this.state === BossState.VULNERABLE && this.interactCooldown <= 0) {
       const justPressedE = this.eKey && Phaser.Input.Keyboard.JustDown(this.eKey);
-      if (justPressedE || this.touchInteract) {
-        this.touchInteract = false;
+      if (justPressedE || this.touchControls?.interactPressed) {
+        if (this.touchControls) this.touchControls.interactPressed = false;
         this.interactCooldown = 3000;
         this.launchBossPuzzle();
       }
@@ -1102,8 +1084,8 @@ export class BossScene extends Phaser.Scene {
     const body = this.player.body as Phaser.Physics.Arcade.Body;
     const onGround = body.blocked.down || body.touching.down;
 
-    const left = this.cursors.left?.isDown || this.wasd.A.isDown || this.touchLeft;
-    const right = this.cursors.right?.isDown || this.wasd.D.isDown || this.touchRight;
+    const left = this.cursors.left?.isDown || this.wasd.A.isDown || (this.touchControls?.movementForce.x ?? 0) < -0.3;
+    const right = this.cursors.right?.isDown || this.wasd.D.isDown || (this.touchControls?.movementForce.x ?? 0) > 0.3;
 
     if (left) {
       this.player.setVelocityX(-this.playerSpeed);
@@ -1115,7 +1097,7 @@ export class BossScene extends Phaser.Scene {
       this.player.setVelocityX(0);
     }
 
-    const jump = this.cursors.up?.isDown || this.wasd.W.isDown || this.spaceBar?.isDown || this.touchJump;
+    const jump = this.cursors.up?.isDown || this.wasd.W.isDown || this.spaceBar?.isDown || (this.touchControls?.jumpHeld ?? false);
     if (jump && onGround) {
       body.velocity.y = this.jumpForce;
     }

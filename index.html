@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="screen-orientation" content="landscape" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="description" content="Shabd Saga — A magical language learning adventure for kids. Learn Hindi through an immersive hand-painted platformer." />
   <meta name="theme-color" content="#1a1a2e" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -38,9 +41,48 @@
       -webkit-user-select: none;
       user-select: none;
     }
+
+    /* Rotate prompt — shown when device is in portrait */
+    #rotate-prompt {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #1a1a2e;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      font-family: 'Noto Sans Devanagari', 'Noto Sans', system-ui, sans-serif;
+    }
+    #rotate-prompt .rotate-icon {
+      font-size: 72px;
+      animation: rotate-hint 1.8s ease-in-out infinite;
+    }
+    @keyframes rotate-hint {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(90deg); }
+    }
+    #rotate-prompt .rotate-text {
+      color: #ffffff;
+      font-size: 22px;
+      font-weight: 600;
+      text-align: center;
+      padding: 0 32px;
+    }
+    #rotate-prompt .rotate-sub {
+      color: #8888aa;
+      font-size: 16px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
+  <div id="rotate-prompt">
+    <span class="rotate-icon">📱</span>
+    <span class="rotate-text">Please rotate your device</span>
+    <span class="rotate-sub">Shabd Saga works best in landscape mode</span>
+  </div>
   <div id="game-container"></div>
   <script type="module" src="/src/main.ts"></script>
 </body>

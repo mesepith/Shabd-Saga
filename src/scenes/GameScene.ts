@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { Howl } from 'howler';
 import { BossData } from '../systems/LanguageManager';
+import { TouchControls } from '../systems/TouchControls';
 
 export class GameScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -10,10 +11,7 @@ export class GameScene extends Phaser.Scene {
   private spaceBar!: Phaser.Input.Keyboard.Key;
   private eKey!: Phaser.Input.Keyboard.Key;
 
-  private touchLeft: boolean = false;
-  private touchRight: boolean = false;
-  private touchJump: boolean = false;
-  private touchInteract: boolean = false;
+  private touchControls?: TouchControls;
 
   private playerSpeed: number = 280;
   private jumpForce: number = -460;
@@ -145,6 +143,10 @@ export class GameScene extends Phaser.Scene {
     this.setupInput();
     if (this.scene.isActive('UIScene')) this.scene.stop('UIScene');
     this.scene.launch('UIScene', { gameScene: this });
+
+    this.events.on('shutdown', () => {
+      this.touchControls?.destroy();
+    });
 
     // Create player animations
     this.createPlayerAnimations();
@@ -939,27 +941,10 @@ export class GameScene extends Phaser.Scene {
     };
     this.spaceBar = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.eKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.E);
-    this.createTouchControls();
-  }
 
-  private createTouchControls(): void {
-    const { width, height } = this.cameras.main;
-    const btnStyle = { fontSize: '36px', color: '#FFFFFF' };
-
-    const makeBtn = (x: number, label: string, onDown: () => void, onUp: () => void) => {
-      const bg = this.add.rectangle(x, height - 80, 100, 100, 0x000000, 0.3);
-      bg.setScrollFactor(0).setDepth(100).setInteractive();
-      bg.on('pointerdown', onDown);
-      bg.on('pointerup', onUp);
-      bg.on('pointerout', onUp);
-      const txt = this.add.text(x, height - 80, label, btnStyle);
-      txt.setOrigin(0.5).setScrollFactor(0).setDepth(101);
-    };
-
-    makeBtn(80, '◀', () => { this.touchLeft = true; }, () => { this.touchLeft = false; });
-    makeBtn(200, '▶', () => { this.touchRight = true; }, () => { this.touchRight = false; });
-    makeBtn(width - 80, '▲', () => { this.touchJump = true; }, () => { this.touchJump = false; });
-    makeBtn(width - 200, '💬', () => { this.touchInteract = true; }, () => { this.touchInteract = false; });
+    if (TouchControls.isTouchDevice(this)) {
+      this.touchControls = new TouchControls(this);
+    }
   }
 
   handleMovement(custom?: { left: boolean; right: boolean; jump: boolean }): void {
@@ -967,14 +952,14 @@ export class GameScene extends Phaser.Scene {
     const onGround = body.blocked.down || body.touching.down;
     if (onGround) this.canJump = true;
 
-    const left = custom?.left ?? (this.cursors.left?.isDown || this.wasd.A.isDown || this.touchLeft);
-    const right = custom?.right ?? (this.cursors.right?.isDown || this.wasd.D.isDown || this.touchRight);
+    const left = custom?.left ?? (this.cursors.left?.isDown || this.wasd.A.isDown || (this.touchControls?.movementForce.x ?? 0) < -0.3);
+    const right = custom?.right ?? (this.cursors.right?.isDown || this.wasd.D.isDown || (this.touchControls?.movementForce.x ?? 0) > 0.3);
 
     if (left) { this.player.setVelocityX(-this.playerSpeed); this.player.setFlipX(true); }
     else if (right) { this.player.setVelocityX(this.playerSpeed); this.player.setFlipX(false); }
     else { this.player.setVelocityX(0); }
 
-    const jump = custom?.jump ?? (this.cursors.up?.isDown || this.wasd.W.isDown || this.spaceBar.isDown || this.touchJump);
+    const jump = custom?.jump ?? (this.cursors.up?.isDown || this.wasd.W.isDown || this.spaceBar.isDown || (this.touchControls?.jumpHeld ?? false));
     if (jump && onGround && this.canJump) {
       body.velocity.y = this.jumpForce;
       this.canJump = false;
@@ -1507,8 +1492,8 @@ export class GameScene extends Phaser.Scene {
     if (this.nearGuard) {
       this.guardPrompt.setVisible(true);
       const justPressed = this.eKey && Phaser.Input.Keyboard.JustDown(this.eKey);
-      if (justPressed || this.touchInteract) {
-        this.touchInteract = false;
+      if (justPressed || this.touchControls?.interactPressed) {
+        if (this.touchControls) this.touchControls.interactPressed = false;
         this.guardPrompt.setVisible(false);
         this.openGuardPuzzle(this.nearGuard);
       }
@@ -1523,8 +1508,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     const justPressed = this.eKey && Phaser.Input.Keyboard.JustDown(this.eKey);
-    if (!justPressed && !this.touchInteract) return;
-    this.touchInteract = false;
+    if (!justPressed && !this.touchControls?.interactPressed) return;
+    if (this.touchControls) this.touchControls.interactPressed = false;
 
     const npcData = this.nearNPC;
     if (!npcData || !npcData.dialogues) return;
