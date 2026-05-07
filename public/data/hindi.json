@@ -133,8 +133,8 @@
         }
       ],
       "enemies": [
-        { "id": "creeper_1", "type": "shadow-creeper", "position": { "x": 600, "y": 630 }, "patrolRange": 150 },
-        { "id": "creeper_2", "type": "shadow-creeper", "position": { "x": 850, "y": 410 }, "patrolRange": 120 },
+        { "id": "creeper_1", "type": "shadow-creeper", "position": { "x": 600, "y": 630 }, "patrolRange": 150, "speed": 65, "contactCooldown": 1800 },
+        { "id": "creeper_2", "type": "shadow-creeper", "position": { "x": 850, "y": 410 }, "patrolRange": 120, "speed": 70, "contactCooldown": 1800 },
         { "id": "guard_1", "type": "letter-guard", "position": { "x": 1100, "y": 550 }, "guardWordId": "ped" }
       ],
       "checkpoints": [
@@ -233,9 +233,9 @@
         }
       ],
       "enemies": [
-        { "id": "creeper_1", "type": "shadow-creeper", "position": { "x": 400, "y": 630 }, "patrolRange": 200 },
-        { "id": "creeper_2", "type": "shadow-creeper", "position": { "x": 750, "y": 410 }, "patrolRange": 180 },
-        { "id": "creeper_3", "type": "shadow-creeper", "position": { "x": 1000, "y": 330 }, "patrolRange": 150 },
+        { "id": "creeper_1", "type": "shadow-creeper", "position": { "x": 400, "y": 630 }, "patrolRange": 200, "speed": 85, "contactCooldown": 1400 },
+        { "id": "creeper_2", "type": "shadow-creeper", "position": { "x": 750, "y": 410 }, "patrolRange": 180, "speed": 90, "contactCooldown": 1400 },
+        { "id": "creeper_3", "type": "shadow-creeper", "position": { "x": 1000, "y": 330 }, "patrolRange": 150, "speed": 95, "contactCooldown": 1400 },
         { "id": "guard_1", "type": "letter-guard", "position": { "x": 1120, "y": 560 }, "guardWordId": "ghaas" }
       ],
       "boss": {
@@ -354,8 +354,8 @@
         }
       ],
       "enemies": [
-        { "id": "creeper_1", "type": "shadow-creeper", "position": { "x": 500, "y": 630 }, "patrolRange": 180 },
-        { "id": "creeper_2", "type": "shadow-creeper", "position": { "x": 800, "y": 410 }, "patrolRange": 150 },
+        { "id": "creeper_1", "type": "shadow-creeper", "position": { "x": 500, "y": 630 }, "patrolRange": 180, "speed": 75, "contactCooldown": 1700 },
+        { "id": "creeper_2", "type": "shadow-creeper", "position": { "x": 800, "y": 410 }, "patrolRange": 150, "speed": 80, "contactCooldown": 1700 },
         { "id": "guard_1", "type": "letter-guard", "position": { "x": 1020, "y": 560 }, "guardWordId": "doodh" }
       ],
       "checkpoints": [
@@ -433,8 +433,8 @@
       ],
       "npcs": [],
       "enemies": [
-        { "id": "creeper_1", "type": "shadow-creeper", "position": { "x": 450, "y": 630 }, "patrolRange": 220 },
-        { "id": "creeper_2", "type": "shadow-creeper", "position": { "x": 800, "y": 410 }, "patrolRange": 160 },
+        { "id": "creeper_1", "type": "shadow-creeper", "position": { "x": 450, "y": 630 }, "patrolRange": 220, "speed": 95, "contactCooldown": 1350 },
+        { "id": "creeper_2", "type": "shadow-creeper", "position": { "x": 800, "y": 410 }, "patrolRange": 160, "speed": 100, "contactCooldown": 1300 },
         { "id": "guard_1", "type": "letter-guard", "position": { "x": 1050, "y": 560 }, "guardWordId": "phal" }
       ],
       "boss": {
@@ -538,8 +538,8 @@
       ],
       "npcs": [],
       "enemies": [
-        { "id": "creeper_1", "type": "shadow-creeper", "position": { "x": 530, "y": 630 }, "patrolRange": 200 },
-        { "id": "creeper_2", "type": "shadow-creeper", "position": { "x": 900, "y": 410 }, "patrolRange": 150 },
+        { "id": "creeper_1", "type": "shadow-creeper", "position": { "x": 530, "y": 630 }, "patrolRange": 200, "speed": 110, "contactCooldown": 1200 },
+        { "id": "creeper_2", "type": "shadow-creeper", "position": { "x": 900, "y": 410 }, "patrolRange": 150, "speed": 120, "contactCooldown": 1100 },
         { "id": "guard_1", "type": "letter-guard", "position": { "x": 1150, "y": 500 }, "guardWordId": "neela" }
       ],
       "boss": {

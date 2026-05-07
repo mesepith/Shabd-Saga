@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Howl } from 'howler';
-import { BossData } from '../systems/LanguageManager';
+import { BossData, LanguageManager } from '../systems/LanguageManager';
 import { TouchControls } from '../systems/TouchControls';
 
 export class GameScene extends Phaser.Scene {
@@ -786,7 +786,9 @@ export class GameScene extends Phaser.Scene {
 
         nextBtn.on('pointerdown', () => {
           this.scene.stop('UIScene');
-          this.scene.restart({ worldId: `world-${this.getWorldNum()}`, levelId: nextLevelId, language: this.languageId });
+          const worldMatch = nextLevelId.match(/world-(\d+)/);
+          const worldId = worldMatch ? worldMatch[0] : `world-${this.getWorldNum()}`;
+          this.scene.restart({ worldId, levelId: nextLevelId, language: this.languageId });
         });
         nextBtn.on('pointerover', () => nextBtn.setColor('#88FF88'));
         nextBtn.on('pointerout', () => nextBtn.setColor('#44FF44'));
@@ -827,8 +829,18 @@ export class GameScene extends Phaser.Scene {
     if (!match) return null;
     const worldNum = parseInt(match[1]);
     const levelNum = parseInt(match[2]);
-    const nextId = `world-${worldNum}-level-${levelNum + 1}`;
-    return nextId;
+
+    const lm = LanguageManager.getInstance();
+
+    // Try next level in same world
+    const nextInWorld = `world-${worldNum}-level-${levelNum + 1}`;
+    if (lm.getLevel(nextInWorld)) return nextInWorld;
+
+    // Try level-1 of next world
+    const nextWorldLevel = `world-${worldNum + 1}-level-1`;
+    if (lm.getLevel(nextWorldLevel)) return nextWorldLevel;
+
+    return null;
   }
 
   // ── Rendering helpers ──
@@ -1015,9 +1027,11 @@ export class GameScene extends Phaser.Scene {
         return;
       }
 
+      const hw = enemy.hitboxWidth || 40;
+      const hh = enemy.hitboxHeight || 40;
       const enemySprite = this.physics.add.sprite(x, y, enemy.type || 'shadow-creeper');
-      enemySprite.setDisplaySize(40, 40);
-      (enemySprite.body as Phaser.Physics.Arcade.Body).setSize(40, 40);
+      enemySprite.setDisplaySize(hw, hh);
+      (enemySprite.body as Phaser.Physics.Arcade.Body).setSize(hw, hh);
       (enemySprite.body as Phaser.Physics.Arcade.Body).allowGravity = false;
       enemySprite.setDepth(8);
       enemySprite.setTint(0x9922AA);
@@ -1025,7 +1039,7 @@ export class GameScene extends Phaser.Scene {
       (enemySprite as any).enemyData = enemy;
       (enemySprite as any).patrolLeft = x - range;
       (enemySprite as any).patrolRight = x + range;
-      (enemySprite as any).speed = 60 + Math.random() * 40;
+      (enemySprite as any).speed = enemy.speed || (60 + Math.random() * 40);
       (enemySprite as any).direction = 1;
 
       this.enemiesGroup.add(enemySprite);
@@ -1404,10 +1418,10 @@ export class GameScene extends Phaser.Scene {
 
   private invincibleTimer?: Phaser.Time.TimerEvent;
 
-  private damagePlayer(): void {
+  private damagePlayer(amount: number = 1): void {
     if (this.isInvincible) return;
 
-    this.health--;
+    this.health -= amount;
     this.isInvincible = true;
 
     this.playSFX('sfx-hurt');
@@ -1648,22 +1662,26 @@ export class GameScene extends Phaser.Scene {
       }
 
       // Manual distance-based contact check
+      const ed = enemy.enemyData || {};
       const dx = this.player.x - enemy.x;
       const dy = this.player.y - enemy.y;
-      if (Math.abs(dx) < 40 && Math.abs(dy) < 44) {
-        if (enemy._lastContact && now - enemy._lastContact < 1500) return;
+      if (Math.abs(dx) < (ed.hitboxWidth || 40) && Math.abs(dy) < (ed.hitboxHeight || 44)) {
+        const cooldown = ed.contactCooldown || 1500;
+        if (enemy._lastContact && now - enemy._lastContact < cooldown) return;
         enemy._lastContact = now;
 
         // Always apply knockback
-        const knockback = this.player.x < enemy.x ? -250 : 250;
+        const kx = ed.knockbackX || 250;
+        const ky = ed.knockbackY || -280;
+        const knockback = this.player.x < enemy.x ? -kx : kx;
         this.player.setVelocityX(knockback);
-        this.player.setVelocityY(-280);
+        this.player.setVelocityY(ky);
 
         if (this.collectedLetters.length > 0) {
           this.stealLetter();
         }
 
-        this.damagePlayer();
+        this.damagePlayer(ed.damage || 1);
 
         enemy.setTint(0xFF0000);
         this.time.delayedCall(150, () => {
