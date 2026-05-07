@@ -592,6 +592,55 @@ vite build    ✓  (2.85s, 23 modules)
 
 ---
 
+## 2026-05-07 — Touch Controls UX Overhaul + Mobile Testing Complete
+
+### Mobile Testing Finalized
+- [x] WordPuzzle drag-to-spell: tested on both iPhone 12 and OnePlus Nord CE3 — working
+- [x] Boss fights: tested on both devices — working (all 3 attack patterns visible, interact button works during vulnerable phase, spelling, victory)
+- [x] All 3 levels played end-to-end on mobile — working
+- [x] Standalone mode: "Add to Home Screen" button hidden when PWA launched from Home Screen — fixed
+
+### Touch Controls UX Overhaul
+- [x] Right-half jump zone: replaced small 72px fixed jump button with entire right half of screen as jump zone — tap anywhere on right to jump, hold for variable height. Same philosophy as left-half joystick (no need to look).
+- [x] Dynamic interact button: removed small 60px fixed interact button. Replaced with large (170x72) "⚡ Interact" button that appears only when actionable:
+  - Near NPCs (physics overlap detection)
+  - Near Letter Guards (proximity check in updateGuards)
+  - Boss vulnerable phase
+- [x] Interact button check runs BEFORE control zone filter in pointerdown — fixes bug where button at y=34% was above the 52% control zone cutoff and touches were silently ignored
+- [x] 600ms grace period for NPC proximity: `nearNPC` survives short disconnects during jumping (physics overlap briefly stops mid-air), prevents button flicker
+- [x] `manageInteractButton()` added to GameScene.update() — single method managing button visibility per frame
+
+### Standalone Mode Detection Fix
+- [x] `navigator.standalone` + `(display-mode: standalone)` media query check in main.ts
+- [x] fs-btn hidden when already running as PWA (iOS "Add to Home Screen")
+
+### Bugfixes
+- [x] Interact button clicks silently ignored (control zone filter ran before button check) — reordered
+- [x] Interact button disappeared when trying to tap (right half = jump zone, tapping triggered jump → moved away from NPC) — interact check now takes priority over jump
+- [x] npcPrompt + interact button flicker during jumps (nearNPC cleared every frame, overlap didn't fire mid-air) — 600ms grace period
+
+### Files Modified
+- `src/systems/TouchControls.ts` — Full rewrite: removed fixed buttons, right half = jump zone, dynamic interact button with show/hide API
+- `src/scenes/GameScene.ts` — `manageInteractButton()`, `npcInRange`/`lastNpcOverlapTime` fields, NPC overlap callback updated, guard proximity shows button
+- `src/scenes/BossScene.ts` — show/hide interact button at state transitions (VULNERABLE/ATTACKING/DEFEATED)
+- `src/main.ts` — standalone mode detection (`navigator.standalone` + display-mode media query)
+- `docs/AI-SESSION-HANDOFF.md` — fully rewritten
+- `docs/12-progress-log.md` — this entry
+
+### Build
+```
+tsc --noEmit  ✓  (zero errors)
+vite build    ✓  (2.93s, 23 modules)
+```
+
+### Pending
+- [ ] Enemy difficulty balancing (next priority)
+- [ ] Boss sprites (proper art)
+- [ ] Real audio assets
+- [ ] Tiled level maps
+
+---
+
 ## Template for Future Entries
 
 ```
