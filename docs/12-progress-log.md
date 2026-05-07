@@ -592,6 +592,44 @@ vite build    ✓  (2.85s, 23 modules)
 
 ---
 
+## 2026-05-07 — Enemy Difficulty Balancing & Cross-World Progression Fix
+
+### Completed
+- [x] Added per-enemy configurable fields to all 11 creeper enemies across 5 levels in `hindi.json`: `speed`, `contactCooldown`. Optional: `damage`, `hitboxWidth`, `hitboxHeight`, `knockbackX`, `knockbackY`.
+- [x] Difficulty scales progressively: world-1-1 (speed 65-70, cooldown 1800ms) → world-3-1 (speed 110-120, cooldown 1100-1200ms)
+- [x] `spawnEnemies()` reads `speed`, `hitboxWidth`, `hitboxHeight` from JSON per enemy; falls back to hardcoded defaults
+- [x] `updateEnemies()` reads `contactCooldown`, hitbox dimensions, knockback from `enemy.enemyData`
+- [x] `damagePlayer(amount?)` now accepts configurable damage amount (default 1)
+- [x] Fixed `getNextLevelId()` — was returning non-existent levels (world-1-level-3) after boss completion, causing empty level with no enemies
+- [x] `getNextLevelId()` now uses `LanguageManager.getLevel()` to verify next level exists; falls through: world-1-level-2 → world-2-level-1
+- [x] Next Level button extracts world from `nextLevelId` for cross-world transitions
+- [x] End-of-game handling: world-3-level-1 → `null` → only "Level Select" button shown
+- [x] Both copies of `hindi.json` synced
+- [x] Zero TypeScript errors, clean Vite build
+
+### Bug Fixed
+**"Next screen without enemy" after boss defeat** — `getNextLevelId()` was returning `world-1-level-3` (doesn't exist in hindi.json). `loadLevelData()` caught the missing level and fell back to `spawnFallbackLetters()`, creating a level with platforms and player but no enemies, doors, NPCs, or checkpoints.
+
+### Files Modified
+- `src/config/languages/hindi.json` — `speed` and `contactCooldown` added to all creeper enemies
+- `public/data/hindi.json` — synced copy
+- `src/scenes/GameScene.ts` — `spawnEnemies()` reads per-enemy config, `updateEnemies()` uses per-enemy params, `damagePlayer(amount?)` configurable, `getNextLevelId()` cross-world lookup, Next Level button world extraction, static import of LanguageManager
+- `docs/AI-SESSION-HANDOFF.md` — updated status, added Enemy Difficulty Architecture section
+- `docs/12-progress-log.md` — this entry
+
+### Build
+```
+tsc --noEmit  ✓  (zero errors)
+vite build    ✓  (2.73s, 23 modules)
+```
+
+### Pending
+- [ ] Boss sprites (proper art) — next priority
+- [ ] Real audio assets (silent placeholders)
+- [ ] Tiled level maps
+
+---
+
 ## 2026-05-07 — Touch Controls UX Overhaul + Mobile Testing Complete
 
 ### Mobile Testing Finalized

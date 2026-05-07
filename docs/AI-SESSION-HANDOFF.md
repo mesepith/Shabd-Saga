@@ -3,7 +3,7 @@
 > **READ THIS FIRST** when starting a new AI session on Shabd Saga.
 > The AI should also read `docs/12-progress-log.md` for full history.
 
-## Quick Status (May 7, 2026) — Mobile Testing Complete, Ready for Next Phase
+## Quick Status (May 7, 2026) — Enemy Difficulty Balanced, Cross-World Progression Fixed
 
 ### Mobile Testing Results (iPhone 12 iOS 18.7.8 + OnePlus Nord CE3 Android 15)
 | Feature | iPhone | Android Phone | Status |
@@ -19,11 +19,11 @@
 | Landscape lock + rotate prompt | ✓ | ✓ | Done |
 | Bottom crop / blank space | ✓ No crop | ✓ No crop | Done |
 
-### NEXT: Enemy Difficulty Balancing
+### NEXT: Boss Sprites (Proper Art)
 | Order | Task | Why |
 |-------|------|-----|
-| 1 | Enemy difficulty balancing | Quick JSON data tweaks |
-| 2 | Boss sprites (proper art) | Currently scaled-up placeholder |
+| ~~1~~ | ~~Enemy difficulty balancing~~ ✓ DONE May 7 | Per-level speed/cooldown config, ~1860→~1860 lines GameScene |
+| 2 | **Boss sprites (proper art)** | Currently scaled-up 'enemy-placeholder' ×3 |
 | 3 | Real audio assets | Big creative project |
 | 4 | Tiled level maps | Big creative project |
 
@@ -141,15 +141,53 @@ This is in `openDoor()`, `openGuardPuzzle()`, `handleNPCInteraction()` (GameScen
 
 ---
 
+## Enemy Difficulty Architecture (May 7)
+
+### Per-Enemy Configurable Fields (in hindi.json)
+Each `shadow-creeper` enemy entry now supports:
+| Field | Type | Default | Purpose |
+|-------|------|---------|---------|
+| `speed` | number | 60-100 random | Patrol speed (px/sec) |
+| `damage` | number | 1 | HP per hit |
+| `contactCooldown` | number | 1500 | Minimum ms between hits from same enemy |
+| `hitboxWidth` | number | 40 | Contact detection width (px) |
+| `hitboxHeight` | number | 44 | Contact detection height (px) |
+| `knockbackX` | number | 250 | Horizontal knockback force |
+| `knockbackY` | number | -280 | Vertical knockback force |
+
+### Difficulty Progression Per Level
+| Level | Difficulty | Speed | Cooldown | Creepers |
+|-------|-----------|-------|----------|----------|
+| world-1-1 | 1 | 65-70 | 1800ms | 2 |
+| world-2-1 | 1 | 75-80 | 1700ms | 2 |
+| world-1-2 | 2 | 85-95 | 1400ms | 3 |
+| world-2-2 | 2 | 95-100 | 1300-1350ms | 2 |
+| world-3-1 | 3 | 110-120 | 1100-1200ms | 2 |
+
+### Code Changed
+- `spawnEnemies()` reads `speed`, `hitboxWidth`, `hitboxHeight` from JSON per enemy
+- `updateEnemies()` reads `contactCooldown`, hitbox, knockback from `enemy.enemyData`
+- `damagePlayer(amount?)` now accepts configurable damage (default 1)
+- All fields backward-compatible — fall back to hardcoded defaults when absent in JSON
+
+### Cross-World Progression Fix
+- `getNextLevelId()` now checks `LanguageManager.getLevel()` to verify next level exists
+- Falls through: `world-1-level-2` → `world-1-level-3` (missing) → `world-2-level-1` (valid)
+- Next Level button extracts world from `nextLevelId` rather than current level's world
+- End-of-game: `world-3-level-1` → `null` → only "Level Select" button shown
+
+---
+
 ## Current Bugs / Pending
 - [x] Boss fights: tested on mobile (iPhone + Android) — working
 - [x] WordPuzzle drag-to-spell: tested on mobile — working
 - [x] All 3 levels: tested end-to-end on mobile — working
 - [x] Touch controls: right-half jump zone + dynamic interact button — verified on both platforms
 - [x] Standalone mode: "Add to Home Screen" button hidden when PWA launched — fixed
+- [x] Enemy difficulty balancing per level — DONE May 7 (per-creeper speed, cooldown, hitbox from JSON)
+- [x] Cross-world progression: `getNextLevelId()` now navigates across worlds (was returning non-existent `world-1-level-3`)
 - [ ] Music/SFX: silent placeholders (need real audio)
-- [ ] Enemy difficulty balancing per level
-- [ ] Boss sprites: uses scaled-up 'enemy-placeholder'
+- [ ] Boss sprites: uses scaled-up 'enemy-placeholder' (next priority)
 - [ ] Tiled level maps not created
 
 ---
@@ -179,7 +217,7 @@ npm run build      # Vite production build
 | File | Purpose |
 |------|---------|
 | `src/main.ts` | Entry point, audio unlock, DOM fullscreen, orientation, iOS scroll-hide, standalone detection |
-| `src/scenes/GameScene.ts` | Core gameplay (~1840 lines) |
+| `src/scenes/GameScene.ts` | Core gameplay (~1860 lines) — includes enemy difficulty config, cross-world progression |
 | `src/scenes/BossScene.ts` | Boss fights (~1120 lines) |
 | `src/scenes/WordPuzzleScene.ts` | Spelling overlay (caller param) |
 | `src/scenes/UIScene.ts` | HUD: health, WordBar, score, gems, pause menu |
