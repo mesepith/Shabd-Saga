@@ -1,26 +1,24 @@
 import Phaser from 'phaser';
 
 /**
- * Floating joystick + jump/interact buttons for mobile touch screens.
+ * Floating joystick + jump zone + dynamic interact button for mobile touch screens.
  * Cross-browser (Chrome, Safari) and cross-device (Android, iPhone).
  *
  * Layout (landscape 1280x720):
- *   Left half, bottom 45% — invisible joystick zone (touch anywhere)
- *   Right side, bottom area — jump button (72px) + interact button (60px)
+ *   Left half (x < midX), bottom 48% — invisible joystick zone (touch anywhere, drag to move)
+ *   Right half (x >= midX) — tap anywhere to jump (hold for variable height)
+ *   Dynamic interact button — appears only near NPCs/guards/boss vulnerable phase
  *
- * Multitouch: left thumb drives joystick, right thumb taps buttons — tracked by pointerId.
+ * Multitouch: left thumb drives joystick, right thumb jumps — tracked by pointerId.
  */
 export class TouchControls {
-  /** -1 (full left) to 1 (full right). 0 = idle. Continuous, not reset per frame. */
+  /** -1 (full left) to 1 (full right). 0 = idle. Continuous. */
   movementForce: { x: number } = { x: 0 };
 
-  /** True while jump button is held. Release for variable-height jump (cut velocity). */
+  /** True while right-half touch is held. Release for variable-height jump. */
   jumpHeld: boolean = false;
 
-  /**
-   * One-shot flag set on interact button tap.
-   * Consumer (scene) MUST set to false after consuming.
-   */
+  /** One-shot flag set on interact button tap. Consumer MUST reset to false. */
   interactPressed: boolean = false;
 
   private scene: Phaser.Scene;
@@ -29,11 +27,10 @@ export class TouchControls {
   private joystickRing!: Phaser.GameObjects.Graphics;
   private joystickKnob!: Phaser.GameObjects.Graphics;
 
-  // Buttons
-  private jumpBtn!: Phaser.GameObjects.Rectangle;
-  private jumpBtnText!: Phaser.GameObjects.Text;
+  // Dynamic interact button
   private interactBtn!: Phaser.GameObjects.Rectangle;
   private interactBtnText!: Phaser.GameObjects.Text;
+  private interactBtnVisible: boolean = false;
 
   // Pointer tracking (multitouch)
   private activeJoystickPointer: number = -1;
@@ -45,7 +42,7 @@ export class TouchControls {
   private readonly joystickRadius: number = 52;
   private readonly deadZone: number = 12;
   private midX: number = 0;
-  private controlZoneTop: number = 0; // y above which controls ignore touches
+  private controlZoneTop: number = 0;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -54,11 +51,11 @@ export class TouchControls {
     this.controlZoneTop = height * 0.52;
 
     this.createJoystick();
-    this.createButtons(width, height);
+    this.createInteractButton(width, height);
     this.registerInput();
   }
 
-  // ── Joystick ──
+  // ── Joystick (unchanged) ──
 
   private createJoystick(): void {
     this.joystickRing = this.scene.add.graphics();
@@ -72,15 +69,12 @@ export class TouchControls {
 
   private drawJoystick(ringX: number, ringY: number, knobOffsetX: number, knobOffsetY: number): void {
     const r = this.joystickRadius;
-    // Outer ring
     this.joystickRing.clear();
     this.joystickRing.lineStyle(3, 0xffffff, 0.35);
     this.joystickRing.strokeCircle(ringX, ringY, r);
-    // Inner fill (subtle)
     this.joystickRing.fillStyle(0xffffff, 0.06);
     this.joystickRing.fillCircle(ringX, ringY, r);
 
-    // Knob
     this.joystickKnob.clear();
     this.joystickKnob.fillStyle(0xffffff, 0.45);
     this.joystickKnob.fillCircle(ringX + knobOffsetX, ringY + knobOffsetY, 22);
@@ -101,71 +95,74 @@ export class TouchControls {
     this.drawJoystick(x, y, 0, 0);
   }
 
-  // ── Buttons ──
+  // ── Dynamic Interact Button ──
 
-  private createButtons(width: number, height: number): void {
-    // Jump button — bottom-right, large target
-    const jumpX = width - 80;
-    const jumpY = height - 100;
+  private createInteractButton(_width: number, _height: number): void {
+    const btnX = this.midX + (_width - this.midX) / 2;
+    const btnY = _height * 0.34;
 
-    this.jumpBtn = this.scene.add.rectangle(jumpX, jumpY, 72, 72, 0x000000, 0.25);
-    this.jumpBtn.setStrokeStyle(2, 0xffffff, 0.25);
-    this.jumpBtn.setScrollFactor(0).setDepth(200).setInteractive();
-
-    this.jumpBtnText = this.scene.add.text(jumpX, jumpY, '\u25B2', {
-      fontSize: '34px', color: '#FFFFFF',
-    });
-    this.jumpBtnText.setOrigin(0.5).setScrollFactor(0).setDepth(201);
-
-    // Interact button — above jump
-    const intX = width - 80;
-    const intY = height - 190;
-
-    this.interactBtn = this.scene.add.rectangle(intX, intY, 60, 60, 0x000000, 0.25);
-    this.interactBtn.setStrokeStyle(2, 0xffffff, 0.25);
+    this.interactBtn = this.scene.add.rectangle(btnX, btnY, 170, 72, 0x333333, 0.80);
+    this.interactBtn.setStrokeStyle(3, 0xffcc44, 0.9);
     this.interactBtn.setScrollFactor(0).setDepth(200).setInteractive();
+    this.interactBtn.setVisible(false);
 
-    this.interactBtnText = this.scene.add.text(intX, intY, '\uD83D\uDCAC', {
-      fontSize: '24px',
+    this.interactBtnText = this.scene.add.text(btnX, btnY, '⚡\u00A0Interact', {
+      fontSize: '26px',
+      color: '#FFCC44',
+      fontFamily: 'system-ui, sans-serif',
+      fontStyle: 'bold',
     });
     this.interactBtnText.setOrigin(0.5).setScrollFactor(0).setDepth(201);
+    this.interactBtnText.setVisible(false);
+  }
+
+  showInteractButton(): void {
+    if (this.interactBtnVisible) return;
+    this.interactBtnVisible = true;
+    this.interactBtn.setVisible(true);
+    this.interactBtnText.setVisible(true);
+  }
+
+  hideInteractButton(): void {
+    if (!this.interactBtnVisible) return;
+    this.interactBtnVisible = false;
+    this.interactBtn.setVisible(false);
+    this.interactBtnText.setVisible(false);
+    this.interactPressed = false;
   }
 
   // ── Input ──
+
+  private isOnInteractBtn(px: number, py: number): boolean {
+    if (!this.interactBtnVisible) return false;
+    const b = this.interactBtn;
+    return px >= b.x - 85 && px <= b.x + 85 && py >= b.y - 42 && py <= b.y + 42;
+  }
 
   private registerInput(): void {
     const input = this.scene.input;
 
     input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      // Ignore touches above the control zone (let game objects handle them)
-      if (pointer.y < this.controlZoneTop) return;
-
-      // --- Interact button (one-shot) ---
-      if (
-        pointer.x >= this.interactBtn.x - 30 &&
-        pointer.x <= this.interactBtn.x + 30 &&
-        pointer.y >= this.interactBtn.y - 30 &&
-        pointer.y <= this.interactBtn.y + 30
-      ) {
+      // Interact button takes priority — check before control zone filter
+      if (this.isOnInteractBtn(pointer.x, pointer.y)) {
         this.interactPressed = true;
         return;
       }
 
-      // --- Jump button (hold-to-jump) ---
-      if (
-        pointer.x >= this.jumpBtn.x - 36 &&
-        pointer.x <= this.jumpBtn.x + 36 &&
-        pointer.y >= this.jumpBtn.y - 36 &&
-        pointer.y <= this.jumpBtn.y + 36
-      ) {
-        this.activeJumpPointer = pointer.id;
-        this.jumpHeld = true;
-        this.jumpBtn.setFillStyle(0x444444, 0.5);
+      // Ignore touches above control zone for movement/jump
+      if (pointer.y < this.controlZoneTop) return;
+
+      // Right half — jump zone
+      if (pointer.x >= this.midX) {
+        if (this.activeJumpPointer === -1) {
+          this.activeJumpPointer = pointer.id;
+          this.jumpHeld = true;
+        }
         return;
       }
 
-      // --- Left zone → joystick ---
-      if (pointer.x < this.midX && this.activeJoystickPointer === -1) {
+      // Left half — joystick
+      if (this.activeJoystickPointer === -1) {
         this.activeJoystickPointer = pointer.id;
         this.joystickOriginX = pointer.x;
         this.joystickOriginY = pointer.y;
@@ -191,20 +188,17 @@ export class TouchControls {
 
       this.drawJoystick(this.joystickOriginX, this.joystickOriginY, knobX, knobY);
 
-      // Horizontal movement force (dead zone)
       if (Math.abs(dx) < this.deadZone) {
         this.movementForce.x = 0;
       } else {
         const force = clampedDist / this.joystickRadius;
         this.movementForce.x = dx > 0 ? force : -force;
-        // Clamp to [-1, 1]
         if (this.movementForce.x > 1) this.movementForce.x = 1;
         if (this.movementForce.x < -1) this.movementForce.x = -1;
       }
     });
 
     input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
-      // Release joystick (by pointerId — handles slide-off)
       if (pointer.id === this.activeJoystickPointer) {
         this.activeJoystickPointer = -1;
         this.movementForce.x = 0;
@@ -212,19 +206,15 @@ export class TouchControls {
         return;
       }
 
-      // Release jump button (by pointerId — handles slide-off)
       if (pointer.id === this.activeJumpPointer) {
         this.activeJumpPointer = -1;
         this.jumpHeld = false;
-        this.jumpBtn.setFillStyle(0x000000, 0.25);
-        return;
       }
     });
   }
 
   // ── Lifecycle ──
 
-  /** Reset all state immediately — call before launching overlays (WordPuzzle, dialogue). */
   reset(): void {
     this.activeJoystickPointer = -1;
     this.activeJumpPointer = -1;
@@ -232,7 +222,7 @@ export class TouchControls {
     this.jumpHeld = false;
     this.interactPressed = false;
     this.hideJoystick();
-    this.jumpBtn.setFillStyle(0x000000, 0.25);
+    this.hideInteractButton();
   }
 
   destroy(): void {
@@ -242,16 +232,11 @@ export class TouchControls {
 
     this.joystickRing?.destroy();
     this.joystickKnob?.destroy();
-    this.jumpBtn?.destroy();
-    this.jumpBtnText?.destroy();
     this.interactBtn?.destroy();
     this.interactBtnText?.destroy();
   }
 
-  /**
-   * Returns true if the current device supports touch.
-   * Works on Chrome, Safari, Android, iPhone via Phaser's device detection.
-   */
+  /** Returns true if the current device supports touch. */
   static isTouchDevice(scene: Phaser.Scene): boolean {
     const device = scene.sys.game.device;
     if (device.input.touch) return true;

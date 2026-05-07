@@ -32,6 +32,8 @@ export class GameScene extends Phaser.Scene {
 
   // NPC interaction
   private nearNPC: any = null;
+  private npcInRange: boolean = false;
+  private lastNpcOverlapTime: number = 0;
   private npcPrompt!: Phaser.GameObjects.Text;
   private currentDialogue: Phaser.Scene | null = null;
   private levelBoss: BossData | null = null;
@@ -443,9 +445,12 @@ export class GameScene extends Phaser.Scene {
       this.physics.add.overlap(this.player, npcSprite, () => {
         if (this.currentDialogue) return;
         const d = npcSprite as any;
+        this.npcInRange = true;
         this.nearNPC = d.npcData;
+        this.lastNpcOverlapTime = this.time.now;
         this.npcPrompt.setPosition(d.x, d.y - 54);
         this.npcPrompt.setVisible(true);
+        this.touchControls?.showInteractButton();
       });
     });
   }
@@ -575,6 +580,7 @@ export class GameScene extends Phaser.Scene {
     this.updateGuards();
     this.handleNPCInteraction();
     this.updateEnemies();
+    this.manageInteractButton();
   }
 
   private checkDoorInteraction(): void {
@@ -1543,6 +1549,24 @@ export class GameScene extends Phaser.Scene {
     this.currentDialogue = this.scene.get('DialogueScene');
   }
 
+  private manageInteractButton(): void {
+    if (!this.touchControls) return;
+
+    const npcActive = this.npcInRange || (this.nearNPC && (this.time.now - this.lastNpcOverlapTime < 600));
+
+    if (this.nearGuard || npcActive) {
+      this.touchControls.showInteractButton();
+    } else {
+      this.touchControls.hideInteractButton();
+    }
+
+    if (!this.npcInRange && this.time.now - this.lastNpcOverlapTime > 600) {
+      this.nearNPC = null;
+      this.npcPrompt.setVisible(false);
+    }
+    this.npcInRange = false;
+  }
+
   private createPlayerAnimations(): void {
     if (this.anims.exists('player-idle')) return;
 
@@ -1722,6 +1746,7 @@ export class GameScene extends Phaser.Scene {
       if (Math.abs(dx) < 70 && Math.abs(dy) < 80) {
         this.nearGuard = guard;
         this.guardPrompt.setPosition(guard.x, guard.y - 60);
+        this.touchControls?.showInteractButton();
       }
     });
   }

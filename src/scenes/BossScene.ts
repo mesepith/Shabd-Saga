@@ -285,6 +285,7 @@ export class BossScene extends Phaser.Scene {
     if (this.state === BossState.DEFEATED) return;
     this.state = BossState.ATTACKING;
     this.clearTimers();
+    this.touchControls?.hideInteractButton();
 
     const sentence = this.getCurrentSentence();
     const patterns = this.bossConfig.attackPatterns;
@@ -344,6 +345,7 @@ export class BossScene extends Phaser.Scene {
     this.state = BossState.VULNERABLE;
     this.clearTimers();
     this.cleanupAttack();
+    this.touchControls?.showInteractButton();
 
     const sentence = this.getCurrentSentence();
     const requiredWords = sentence.requiredWords;
@@ -924,6 +926,7 @@ export class BossScene extends Phaser.Scene {
     this.clearTimers();
     this.cleanupAttack();
     this.hideSpellUI();
+    this.touchControls?.hideInteractButton();
 
     // Boss death animation
     this.boss.setTint(0xFFFFFF);

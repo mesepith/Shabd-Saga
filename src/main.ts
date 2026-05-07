@@ -67,7 +67,9 @@ function showFsTip(msg: string): void {
   setTimeout(() => { tip.style.display = 'none'; }, 2500);
 }
 
-if (fsBtn && isTouch) {
+const isStandalone = (typeof navigator !== 'undefined' && (navigator as any).standalone) || window.matchMedia('(display-mode: standalone)').matches;
+
+if (fsBtn && isTouch && !isStandalone) {
   fsBtn.style.display = 'block';
 
   if (isIOS) {
@@ -94,7 +96,7 @@ if (fsBtn && isTouch) {
 }
 
 document.addEventListener('fullscreenchange', () => {
-  if (!document.fullscreenElement && fsBtn && isTouch) {
+  if (!document.fullscreenElement && fsBtn && isTouch && !isStandalone) {
     fsBtn.style.display = 'block';
   }
 });
