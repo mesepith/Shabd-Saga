@@ -679,6 +679,45 @@ vite build    ✓  (2.93s, 23 modules)
 
 ---
 
+## 2026-05-08 — Boss Sprites (Proper Art): 3 Unique Boss Designs, Contrast Fixes, Per-Boss Scaling
+
+### Completed
+- [x] Replaced shared `'enemy-placeholder'` sprite with 3 unique 128×128 boss sprites
+- [x] **Jungle Boss**: dark green demon with 6 slit green eyes, spiked shoulders, fanged mouth, clawed arms, vine tendrils
+- [x] **Village Boss**: grey cook with pot helmet, orange squinting eyes, wooden ladle (animated swing), leather apron, steam wisps
+- [x] **Palace Boss**: purple guardian with gold crown (3 gems), red slit eyes, gold chestplate, scepter with glowing orb, flowing cape
+- [x] 6-frame idle animation per boss (breathing + weapon sway), 6fps
+- [x] SVG gradients (linear + radial) for depth shading and aura glow
+- [x] Bosses now use `bossConfig.spriteKey` (was hardcoded `'enemy-placeholder'`) with `textures.exists()` fallback
+- [x] Per-boss animation keys: `boss-idle-boss-jungle`, `boss-idle-boss-village`, `boss-idle-boss-palace`
+- [x] Per-boss scale: jungle 2.0, village 2.2, palace 2.4 (higher level = bigger boss)
+- [x] Per-boss spotlight: green, amber-red, royal purple (concentric circles behind boss)
+- [x] Per-boss ambient particles: 10 green, 14 amber, 18 purple orbiting motes
+- [x] Removed heavy dark tint (`0x440000`) — boss now shows natural sprite colors
+- [x] Vulnerable tint lightened: `0x664400` → `0x997744` (visible amber)
+- [x] Vulnerable text moved to y=100-170 (was 180-260) — no longer covers the boss
+- [x] Boss floating idle: ±20px (was ±15) + subtle scale pulse 2.0↔2.1
+- [x] Zero TypeScript errors, clean Vite build
+
+### Bug Fixed
+**All bosses looked identical** — `createBossAnimations()` used global key `'boss-idle'`. First boss (Jungle) created it with `'boss-jungle-sheet'` frames. Subsequent bosses skipped creation and played Jungle frames on their sprites. Fixed by using unique keys per boss: `boss-idle-${spriteKey}`.
+
+**Boss invisible against dark arena** — `setTint(0x440000)` multiplied against green/grey/purple sprites → near-black. Removed default tint entirely. Natural sprite colors + bright spotlight behind boss now provides clear visibility at all screen positions.
+
+### Files Modified
+- `scripts/generate-sprites.ts` — `BOSS_SIZE=128`, gradient support, 18 detailed SVG frames, 6-frame compositing at 768×128, `composeBossSheet()` helper
+- `src/scenes/PreloadScene.ts` — boss spritesheets loaded at 128×128 frame size
+- `src/scenes/BossScene.ts` — use `bossConfig.spriteKey`, unique animation keys, `getBossScale()`, `getSpotlightColors()`, ambient particles, `clearTint()` instead of `0x440000`, text positions moved, bossVignette → bossSpotlight, floating + pulse tweens
+- Both copies of `hindi.json` — unchanged (spriteKey already existed)
+
+### Build
+```
+tsc --noEmit  ✓  (zero errors)
+vite build    ✓  (2.76s, 23 modules)
+```
+
+---
+
 ## Template for Future Entries
 
 ```
