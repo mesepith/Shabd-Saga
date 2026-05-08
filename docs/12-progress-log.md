@@ -718,6 +718,90 @@ vite build    ✓  (2.76s, 23 modules)
 
 ---
 
+## 2026-05-08 — Real Audio: Web Audio Synthesis, Unified AudioManager
+
+### Completed
+- [x] Created `AudioManager.ts` (~420 lines) — unified singleton for all game audio
+- [x] SFX: 12 sounds synthesized via Web Audio API oscillators (jump, collect, door-open, hurt, success, checkpoint, boss-attack, boss-slam, boss-minion, boss-hit, boss-defeated)
+- [x] Music: 4 procedural looping tracks (menu C pentatonic 70bpm, world-1 jungle E minor 90bpm, world-2 village G major 80bpm, world-3 palace D harmonic minor 75bpm)
+- [x] Speech: Howler.js caching + 500ms debounce (reuses cached Howl instances, prevents spam)
+- [x] Mute toggle: 🔊/🔇 button in pause menu, persisted to localStorage `shabd_saga_audio_muted`
+- [x] Master/SFX/Music gain nodes for independent volume control
+- [x] Simplified `main.ts`: audio unlock delegates to `AudioManager.resume()`, removed `Howler` direct import
+- [x] Deleted `PronunciationEngine.ts` (dead code — never imported)
+- [x] Deleted 9 silent MP3 placeholder files (5 SFX + 4 music)
+- [x] Removed `this.load.audio(...)` from PreloadScene (9 lines removed)
+- [x] GameScene: removed `playSFX()` and `playLevelMusic()` private methods, all audio calls replaced
+- [x] BossScene: added music on arena start, SFX for all 3 attack patterns, damage, victory, + shutdown cleanup
+- [x] MenuScene: replaced Phaser `sound.play('music-menu')` with `AudioManager.startMenuMusic()`
+- [x] DialogueScene: replaced raw `new Howl()` with `AudioManager.speakDialogue()`
+- [x] Zero TypeScript errors, clean Vite build (24 modules, 2.81s)
+
+### Architecture Decisions
+1. **Web Audio API over MP3 files**: Zero downloads, identical behavior on all browsers, instant availability, no preloading needed
+2. **SFX as transient oscillators**: Created per-call with envelope (gain ramp), garbage collected automatically — no pooling needed
+3. **Music as scheduled patterns**: `setInterval` at beat tempo + `AudioContext.currentTime` node scheduling — notes fire ahead of playback position, stays in time even under load
+4. **Speech stayed with Howler.js**: Real Hindi MP3s already exist (~30 files, 4-50KB each). AudioManager wraps Howler for caching and unified mute control, but doesn't replace the playback mechanism
+5. **Single AudioContext**: Both SFX and music flow through the same `AudioContext` via separate GainNodes → master GainNode. One `resume()` call unlocks everything
+6. **Mute via localStorage**: Read on `AudioManager.init()`, toggled in UIScene pause menu — persists across page refreshes
+
+### SFX — Full List
+
+| Method | Sound | Technique | Duration |
+|--------|-------|-----------|----------|
+| `playJump()` | Bright upward blip | Sine sweep 300→600Hz | 0.25s |
+| `playCollect()` | Sparkly chime | Dual sine 523+659Hz | 0.3s |
+| `playDoorOpen()` | Satisfying unlock | Triangle arp C5-E5-G5 | 0.5s |
+| `playHurt()` | Low thud impact | Square 80→40Hz | 0.3s |
+| `playSuccess()` | Triumphant fanfare | 5-note sine C-E-G-C-E | 1.0s |
+| `playCheckpoint()` | Gentle notification | Sine 440Hz + triangle 660Hz | 0.35s |
+| `playBossAttack()` | Menacing rumble | Sawtooth 110→160→80Hz + vibrato | 0.5s |
+| `playBossSlam()` | Ground pound | Noise burst + sine 40Hz thump | 0.4s |
+| `playBossMinion()` | Magical spawn | FM synth 300/100Hz | 0.35s |
+| `playBossHit()` | Impact | Square 200→60Hz | 0.25s |
+| `playBossDefeated()` | Victory | 6-note fanfare + noise explosion | 1.5s |
+
+### Music — Full List
+
+| Track | Key | Tempo | Instruments | Character |
+|-------|-----|-------|-------------|-----------|
+| Menu | C pentatonic | 70 BPM | Sine pad + triangle melody | Calm, mystical |
+| World 1 (Jungle) | E minor pentatonic | 90 BPM | Square arp + sine bass + click | Rhythmic, adventurous |
+| World 2 (Village) | G major | 80 BPM | Sawtooth pluck + sine flute | Warm, folk |
+| World 3 (Palace) | D harmonic minor | 75 BPM | Detuned saw pad + sine bell arp | Grand, majestic |
+
+### Cross-Browser Compatibility
+- **Safari** (macOS/iOS): AudioContext fully supported. iOS unlock handled via existing `touchend`→`resume()`+`silentBuffer` path
+- **Chrome** (all platforms): Full AudioContext + OscillatorNode support
+- **Firefox**: Identical AudioContext API, no differences
+- **Edge**: Chromium-based, identical to Chrome
+- **Mobile**: Same AudioContext API on both iOS Safari and Android Chrome
+
+### Files Modified
+- `src/systems/AudioManager.ts` — NEW: full implementation (~420 lines)
+- `src/main.ts` — simplified audio unlock (delegates to AudioManager)
+- `src/scenes/PreloadScene.ts` — removed 9 silent audio preloads
+- `src/scenes/GameScene.ts` — removed playSFX/playLevelMusic, replaced all audio calls
+- `src/scenes/BossScene.ts` — added all boss SFX + music + shutdown cleanup
+- `src/scenes/MenuScene.ts` — replaced Phaser sound.play with AudioManager
+- `src/scenes/DialogueScene.ts` — replaced raw Howl with AudioManager.speakDialogue
+- `src/scenes/UIScene.ts` — added mute toggle in pause menu
+- DEL: `src/systems/PronunciationEngine.ts` (dead code)
+- DEL: 9 silent MP3 files (5 SFX + 4 music)
+- `docs/AI-SESSION-HANDOFF.md` — updated status, added Audio Architecture section
+- `docs/12-progress-log.md` — this entry
+
+### Build
+```
+tsc --noEmit  ✓  (zero errors)
+vite build    ✓  (2.81s, 24 modules)
+```
+
+### Pending
+- [ ] Tiled level maps
+
+---
+
 ## Template for Future Entries
 
 ```

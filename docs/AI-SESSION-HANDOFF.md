@@ -3,7 +3,7 @@
 > **READ THIS FIRST** when starting a new AI session on Shabd Saga.
 > The AI should also read `docs/12-progress-log.md` for full history.
 
-## Quick Status (May 8, 2026) — Boss Sprites Complete: 3 Unique Designs, Per-Boss Scaling
+## Quick Status (May 8, 2026) — Real Audio: Web Audio Synthesis, Unified AudioManager
 
 ### Mobile Testing Results (iPhone 12 iOS 18.7.8 + OnePlus Nord CE3 Android 15)
 | Feature | iPhone | Android Phone | Status |
@@ -19,12 +19,12 @@
 | Landscape lock + rotate prompt | ✓ | ✓ | Done |
 | Bottom crop / blank space | ✓ No crop | ✓ No crop | Done |
 
-### NEXT: Real Audio Assets
+### NEXT: Tiled Level Maps
 | Order | Task | Why |
 |-------|------|-----|
 | ~~1~~ | ~~Enemy difficulty balancing~~ ✓ DONE May 7 | Per-level speed/cooldown config |
 | ~~2~~ | ~~Boss sprites (proper art)~~ ✓ DONE May 8 | 3 unique 128×128 designs, gradients, per-boss scaling |
-| 3 | **Real audio assets** | Music (3 world tracks) + SFX — currently silent placeholders |
+| ~~3~~ | ~~Real audio assets~~ ✓ DONE May 8 | Web Audio API synthesis — zero file downloads |
 | 4 | Tiled level maps | Big creative project |
 
 ### What's Working
@@ -40,11 +40,34 @@
 - Letter Guard enemies (5 guards, word-specific door blocking, verify-not-consume)
 - Boss fights — 3 unique bosses with WordPuzzleScene integration, polished attack visuals
 - **Boss sprites**: 3 unique 128×128 designs (SVG + gradients), 6-frame idle anims, per-boss scale (2.0/2.2/2.4), per-boss spotlight glow, per-boss ambient particles
+- **Real audio**: Web Audio API synthesis for all SFX (12 sounds) and music (4 procedural tracks). Zero MP3 downloads. Unified AudioManager singleton handles SFX, music, and speech (Howler.js cached). Mute toggle in pause menu persisted to localStorage.
 - Touch controls: left half = floating joystick, right half = tap-anywhere-jump
 - Dynamic interact button: appears only near NPCs/guards/boss vulnerable phase
 - Landscape lock + rotate prompt overlay
 - DOM fullscreen button (Android) / Add-to-Home-Screen tip (iPhone, hidden in standalone)
-- Cross-browser audio unlock (iOS Safari: silent buffer + Howler context resume)
+- Cross-browser audio unlock (iOS Safari: silent buffer + Howler context resume) — now delegates to AudioManager
+
+---
+## Audio Architecture (May 8)
+
+### AudioManager (`src/systems/AudioManager.ts`)
+Single singleton class replacing all scattered `this.sound.play()` / `new Howl()` calls across the codebase.
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **SFX** | Web Audio API oscillators | 12 synthesized sounds: jump, collect, door-open, hurt, success, checkpoint, boss-attack, boss-slam, boss-minion, boss-hit, boss-defeated |
+| **Music** | Web Audio API procedural patterns | 4 looping tracks: menu (C pentatonic 70bpm), world-1 jungle (E minor 90bpm), world-2 village (G major 80bpm), world-3 palace (D harmonic minor 75bpm) |
+| **Speech** | Howler.js (cached) | Hindi word pronunciations + dialogue (real MP3s, already generated) |
+| **Controls** | Master/sfx/music GainNodes | Mute/unmute toggled via pause menu, persisted to localStorage `shabd_saga_audio_muted` |
+
+### SFX Synthesis
+Each SFX creates transient oscillator chains — created per-call, no pre-buffering. 12 unique sound effects covering all game events.
+
+### Music Generation
+Procedural looping using `setInterval` at beat tempo, scheduling oscillator nodes ahead of playback position. Each track uses a different scale, tempo, and instrument profile.
+
+### Speech Caching
+Howler instances cached in `Map<string, Howl>`. 500ms debounce per path prevents spam on repeated collect/dialogue triggers.
 
 ---
 
@@ -205,7 +228,7 @@ Each `shadow-creeper` enemy entry now supports:
 - [x] Enemy difficulty balancing per level — DONE May 7 (per-creeper speed, cooldown, hitbox from JSON)
 - [x] Cross-world progression: `getNextLevelId()` now navigates across worlds (was returning non-existent `world-1-level-3`)
 - [x] Boss sprites: 3 unique 128×128 designs with gradients, per-boss scaling — DONE May 8
-- [ ] Music/SFX: silent placeholders (need real audio)
+- [x] Music/SFX: real audio via Web Audio API synthesis, zero MP3 downloads — DONE May 8
 - [ ] Tiled level maps not created
 
 ---
@@ -244,6 +267,7 @@ npm run build      # Vite production build
 | `src/scenes/LevelSelectScene.ts` | World + level selection |
 | `src/scenes/PreloadScene.ts` | Asset loading (includes boss spritesheets at 128×128) |
 | `src/systems/TouchControls.ts` | Left-half joystick + right-half jump zone + dynamic interact button |
+| `src/systems/AudioManager.ts` | Web Audio API SFX synthesis + procedural music + Howler speech cache |
 | `src/systems/LanguageManager.ts` | Fetches /data/hindi.json, getWord() cross-level |
 | `src/systems/SaveManager.ts` | localStorage progress |
 | `src/config/GameConfig.ts` | Phaser config, Scale.FIT, activePointers:3 |

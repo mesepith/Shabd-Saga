@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { AudioManager } from '../systems/AudioManager';
 
 export class MenuScene extends Phaser.Scene {
   private titleText!: Phaser.GameObjects.Text;
@@ -101,11 +102,10 @@ export class MenuScene extends Phaser.Scene {
     this.creditsText.setOrigin(0.5);
 
     // Audio will unlock on first user interaction (browser autoplay policy)
+    // then start menu music via Web Audio synthesis
     this.input.once('pointerdown', () => {
-      try {
-        if (!this.sound.get('music-menu')) return;
-        this.sound.play('music-menu', { loop: true, volume: 0.4 });
-      } catch (e) { /* silent */ }
+      AudioManager.getInstance().resume();
+      AudioManager.getInstance().startMenuMusic();
     });
   }
 

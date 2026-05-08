@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BossData, BossSentence } from '../systems/LanguageManager';
 import { TouchControls } from '../systems/TouchControls';
+import { AudioManager } from '../systems/AudioManager';
 
 interface BossSceneData {
   bossConfig: BossData;
@@ -203,10 +204,14 @@ export class BossScene extends Phaser.Scene {
       this.clearTimers();
       this.events.off('wordSpelled');
       this.touchControls?.destroy();
+      AudioManager.getInstance().stopMusic();
     });
 
     // Camera
     this.cameras.main.setBounds(0, 0, width, height);
+
+    // Start boss arena music
+    AudioManager.getInstance().startBossMusic();
 
     // Start attack cycle
     this.startAttackCycle();
@@ -373,6 +378,7 @@ export class BossScene extends Phaser.Scene {
         this.shadowBoltAttack(pattern);
         break;
       case 'ground_slam':
+        AudioManager.getInstance().playBossSlam();
         this.groundSlamAttack(pattern);
         break;
       case 'spawn_minions':
@@ -532,6 +538,8 @@ export class BossScene extends Phaser.Scene {
       this.time.delayedCall(i * 600, () => {
         if (this.state === BossState.DEFEATED) return;
 
+        AudioManager.getInstance().playBossAttack();
+
         const angle = Phaser.Math.Angle.Between(bossX, bossY, this.player.x, this.player.y);
         const spread = (i - 1) * 0.3;
         const travelAngle = angle + spread;
@@ -674,6 +682,7 @@ export class BossScene extends Phaser.Scene {
 
           // Spawn TWO waves from impact point
           [-1, 1].forEach((dir) => {
+            AudioManager.getInstance().playBossAttack();
             const wave = this.physics.add.sprite(this.boss.x, floorY, 'letter-placeholder');
             wave.setDisplaySize(80, 36);
             wave.setTint(0xFF2400);
@@ -736,6 +745,8 @@ export class BossScene extends Phaser.Scene {
     for (let i = 0; i < 3; i++) {
       this.time.delayedCall(i * 400, () => {
         if (this.state === BossState.DEFEATED) return;
+
+        AudioManager.getInstance().playBossMinion();
 
         // Spawn from boss position with slight spread
         const spawnX = bossX + Phaser.Math.Between(-30, 30);
@@ -870,6 +881,7 @@ export class BossScene extends Phaser.Scene {
   private damageBoss(): void {
     this.bossHP--;
     this.updateHealthBar();
+    AudioManager.getInstance().playBossHit();
 
     // Flash boss
     this.boss.setTint(0xFFFFFF);
@@ -922,6 +934,7 @@ export class BossScene extends Phaser.Scene {
 
     this.playerHP--;
     this.playerHeartsText.setText(this.getHeartsString());
+    AudioManager.getInstance().playHurt();
 
     // Knockback
     const kbDir = this.player.x < this.boss.x ? -300 : 300;
@@ -1000,6 +1013,8 @@ export class BossScene extends Phaser.Scene {
     this.cleanupAttack();
     this.hideSpellUI();
     this.touchControls?.hideInteractButton();
+    AudioManager.getInstance().playBossDefeated();
+    AudioManager.getInstance().stopMusic();
 
     // Boss death animation
     this.boss.setTint(0xFFFFFF);
@@ -1243,6 +1258,15 @@ export class BossScene extends Phaser.Scene {
       p.x = cx + Math.cos(pd._orbitAngle) * pd._orbitDist;
       p.y = cy + Math.sin(pd._orbitAngle) * pd._orbitDist * 0.5;
       p.alpha += (targetAlpha - p.alpha) * dt * 2;
+    }
+  }
+
+  private getBossWorld(): number {
+    switch (this.bossConfig.id) {
+      case 'jungle_boss': return 1;
+      case 'village_boss': return 2;
+      case 'palace_boss': return 3;
+      default: return 1;
     }
   }
 

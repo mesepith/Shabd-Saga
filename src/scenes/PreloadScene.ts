@@ -118,17 +118,8 @@ export class PreloadScene extends Phaser.Scene {
     // Checkpoint flag
     this.load.image('gem-icon', 'assets/ui/gem-icon.png');
 
-    // Audio — SFX
-    this.load.audio('sfx-jump', 'assets/audio/sfx/jump.mp3');
-    this.load.audio('sfx-collect', 'assets/audio/sfx/collect.mp3');
-    this.load.audio('sfx-door-open', 'assets/audio/sfx/door-open.mp3');
-    this.load.audio('sfx-hurt', 'assets/audio/sfx/hurt.mp3');
-    this.load.audio('sfx-success', 'assets/audio/sfx/success.mp3');
-    // Audio — Music
-    this.load.audio('music-menu', 'assets/audio/music/menu.mp3');
-    this.load.audio('music-world-1', 'assets/audio/music/world-1.mp3');
-    this.load.audio('music-world-2', 'assets/audio/music/world-2.mp3');
-    this.load.audio('music-world-3', 'assets/audio/music/world-3.mp3');
+    // Audio: SFX and music are generated at runtime via Web Audio API (AudioManager).
+    // No MP3 files to load — zero download, instant, consistent across all browsers.
   }
 
   private updateProgressBar(value: number): void {

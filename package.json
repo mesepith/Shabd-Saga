@@ -16,6 +16,7 @@
     "generate-tilesets": "tsx scripts/generate-tilesets.ts",
     "generate-letters": "tsx scripts/generate-letters.ts",
     "generate-speech": "bash scripts/generate-speech.sh",
+    "generate-music": "tsx scripts/generate-music.ts",
     "lint": "tsc --noEmit",
     "start": "node backend/dist/server.js"
   },

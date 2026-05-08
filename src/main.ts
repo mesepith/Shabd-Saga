@@ -1,48 +1,20 @@
 import Phaser from 'phaser';
 import { GameConfig } from './config/GameConfig';
-import { Howler } from 'howler';
+import { AudioManager } from './systems/AudioManager';
 
 const game = new Phaser.Game(GameConfig);
+(window as any).game = game;
 
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 const isAndroid = /android/i.test(navigator.userAgent);
 const isTouch = isIOS || isAndroid || (navigator.maxTouchPoints > 0);
 
 // ── iOS / touch: Unlock Web Audio on first user gesture ───────────────
-// iOS Safari suspends AudioContext until user gesture. Phaser's
-// WebAudioSoundManager and Howler.js each have their own context.
-// Just resume() is NOT enough — some iOS versions require playing
-// a silent buffer through the context to truly unlock it.
-
-let silentBufferPlayed = false;
+// Delegates to AudioManager which handles both Web Audio API context
+// and Howler.js context resume.
 
 function unlockAudio(): void {
-  // 1) Phaser's audio context
-  const sm = game.sound;
-  if (sm && (sm as any).context) {
-    const ctx = (sm as any).context as AudioContext;
-    if (ctx.state === 'suspended') {
-      ctx.resume().then(() => {
-        if (silentBufferPlayed) return;
-        silentBufferPlayed = true;
-        // Play silent buffer — required on iOS to fully unlock
-        try {
-          const buf = ctx.createBuffer(1, 1, 22050);
-          const src = ctx.createBufferSource();
-          src.buffer = buf;
-          src.connect(ctx.destination);
-          src.start(0);
-        } catch (_) {}
-      }).catch(() => {});
-    }
-  }
-
-  // 2) Howler.js audio context (separate from Phaser's)
-  try {
-    if (Howler && Howler.ctx && Howler.ctx.state === 'suspended') {
-      Howler.ctx.resume().catch(() => {});
-    }
-  } catch (_) {}
+  AudioManager.getInstance().resume();
 }
 
 // Listen on body (not canvas) so Phaser's event handling doesn't interfere

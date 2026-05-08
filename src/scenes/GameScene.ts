@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
-import { Howl } from 'howler';
 import { BossData, LanguageManager } from '../systems/LanguageManager';
 import { TouchControls } from '../systems/TouchControls';
+import { AudioManager } from '../systems/AudioManager';
 
 export class GameScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -10,6 +10,7 @@ export class GameScene extends Phaser.Scene {
   private wasd!: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
   private spaceBar!: Phaser.Input.Keyboard.Key;
   private eKey!: Phaser.Input.Keyboard.Key;
+  private bKey!: Phaser.Input.Keyboard.Key;
 
   private touchControls?: TouchControls;
 
@@ -23,7 +24,6 @@ export class GameScene extends Phaser.Scene {
   // Level data
   private levelId: string = 'world-1-level-1';
   private languageId: string = 'hindi';
-  private levelMusicKey: string = 'music-world-1';
   private levelWords: any[] = [];
   private collectedLetters: Array<{ letter: string; wordId: string; wordScript: string; audioPath: string }> = [];
   private activeDoors: Array<{ wordId: string; door: Phaser.Physics.Arcade.Sprite }> = [];
@@ -154,7 +154,7 @@ export class GameScene extends Phaser.Scene {
     this.createPlayerAnimations();
 
     // Play level music
-    this.playLevelMusic();
+    AudioManager.getInstance().startWorldMusic(this.getWorldFromLevelId(this.levelId));
 
     // Init door prompt as hidden (populated later by spawnDoors)
     this.doorPrompt = this.add.text(0, 0, '🔑 Press E to unlock!', {
@@ -229,10 +229,7 @@ export class GameScene extends Phaser.Scene {
         this.spawnCheckpoints(level.checkpoints || []);
         this.spawnHealthPickups();
         this.spawnGems();
-        this.levelMusicKey = level.musicTrack
-          ? level.musicTrack.replace('assets/audio/music/', '').replace('.mp3', '')
-          : 'music-world-1';
-        this.playLevelMusic();
+        AudioManager.getInstance().startWorldMusic(this.getWorldFromLevelId(this.levelId));
         console.log('[GameScene] Doors spawned:', this.activeDoors.length);
         this.showMessage(`World: ${level.name} — ${level.words.length} words to learn!`);
       }
@@ -545,12 +542,10 @@ export class GameScene extends Phaser.Scene {
       totalLetters: this.collectedLetters.length,
     });
 
-    this.playSFX('sfx-collect');
+    AudioManager.getInstance().playCollect();
 
-    if (audioPath) {
-      try {
-        new Howl({ src: [audioPath], format: ['mp3'], volume: 0.7 }).play();
-      } catch {}
+    if (wordId && wordId !== 'unknown' && wordId !== 'fallback') {
+      AudioManager.getInstance().speakWord(this.languageId, wordId);
     }
 
     this.createCollectEffect(this.player.x, this.player.y - 20);
@@ -581,6 +576,11 @@ export class GameScene extends Phaser.Scene {
     this.handleNPCInteraction();
     this.updateEnemies();
     this.manageInteractButton();
+
+    // B = skip to boss (dev shortcut)
+    if (Phaser.Input.Keyboard.JustDown(this.bKey) && this.levelBoss) {
+      this.launchBossFight();
+    }
   }
 
   private checkDoorInteraction(): void {
@@ -629,13 +629,17 @@ export class GameScene extends Phaser.Scene {
       this.collectedLetters = this.collectedLetters.filter((l) => l.wordId !== wordId);
       this.events.emit('letterConsumed', { remaining: this.collectedLetters.length, wordId });
 
-      this.playSFX('sfx-door-open');
+      AudioManager.getInstance().playDoorOpen();
+      AudioManager.getInstance().startWorldMusic(this.getWorldFromLevelId(this.levelId));
       this.showMessage(`Correct! "${data.word}" means "${data.translation}"`);
 
       if (this.activeDoors.length === 0) {
         this.levelCompleteTimer = this.time.delayedCall(2000, () => this.levelComplete());
       }
     });
+
+    // Fade music during puzzle
+    AudioManager.getInstance().fadeOutMusic(400);
 
     this.scene.pause('GameScene');
     this.scene.pause('UIScene');
@@ -689,43 +693,7 @@ export class GameScene extends Phaser.Scene {
 
     // Check if level has a boss fight
     if (this.levelBoss && this.activeDoors.length === 0) {
-      console.log('[GameScene] Launching BossScene for level:', this.levelId);
-      this.scene.pause('UIScene');
-      this.scene.pause('GameScene');
-
-      // Listen for resume — fired when BossScene stops and resumes us
-      this.events.once('resume', () => {
-        this.time.delayedCall(200, () => {
-          this.completeLevelAndProgress();
-        });
-      });
-
-      // Pre-resolve word data for boss sentences
-      import('../systems/LanguageManager').then(({ LanguageManager }) => {
-        const lm = LanguageManager.getInstance();
-        const wordMap: Record<string, { script: string; translation: string; splitLetters: string[] }> = {};
-
-        // Look up all required words from boss sentences
-        for (const sentence of this.levelBoss!.sentences) {
-          for (const wid of sentence.requiredWords) {
-            if (!wordMap[wid]) {
-              const word = lm.getWord(wid);
-              if (word) {
-                wordMap[wid] = { script: word.script, translation: word.translation, splitLetters: word.splitLetters };
-              }
-            }
-          }
-        }
-
-        this.scene.launch('BossScene', {
-          bossConfig: this.levelBoss,
-          resolvedWords: wordMap,
-          onBossDefeated: () => {
-            this.scene.stop('BossScene');
-            this.scene.resume('GameScene');
-          },
-        });
-      });
+      this.launchBossFight();
       return;
     }
 
@@ -733,7 +701,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private completeLevelAndProgress(): void {
-    this.playSFX('sfx-success');
+    AudioManager.getInstance().stopMusic();
+    AudioManager.getInstance().playFanfare();
+    AudioManager.getInstance().startVictoryMusic();
 
     const stars = this.calculateStars();
 
@@ -785,6 +755,7 @@ export class GameScene extends Phaser.Scene {
         }).setOrigin(0.5).setDepth(500).setScrollFactor(0).setInteractive({ useHandCursor: true });
 
         nextBtn.on('pointerdown', () => {
+          AudioManager.getInstance().stopMusic();
           this.scene.stop('UIScene');
           const worldMatch = nextLevelId.match(/world-(\d+)/);
           const worldId = worldMatch ? worldMatch[0] : `world-${this.getWorldNum()}`;
@@ -804,6 +775,7 @@ export class GameScene extends Phaser.Scene {
       }).setOrigin(0.5).setDepth(500).setScrollFactor(0).setInteractive({ useHandCursor: true });
 
       menuBtn.on('pointerdown', () => {
+        AudioManager.getInstance().stopMusic();
         this.scene.stop('UIScene');
         this.scene.start('LevelSelectScene');
       });
@@ -965,10 +937,47 @@ export class GameScene extends Phaser.Scene {
     };
     this.spaceBar = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.eKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+    this.bKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.B);
 
     if (TouchControls.isTouchDevice(this)) {
       this.touchControls = new TouchControls(this);
     }
+  }
+
+  private launchBossFight(): void {
+    if (!this.levelBoss) return;
+    console.log('[GameScene] Launching BossScene for level:', this.levelId);
+    this.scene.pause('UIScene');
+    this.scene.pause('GameScene');
+
+    this.events.once('resume', () => {
+      this.time.delayedCall(200, () => {
+        this.completeLevelAndProgress();
+      });
+    });
+
+    import('../systems/LanguageManager').then(({ LanguageManager }) => {
+      const lm = LanguageManager.getInstance();
+      const wordMap: Record<string, { script: string; translation: string; splitLetters: string[] }> = {};
+      for (const sentence of this.levelBoss!.sentences) {
+        for (const wid of sentence.requiredWords) {
+          if (!wordMap[wid]) {
+            const word = lm.getWord(wid);
+            if (word) {
+              wordMap[wid] = { script: word.script, translation: word.translation, splitLetters: word.splitLetters };
+            }
+          }
+        }
+      }
+      this.scene.launch('BossScene', {
+        bossConfig: this.levelBoss,
+        resolvedWords: wordMap,
+        onBossDefeated: () => {
+          this.scene.stop('BossScene');
+          this.scene.resume('GameScene');
+        },
+      });
+    });
   }
 
   handleMovement(custom?: { left: boolean; right: boolean; jump: boolean }): void {
@@ -987,7 +996,7 @@ export class GameScene extends Phaser.Scene {
     if (jump && onGround && this.canJump) {
       body.velocity.y = this.jumpForce;
       this.canJump = false;
-      this.playSFX('sfx-jump');
+      AudioManager.getInstance().playJump();
     }
     if (!jump && body.velocity.y < -150) body.velocity.y *= 0.5;
 
@@ -1136,7 +1145,7 @@ export class GameScene extends Phaser.Scene {
       totalLetters: this.collectedLetters.length,
     });
 
-    this.playSFX('sfx-hurt');
+    AudioManager.getInstance().playHurt();
 
     const stealText = this.add.text(this.player.x, this.player.y - 30, `${stolen.letter} ✖`, {
       fontFamily: 'Noto Sans Devanagari, system-ui, sans-serif',
@@ -1287,7 +1296,7 @@ export class GameScene extends Phaser.Scene {
       this.lastCheckpoint = { x: cp.x, y: cp.y - 80 };
 
       cp.setFillStyle(0x00FF44, 0.9);
-      this.playSFX('sfx-collect');
+      AudioManager.getInstance().playCheckpoint();
 
       const glow = this.add.circle(cp.x, cp.y - 20, 30, 0x00FF44, 0.3);
       glow.setDepth(6);
@@ -1340,7 +1349,7 @@ export class GameScene extends Phaser.Scene {
       if (this.health >= 3) return;
 
       this.health++;
-      this.playSFX('sfx-collect');
+      AudioManager.getInstance().playHealthPickup();
 
       if (pickup.label) pickup.label.destroy();
       pickup.destroy();
@@ -1388,7 +1397,7 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.gemsGroup, (_, gemObj) => {
       const gem = gemObj as any;
       this.gemsCollected++;
-      this.playSFX('sfx-collect');
+      AudioManager.getInstance().playCollect();
 
       // Burst particles
       const bx = gem.x;
@@ -1424,7 +1433,7 @@ export class GameScene extends Phaser.Scene {
     this.health -= amount;
     this.isInvincible = true;
 
-    this.playSFX('sfx-hurt');
+    AudioManager.getInstance().playHurt();
     this.cameras.main.shake(200, 0.015);
     this.cameras.main.flash(200, 255, 0, 0);
 
@@ -1545,6 +1554,9 @@ export class GameScene extends Phaser.Scene {
     this.scene.pause('GameScene');
     this.scene.pause('UIScene');
 
+    // Fade out music during dialogue
+    AudioManager.getInstance().fadeOutMusic(400);
+
     // Stop player movement so they don't walk away when dialogue closes
     this.player.setVelocityX(0);
     this.player.setVelocityY(0);
@@ -1557,7 +1569,7 @@ export class GameScene extends Phaser.Scene {
         this.nearNPC = null;
         this.scene.resume('GameScene');
         this.scene.resume('UIScene');
-        this.playLevelMusic();
+        AudioManager.getInstance().startWorldMusic(this.getWorldFromLevelId(this.levelId));
       },
     });
     this.currentDialogue = this.scene.get('DialogueScene');
@@ -1613,30 +1625,6 @@ export class GameScene extends Phaser.Scene {
       this.currentAnim = animKey;
       this.player.play(animKey);
     }
-  }
-
-  private playLevelMusic(): void {
-    try {
-      this.sound.stopByKey('music-world-1');
-      this.sound.stopByKey('music-world-2');
-      this.sound.stopByKey('music-world-3');
-
-      const musicKey = this.levelMusicKey.startsWith('music-')
-        ? this.levelMusicKey
-        : `music-${this.levelMusicKey}`;
-
-      if (this.sound.get(musicKey)) {
-        this.sound.play(musicKey, { loop: true, volume: 0.3 });
-      }
-    } catch {}
-  }
-
-  private playSFX(key: string): void {
-    try {
-      if (this.sound.get(key)) {
-        this.sound.play(key, { volume: 0.5 });
-      }
-    } catch {}
   }
 
   private updateEnemies(): void {
@@ -1792,7 +1780,11 @@ export class GameScene extends Phaser.Scene {
 
     this.events.once('wordSpelled', (data: any) => {
       this.defeatGuard(guard);
+      AudioManager.getInstance().startWorldMusic(this.getWorldFromLevelId(this.levelId));
     });
+
+    AudioManager.getInstance().playGuardSpell();
+    AudioManager.getInstance().fadeOutMusic(400);
 
     this.scene.pause('GameScene');
     this.scene.pause('UIScene');
@@ -1807,6 +1799,7 @@ export class GameScene extends Phaser.Scene {
       translation: word.translation,
       letters: wordLetters,
       correctOrder: word.splitLetters,
+      caller: 'GameScene',
     });
   }
 
@@ -1816,7 +1809,7 @@ export class GameScene extends Phaser.Scene {
     const guardWordId = guard.guardWordId;
     const word = this.levelWords.find((w: any) => w.id === guardWordId);
 
-    this.playSFX('sfx-door-open');
+    AudioManager.getInstance().playDoorOpen();
     this.showMessage(`Guard defeated! "${word?.translation || guardWordId}" — path unblocked!`);
 
     for (let i = 0; i < 16; i++) {
@@ -1852,5 +1845,9 @@ export class GameScene extends Phaser.Scene {
   getHealth(): number { return this.health; }
   getGemsCollected(): number { return this.gemsCollected; }
   getCollectedLetters(): Array<{ letter: string; wordId: string }> { return this.collectedLetters; }
-  getLevelWords(): any[] { return this.levelWords; }
+
+  private getWorldFromLevelId(levelId: string): number {
+    const match = levelId.match(/world-(\d+)-/);
+    return match ? parseInt(match[1], 10) : 1;
+  }
 }

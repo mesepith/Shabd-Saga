@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GameScene } from './GameScene';
+import { AudioManager } from '../systems/AudioManager';
 
 export class UIScene extends Phaser.Scene {
   private gameScene!: GameScene;
@@ -250,8 +251,26 @@ export class UIScene extends Phaser.Scene {
       fontSize: '32px', color: '#FFFFFF',
     }).setOrigin(0.5).setDepth(302).setScrollFactor(0);
 
+    // Mute toggle button
+    const muteLabel = AudioManager.getInstance().isMuted() ? '🔇' : '🔊';
+    const muteBtn = this.add.text(width / 2 + 140, height / 2 - 120, muteLabel, {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '28px',
+    }).setOrigin(0.5).setDepth(302).setScrollFactor(0).setInteractive({ useHandCursor: true });
+
+    muteBtn.on('pointerdown', () => {
+      const audio = AudioManager.getInstance();
+      if (audio.isMuted()) {
+        audio.unmute();
+        muteBtn.setText('🔊');
+      } else {
+        audio.mute();
+        muteBtn.setText('🔇');
+      }
+    });
+
     const cleanup = () => {
-      overlay.destroy(); panel.destroy(); title.destroy();
+      overlay.destroy(); panel.destroy(); title.destroy(); muteBtn.destroy();
       this.scene.resume('GameScene');
     };
 

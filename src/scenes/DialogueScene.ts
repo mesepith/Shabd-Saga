@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { Howl } from 'howler';
+import { AudioManager } from '../systems/AudioManager';
 
 interface DialogueNode {
   id: string;
@@ -105,11 +105,9 @@ export class DialogueScene extends Phaser.Scene {
     this.speakerText.setText(node.speaker);
     this.englishText.setText(node.textEnglish);
 
-    // Play dialogue audio via Howler
+    // Play dialogue audio via AudioManager (cached Howler.js)
     if ((node as any).audioPath) {
-      try {
-        new Howl({ src: [(node as any).audioPath], format: ['mp3'], volume: 0.8 }).play();
-      } catch {}
+      AudioManager.getInstance().speakDialogue((node as any).audioPath);
     }
 
     // Typewriter effect for body text

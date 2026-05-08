@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { AudioManager } from '../systems/AudioManager';
 
 export class WordPuzzleScene extends Phaser.Scene {
   private targetWord: string = '';
@@ -88,6 +89,9 @@ export class WordPuzzleScene extends Phaser.Scene {
     if (this.collectedLetters.length === 1 && this.correctOrder.length === 1) {
       this.time.delayedCall(200, () => this.autoFillSingleLetter());
     }
+
+    // Play magical puzzle music
+    AudioManager.getInstance().startPuzzleMusic();
 
     // Buttons row
     this.createButtons(width, height);
@@ -405,6 +409,7 @@ export class WordPuzzleScene extends Phaser.Scene {
 
     // Resume caller scene and emit completion
     this.time.delayedCall(1000, () => {
+      AudioManager.getInstance().stopMusic();
       const callerScene = this.scene.get(this.callerSceneKey);
       if (callerScene) {
         this.scene.resume(this.callerSceneKey);
@@ -421,6 +426,7 @@ export class WordPuzzleScene extends Phaser.Scene {
   }
 
   private closePuzzle(): void {
+    AudioManager.getInstance().stopMusic();
     this.scene.resume(this.callerSceneKey);
     if (this.callerSceneKey === 'GameScene') {
       this.scene.resume('UIScene');
