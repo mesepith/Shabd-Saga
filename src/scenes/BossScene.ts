@@ -44,6 +44,9 @@ export class BossScene extends Phaser.Scene {
   private sentenceText!: Phaser.GameObjects.Text;
   private sentenceTranslationText!: Phaser.GameObjects.Text;
   private promptText!: Phaser.GameObjects.Text;
+  private bossSpotlight!: Phaser.GameObjects.Graphics;
+  private ambientParticles: any[] = [];
+  private ambientTimer?: Phaser.Time.TimerEvent;
 
   private touchControls?: TouchControls;
   private interactCooldown: number = 0;
@@ -99,26 +102,61 @@ export class BossScene extends Phaser.Scene {
 
     this.physics.add.collider(this.player, arenaFloor);
 
-    // Boss
-    this.boss = this.physics.add.sprite(width / 2, height / 2 - 50, 'enemy-placeholder');
-    this.boss.setScale(3);
-    this.boss.setTint(0x440000);
+    // Boss (128×128 base sprite, 2x scale = 256px rendered, imposing on 720p)
+    const bossSpriteKey = this.bossConfig.spriteKey
+      ? `${this.bossConfig.spriteKey}-sheet`
+      : 'enemy-placeholder';
+    const bossSheetExists = this.textures.exists(bossSpriteKey);
+    const finalSpriteKey = bossSheetExists ? bossSpriteKey : 'enemy-placeholder';
+    this.boss = this.physics.add.sprite(width / 2, height / 2 - 30, finalSpriteKey);
+    this.boss.setScale(2);
     this.boss.setDepth(8);
     const bossBody = this.boss.body as Phaser.Physics.Arcade.Body;
-    bossBody.setSize(24, 24);
-    bossBody.setOffset(4, 4);
+    bossBody.setSize(56, 56);
+    bossBody.setOffset(36, 36);
     bossBody.setImmovable(true);
     bossBody.allowGravity = false;
 
-    // Boss floating animation
+    if (bossSheetExists) {
+      this.createBossAnimations(bossSpriteKey);
+      this.boss.play('boss-idle');
+    }
+
+    // Boss floating idle animation (more dramatic)
     this.tweens.add({
       targets: this.boss,
-      y: this.boss.y - 15,
-      duration: 1500,
+      y: this.boss.y - 20,
+      duration: 1600,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
+    // Subtle scale pulse
+    this.tweens.add({
+      targets: this.boss,
+      scaleX: 2.1,
+      scaleY: 2.1,
+      duration: 2400,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    // Bright spotlight behind boss (radial gradient via concentric circles)
+    this.bossSpotlight = this.add.graphics();
+    this.bossSpotlight.setScrollFactor(0);
+    this.bossSpotlight.setDepth(4);
+    const spotCX = width / 2;
+    const spotCY = height / 2 - 30;
+    const spotColors = [0x441100, 0x331100, 0x220800, 0x110400, 0x080200, 0x040100];
+    const spotRadii = [180, 150, 120, 90, 60, 30];
+    for (let i = 0; i < spotColors.length; i++) {
+      this.bossSpotlight.fillStyle(spotColors[i], 0.45 - i * 0.06);
+      this.bossSpotlight.fillCircle(spotCX, spotCY, spotRadii[i]);
+    }
+
+    // Ambient particles around boss
+    this.spawnAmbientParticles();
 
     // Groups
     this.projectilesGroup = this.physics.add.group({ allowGravity: false });
@@ -224,10 +262,10 @@ export class BossScene extends Phaser.Scene {
     this.playerHeartsText.setDepth(500);
     this.playerHeartsText.setScrollFactor(0);
 
-    // Sentence display (hidden until vulnerable)
-    this.sentenceText = this.add.text(width / 2, 180, '', {
+    // Sentence display (hidden until vulnerable, positioned high to not cover boss)
+    this.sentenceText = this.add.text(width / 2, 100, '', {
       fontFamily: 'Noto Sans Devanagari, system-ui, sans-serif',
-      fontSize: '26px',
+      fontSize: '24px',
       color: '#FFD700',
       stroke: '#000000',
       strokeThickness: 3,
@@ -238,9 +276,9 @@ export class BossScene extends Phaser.Scene {
     this.sentenceText.setScrollFactor(0);
     this.sentenceText.setVisible(false);
 
-    this.sentenceTranslationText = this.add.text(width / 2, 215, '', {
+    this.sentenceTranslationText = this.add.text(width / 2, 135, '', {
       fontFamily: 'Noto Sans, system-ui, sans-serif',
-      fontSize: '16px',
+      fontSize: '15px',
       color: '#AAADDD',
       align: 'center',
     });
@@ -250,9 +288,9 @@ export class BossScene extends Phaser.Scene {
     this.sentenceTranslationText.setVisible(false);
 
     // Interact prompt
-    this.promptText = this.add.text(width / 2, 260, '', {
+    this.promptText = this.add.text(width / 2, 170, '', {
       fontFamily: 'Noto Sans, system-ui, sans-serif',
-      fontSize: '20px',
+      fontSize: '18px',
       color: '#44FF44',
       backgroundColor: '#00000088',
       padding: { x: 14, y: 8 },
@@ -273,6 +311,17 @@ export class BossScene extends Phaser.Scene {
       str += i < this.playerHP ? filled : empty;
     }
     return str;
+  }
+
+  private createBossAnimations(bossSpriteKey: string): void {
+    if (this.anims.exists('boss-idle')) return;
+
+    this.anims.create({
+      key: 'boss-idle',
+      frames: this.anims.generateFrameNumbers(bossSpriteKey, { start: 0, end: 5 }),
+      frameRate: 6,
+      repeat: -1,
+    });
   }
 
   private getCurrentSentence(): BossSentence {
@@ -361,11 +410,11 @@ export class BossScene extends Phaser.Scene {
     this.promptText.setText(`[E] Spell: ${reqLabels}`);
     this.promptText.setVisible(true);
 
-    this.boss.setTint(0x664400);
+    this.boss.setTint(0x997744);
 
     this.vulnerableTimer = this.time.delayedCall(6000, () => {
       if (this.state === BossState.VULNERABLE) {
-        this.boss.setTint(0x440000);
+        this.boss.clearTint();
         this.hideSpellUI();
         this.startAttackCycle();
       }
@@ -429,7 +478,7 @@ export class BossScene extends Phaser.Scene {
     if (this.state === BossState.DEFEATED) return;
     this.stateGuard = false;
 
-    this.boss.setTint(0x440000);
+    this.boss.clearTint();
     this.hideSpellUI();
     this.damageBoss();
   }
@@ -451,7 +500,7 @@ export class BossScene extends Phaser.Scene {
     this.boss.setTint(0xFF2200);
     this.time.delayedCall(300, () => {
       if (this.state !== BossState.DEFEATED && this.state !== BossState.VULNERABLE) {
-        this.boss.setTint(0x440000);
+        this.boss.clearTint();
       }
     });
 
@@ -648,7 +697,7 @@ export class BossScene extends Phaser.Scene {
         this.tweens.add({
           targets: this.boss, y: originalY, duration: 500, ease: 'Back.easeOut',
           onComplete: () => {
-            if (this.state !== BossState.VULNERABLE) this.boss.setTint(0x440000);
+            if (this.state !== BossState.VULNERABLE) this.boss.clearTint();
           },
         });
       });
@@ -801,8 +850,8 @@ export class BossScene extends Phaser.Scene {
     // Flash boss
     this.boss.setTint(0xFFFFFF);
     this.time.delayedCall(150, () => {
-      if (this.state === BossState.VULNERABLE) this.boss.setTint(0x664400);
-      else this.boss.setTint(0x440000);
+      if (this.state === BossState.VULNERABLE) this.boss.setTint(0x997744);
+      else this.boss.clearTint();
     });
 
     // Screen shake
@@ -1059,12 +1108,15 @@ export class BossScene extends Phaser.Scene {
       this.stateGuard = false;
       this.state = BossState.ATTACKING;
       this.hideSpellUI();
-      this.boss.setTint(0x440000);
+      this.boss.clearTint();
       this.startAttackCycle();
       return;
     }
 
     this.handleMovement();
+
+    // Ambient particles
+    this.updateAmbientParticles(_delta);
 
     // Handle interact input
     if (this.state === BossState.VULNERABLE && this.interactCooldown <= 0) {
@@ -1111,6 +1163,52 @@ export class BossScene extends Phaser.Scene {
       body.velocity.y = this.jumpForce;
     }
     if (!jump && body.velocity.y < -150) body.velocity.y *= 0.5;
+  }
+
+  private spawnAmbientParticles(): void {
+    this.ambientParticles = [];
+    const { width, height } = this.cameras.main;
+    for (let i = 0; i < 12; i++) {
+      const angle = Phaser.Math.Between(0, 360);
+      const dist = Phaser.Math.Between(80, 160);
+      const p = this.add.circle(
+        width / 2 + Math.cos(Phaser.Math.DegToRad(angle)) * dist,
+        height / 2 - 30 + Math.sin(Phaser.Math.DegToRad(angle)) * dist,
+        Phaser.Math.Between(2, 6),
+        Phaser.Utils.Array.GetRandom([0x440000, 0x220000, 0x661100, 0x330000]),
+        Phaser.Math.FloatBetween(0.1, 0.4),
+      );
+      p.setDepth(5);
+      p.setScrollFactor(0);
+      (p as any)._orbitAngle = angle;
+      (p as any)._orbitDist = dist;
+      (p as any)._orbitSpeed = Phaser.Math.FloatBetween(0.2, 0.6);
+      (p as any)._orbitPhase = Phaser.Math.FloatBetween(-0.5, 0.5);
+      this.ambientParticles.push(p);
+    }
+  }
+
+  private updateAmbientParticles(delta: number): void {
+    if (this.state === BossState.DEFEATED) {
+      this.ambientParticles.forEach(p => p.setAlpha(Math.max(0, p.alpha - delta * 0.002)));
+      return;
+    }
+    const { width, height } = this.cameras.main;
+    const cx = width / 2;
+    const cy = height / 2 - 30;
+    const dt = delta * 0.001;
+
+    for (const p of this.ambientParticles) {
+      if (!p.active) continue;
+      const pd = p as any;
+      pd._orbitAngle += pd._orbitSpeed * dt;
+      pd._orbitDist += Math.sin(pd._orbitPhase + pd._orbitAngle * 0.5) * dt * 10;
+
+      const targetAlpha = this.state === BossState.VULNERABLE ? 0.5 : 0.2;
+      p.x = cx + Math.cos(pd._orbitAngle) * pd._orbitDist;
+      p.y = cy + Math.sin(pd._orbitAngle) * pd._orbitDist * 0.5;
+      p.alpha += (targetAlpha - p.alpha) * dt * 2;
+    }
   }
 
 }

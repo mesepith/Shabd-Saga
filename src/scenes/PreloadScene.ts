@@ -99,6 +99,17 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('shadow-creeper', 'assets/sprites/enemies/shadow-creeper.png');
     this.load.image('enemy-placeholder', 'assets/sprites/enemies/shadow-creeper.png');
 
+    // Boss spritesheets (128x128 per frame)
+    this.load.spritesheet('boss-jungle-sheet', 'assets/sprites/boss/boss-jungle-sheet.png', {
+      frameWidth: 128, frameHeight: 128,
+    });
+    this.load.spritesheet('boss-village-sheet', 'assets/sprites/boss/boss-village-sheet.png', {
+      frameWidth: 128, frameHeight: 128,
+    });
+    this.load.spritesheet('boss-palace-sheet', 'assets/sprites/boss/boss-palace-sheet.png', {
+      frameWidth: 128, frameHeight: 128,
+    });
+
     // NPC sprites
     this.load.image('npc-owl', 'assets/sprites/npcs/owl.png');
     this.load.image('npc-monkey', 'assets/sprites/npcs/monkey.png');
