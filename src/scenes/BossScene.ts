@@ -102,14 +102,15 @@ export class BossScene extends Phaser.Scene {
 
     this.physics.add.collider(this.player, arenaFloor);
 
-    // Boss (128×128 base sprite, 2x scale = 256px rendered, imposing on 720p)
+    // Boss (128×128 base sprite, scale varies by world — higher = bigger)
     const bossSpriteKey = this.bossConfig.spriteKey
       ? `${this.bossConfig.spriteKey}-sheet`
       : 'enemy-placeholder';
     const bossSheetExists = this.textures.exists(bossSpriteKey);
     const finalSpriteKey = bossSheetExists ? bossSpriteKey : 'enemy-placeholder';
+    const bossScale = this.getBossScale();
     this.boss = this.physics.add.sprite(width / 2, height / 2 - 30, finalSpriteKey);
-    this.boss.setScale(2);
+    this.boss.setScale(bossScale);
     this.boss.setDepth(8);
     const bossBody = this.boss.body as Phaser.Physics.Arcade.Body;
     bossBody.setSize(56, 56);
@@ -119,7 +120,7 @@ export class BossScene extends Phaser.Scene {
 
     if (bossSheetExists) {
       this.createBossAnimations(bossSpriteKey);
-      this.boss.play('boss-idle');
+      this.boss.play(`boss-idle-${this.bossConfig.spriteKey}`);
     }
 
     // Boss floating idle animation (more dramatic)
@@ -134,24 +135,24 @@ export class BossScene extends Phaser.Scene {
     // Subtle scale pulse
     this.tweens.add({
       targets: this.boss,
-      scaleX: 2.1,
-      scaleY: 2.1,
+      scaleX: bossScale + 0.1,
+      scaleY: bossScale + 0.1,
       duration: 2400,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
 
-    // Bright spotlight behind boss (radial gradient via concentric circles)
+    // Boss-specific spotlight behind boss
     this.bossSpotlight = this.add.graphics();
     this.bossSpotlight.setScrollFactor(0);
     this.bossSpotlight.setDepth(4);
     const spotCX = width / 2;
     const spotCY = height / 2 - 30;
-    const spotColors = [0x441100, 0x331100, 0x220800, 0x110400, 0x080200, 0x040100];
+    const spotColorSet = this.getSpotlightColors();
     const spotRadii = [180, 150, 120, 90, 60, 30];
-    for (let i = 0; i < spotColors.length; i++) {
-      this.bossSpotlight.fillStyle(spotColors[i], 0.45 - i * 0.06);
+    for (let i = 0; i < spotColorSet.length; i++) {
+      this.bossSpotlight.fillStyle(spotColorSet[i], 0.45 - i * 0.06);
       this.bossSpotlight.fillCircle(spotCX, spotCY, spotRadii[i]);
     }
 
@@ -314,14 +315,37 @@ export class BossScene extends Phaser.Scene {
   }
 
   private createBossAnimations(bossSpriteKey: string): void {
-    if (this.anims.exists('boss-idle')) return;
+    const animKey = `boss-idle-${this.bossConfig.spriteKey}`;
+    if (this.anims.exists(animKey)) return;
 
     this.anims.create({
-      key: 'boss-idle',
+      key: animKey,
       frames: this.anims.generateFrameNumbers(bossSpriteKey, { start: 0, end: 5 }),
       frameRate: 6,
       repeat: -1,
     });
+  }
+
+  private getBossScale(): number {
+    switch (this.bossConfig.id) {
+      case 'jungle_boss': return 2.0;
+      case 'village_boss': return 2.2;
+      case 'palace_boss': return 2.4;
+      default: return 2.0;
+    }
+  }
+
+  private getSpotlightColors(): number[] {
+    switch (this.bossConfig.id) {
+      case 'jungle_boss':
+        return [0x223300, 0x1a2200, 0x111100, 0x080800, 0x040200, 0x020100];
+      case 'village_boss':
+        return [0x441100, 0x331100, 0x220800, 0x110400, 0x080200, 0x040100];
+      case 'palace_boss':
+        return [0x330033, 0x220022, 0x110011, 0x080008, 0x040004, 0x020002];
+      default:
+        return [0x441100, 0x331100, 0x220800, 0x110400, 0x080200, 0x040100];
+    }
   }
 
   private getCurrentSentence(): BossSentence {
@@ -1168,14 +1192,25 @@ export class BossScene extends Phaser.Scene {
   private spawnAmbientParticles(): void {
     this.ambientParticles = [];
     const { width, height } = this.cameras.main;
-    for (let i = 0; i < 12; i++) {
+    const worldIdx = this.bossConfig.id === 'jungle_boss' ? 0 :
+      this.bossConfig.id === 'village_boss' ? 1 : 2;
+    const counts = [10, 14, 18];
+    const particleCount = counts[worldIdx];
+    const colorSets = [
+      [0x224400, 0x113300, 0x336611, 0x225522],
+      [0x441100, 0x220800, 0x662200, 0x331100],
+      [0x330033, 0x220022, 0x440044, 0x331133],
+    ];
+    const particleColors = colorSets[worldIdx];
+
+    for (let i = 0; i < particleCount; i++) {
       const angle = Phaser.Math.Between(0, 360);
       const dist = Phaser.Math.Between(80, 160);
       const p = this.add.circle(
         width / 2 + Math.cos(Phaser.Math.DegToRad(angle)) * dist,
         height / 2 - 30 + Math.sin(Phaser.Math.DegToRad(angle)) * dist,
         Phaser.Math.Between(2, 6),
-        Phaser.Utils.Array.GetRandom([0x440000, 0x220000, 0x661100, 0x330000]),
+        Phaser.Utils.Array.GetRandom(particleColors),
         Phaser.Math.FloatBetween(0.1, 0.4),
       );
       p.setDepth(5);
