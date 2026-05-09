@@ -1013,8 +1013,8 @@ export class BossScene extends Phaser.Scene {
     this.cleanupAttack();
     this.hideSpellUI();
     this.touchControls?.hideInteractButton();
-    AudioManager.getInstance().playBossDefeated();
     AudioManager.getInstance().stopMusic();
+    AudioManager.getInstance().startVictoryMusic();
 
     // Boss death animation
     this.boss.setTint(0xFFFFFF);
@@ -1090,6 +1090,7 @@ export class BossScene extends Phaser.Scene {
 
         const doContinue = () => {
           if (this.state !== BossState.DEFEATED) return;
+          AudioManager.getInstance().stopMusic();
           this.onBossDefeated();
           this.scene.stop('BossScene');
         };

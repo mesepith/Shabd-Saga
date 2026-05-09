@@ -107,6 +107,25 @@ function pad(buf: Float32Array, notes: string[], st: number, dur: number, vol: n
   });
 }
 
+function toneSweep(buf: Float32Array, fStart: number, fEnd: number, st: number, dur: number, vol: number, type: string = 'sawtooth'): void {
+  const start = Math.floor(st * SAMPLE_RATE);
+  const len = Math.floor(dur * SAMPLE_RATE);
+  let phase = 0;
+  for (let i = 0; i < len; i++) {
+    const idx = start + i;
+    if (idx < 0 || idx >= buf.length) continue;
+    const progress = i / len;
+    const f = fStart + (fEnd - fStart) * progress;
+    phase += 2 * Math.PI * f / SAMPLE_RATE;
+    let wave: number;
+    if (type === 'triangle') wave = 2 * Math.asin(Math.sin(phase)) / Math.PI;
+    else if (type === 'sawtooth') wave = 2 * (phase / (2 * Math.PI) - Math.floor(phase / (2 * Math.PI) + 0.5));
+    else wave = Math.sin(phase);
+    const env = Math.sin(Math.PI * progress);
+    buf[idx] += wave * vol * env;
+  }
+}
+
 // ── Render helper ──
 
 function render(fp: string, dur: number, fn: (buf: Float32Array) => void): void {
@@ -203,25 +222,53 @@ function composeWorld3(buf: Float32Array, dur: number): void {
 }
 
 function composeVictory(buf: Float32Array, dur: number): void {
-  const BEAT = 60 / 140;
-  const notes = ['C5','E5','G5','C6','B4','G5','E5','D5','F5','A5','C6','A5','G5','E5','D5','C5'];
-  const bass = ['C3','G3','A3','F3'];
-  // Bright opening fanfare
-  sparkle(buf, 0, ['C5','E5','G5','C6','E6'], 0.06);
-  for (let t = 0; t < dur; t += BEAT / 4) {
-    const i = Math.floor(t / (BEAT / 4)) % notes.length;
-    bell(buf, freq(notes[i]), t, 0.2, 0.06);
-    if (i % 8 === 0) sparkle(buf, t + 0.05, ['C6','G5','E5'], 0.04);
+  // Grand, slow celebration — distinctly different from world music
+  const BEAT = 60 / 100;
+  const key = ['C4','E4','G4','C5','E5','G5','C6'];
+  const bass = ['C3','G3','C3','F3','C3','G3','C3','G3'];
+
+  // Layer 1: Big opening fanfare (first 2 seconds)
+  sparkle(buf, 0.1, ['C5','E5','G5','C6','E6','G6'], 0.08);
+  bell(buf, freq('C6'), 0.1, 1.5, 0.08);
+  bell(buf, freq('E6'), 0.4, 1.3, 0.07);
+  bell(buf, freq('G6'), 0.7, 1.5, 0.07);
+
+  // Layer 2: Warm, rich chord pads — slow, majestic
+  const chords: [string, string, string][] = [
+    ['C4','E4','G4'], ['C4','F4','A4'], ['C4','E4','G4'], ['G3','B3','D4'],
+    ['F3','A3','C4'], ['C4','E4','G4'], ['G3','B3','D4'], ['C4','E4','G4'],
+  ];
+  for (let t = 0; t < dur; t += 2.5) {
+    const c = chords[Math.floor(t / 2.5) % chords.length];
+    pad(buf, c, t, 2.3, 0.06);
   }
+
+  // Layer 3: Bold, slow bell melody — "ta-da!" feel
+  const melody = ['C5','E5','G5','C6','G5','E5','C5','D5','F5','A5','C6','A5','G5','E5','C5','G5'];
   for (let t = 0; t < dur; t += BEAT) {
-    const n = bass[Math.floor(t / BEAT) % bass.length];
-    tone(buf, freq(n), t, BEAT * 0.5, 0.055, 'sine', 0.01, 0.12);
-    kick(buf, t, 0.05);
-    click(buf, t + BEAT / 2, 0.03);
+    const i = Math.floor(t / BEAT) % melody.length;
+    bell(buf, freq(melody[i]), t, 0.7, 0.07);
+    // Triple sparkle accent every 4th beat
+    if (i % 4 === 0) {
+      sparkle(buf, t + 0.3, ['C7','E7','G7'], 0.06);
+    }
   }
-  // Reward shines
-  for (let t = 1; t < dur; t += 2.5) {
-    sparkle(buf, t, ['C7','E7','G7'], 0.05);
+
+  // Layer 4: Gentle bass with warm sustain
+  for (let t = 0; t < dur; t += BEAT * 2) {
+    const n = bass[Math.floor(t / (BEAT * 2)) % bass.length];
+    tone(buf, freq(n), t, BEAT * 1.5, 0.06, 'sine', 0.05, 0.5);
+  }
+
+  // Layer 5: Soft clicks for gentle pulse
+  for (let t = 0; t < dur; t += BEAT * 2) {
+    click(buf, t, 0.02);
+  }
+
+  // Repeat fanfare at loop point (makes seamless loop feel fresh)
+  if (dur > 9) {
+    sparkle(buf, 9.0, ['C5','E5','G5','C6','E6'], 0.06);
+    bell(buf, freq('C6'), 9.0, 1.2, 0.06);
   }
 }
 
@@ -244,36 +291,60 @@ function composePuzzle(buf: Float32Array, dur: number): void {
 }
 
 function composeBoss(buf: Float32Array, dur: number): void {
-  const BEAT = 60 / 95;
-  const bass = ['D2','D2','F2','E2','D2','A1','F2','E2'];
-  const lowPad = [['D3','F3','A3'], ['D3','F3','Bb3'], ['A2','C3','E3'], ['Bb2','D3','F3']];
-  // Dark, tense pad bed — slow heavy chords
-  for (let t = 0; t < dur; t += 2) {
-    const c = lowPad[Math.floor(t / 2) % lowPad.length];
-    pad(buf, c, t, 1.8, 0.05);
-    // Add a sub-bass rumble layer
-    tone(buf, freq(c[0].replace(/\d/, m => String(Number(m) - 1))), t, 1.8, 0.04, 'sine', 0.2, 0.6);
+  const BEAT = 60 / 130; // fast, urgent tempo
+  // Dark chord progression: Dm - Bb - Gm - A (tension never resolves)
+  const darkPads: [string, string, string][] = [
+    ['D3','F3','A3'], ['Bb2','D3','F3'], ['G2','Bb2','D3'], ['A2','C3','E3'],
+    ['D3','F3','Ab3'], ['Bb2','Db3','F3'], ['G2','Bb2','Db3'], ['A2','C#3','E3'],
+  ];
+  // Bass line — driving, urgent, heavy
+  const bass = ['D2','D2','Bb1','Bb1','G1','G1','A1','A1',
+                'D2','D2','F2','F2','G1','G1','A1','A1'];
+
+  // Layer 1: Dark pad chords — more aggressive attack
+  for (let t = 0; t < dur; t += 1) {
+    const c = darkPads[Math.floor(t / 1) % darkPads.length];
+    pad(buf, c, t, 0.9, 0.06);
+    // Sub rumble
+    tone(buf, freq(c[0].replace(/\d/, m => String(Number(m) - 2))), t, 0.9, 0.04, 'sine', 0.15, 0.5);
   }
-  // Slow, heavy kicks — like a heartbeat
+
+  // Layer 2: Heavy percussion — double kick + sharp click on every beat
   for (let t = 0; t < dur; t += BEAT) {
     const n = bass[Math.floor(t / BEAT) % bass.length];
-    tone(buf, freq(n), t, BEAT * 0.6, 0.08, 'sine', 0.01, 0.1);
-    kick(buf, t, 0.08);
-    kick(buf, t + BEAT / 2, 0.04);
-    // Occasional deep accent on beat 1
+    tone(buf, freq(n), t, BEAT * 0.45, 0.1, 'sawtooth', 0.003, 0.1);
+    kick(buf, t, 0.12);
+    kick(buf, t + 0.08, 0.09);
+    click(buf, t + BEAT / 2, 0.04);
+    click(buf, t + BEAT / 4, 0.03);
+    click(buf, t + BEAT * 3 / 4, 0.03);
+    // Extra heavy accent every 4th beat
     if (Math.floor(t / BEAT) % 4 === 0) {
-      kick(buf, t, 0.12);
+      kick(buf, t, 0.18);
+      tone(buf, freq('D1'), t, 0.3, 0.15, 'sine', 0.002, 0.2);
     }
   }
-  // Creeping high bell — sparse, ominous
-  const creep = ['D5','F5','A5','G5','F5','E5','D5','C5'];
-  for (let t = 0; t < dur; t += BEAT * 2) {
-    const i = Math.floor(t / (BEAT * 2)) % creep.length;
-    bell(buf, freq(creep[i]), t + 0.15, 1.2, 0.04);
+
+  // Layer 3: Fast, aggressive bell arpeggio — insistent, driving
+  const urgentMelody = ['D5','F5','A5','F5','D5','A4','G5','F5',
+                         'D5','Bb4','F5','D5','G5','D5','A5','G5'];
+  for (let t = 0; t < dur; t += BEAT / 3) {
+    const i = Math.floor(t / (BEAT / 3)) % urgentMelody.length;
+    bell(buf, freq(urgentMelody[i]), t, 0.23, 0.055);
   }
-  // Occasional low warning sweep
-  for (let t = 2; t < dur; t += 5) {
-    tone(buf, freq('D2'), t, 1.0, 0.04, 'sawtooth', 0.08, 0.6);
+
+  // Layer 4: Ominous high dissonant bell — every 2 beats
+  const dissonant = ['D6','Ab5','G6','Db6','F6','A5','E6','Bb5'];
+  for (let t = 0; t < dur; t += BEAT * 2) {
+    const i = Math.floor(t / (BEAT * 2)) % dissonant.length;
+    bell(buf, freq(dissonant[i]), t, 0.5, 0.04);
+  }
+
+  // Layer 5: Rising tension sweeps — sawtooth pitch bends every 4 seconds
+  for (let t = 1; t < dur; t += 3.5) {
+    const startF = freq('D2');
+    const endF = freq('D3');
+    toneSweep(buf, startF, endF, t, 1.8, 0.04, 'sawtooth');
   }
 }
 
