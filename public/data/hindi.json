@@ -221,9 +221,52 @@
             {
               "id": "monkey_intro",
               "speaker": "बंदर दोस्त",
-              "text": "अरे! मैं यहाँ का बंदर हूँ। यहाँ बहुत अच्छे फल हैं! पानी भी बहुत है।",
-              "textEnglish": "Hey! I'm the monkey around here. There are great fruits here! There's also plenty of water.",
+              "text": "अरे! मैं यहाँ का बंदर हूँ। यहाँ बहुत अच्छे फल हैं! क्या तुम मेरी मदद करोगे?",
+              "textEnglish": "Hey! I'm the monkey around here. There are great fruits here! Will you help me?",
               "audioPath": "assets/audio/speech/hindi/dialogue/monkey_intro.mp3",
+              "choices": [
+                { "text": "ज़रूर!", "textHindi": "Sure!", "nextNodeId": "monkey_help" },
+                { "text": "बाद में", "textHindi": "Maybe later", "nextNodeId": "monkey_later" }
+              ],
+              "nextNodeId": null,
+              "action": null
+            },
+            {
+              "id": "monkey_help",
+              "speaker": "बंदर दोस्त",
+              "text": "शाबाश! इनाम लो — यह रत्न तुम्हारे लिए! आगे पानी का दरवाज़ा है। 'पा' और 'नी' इकट्ठा करो और खोलो!",
+              "textEnglish": "Great! Take this gem as a reward! Ahead is the water door. Collect 'paa' and 'nee' and open it!",
+              "audioPath": "assets/audio/speech/hindi/dialogue/monkey_help.mp3",
+              "choices": [],
+              "nextNodeId": null,
+              "action": null
+            },
+            {
+              "id": "monkey_later",
+              "speaker": "बंदर दोस्त",
+              "text": "कोई बात नहीं! जब तैयार हो तब आना।",
+              "textEnglish": "No problem! Come back when you're ready.",
+              "audioPath": "assets/audio/speech/hindi/dialogue/monkey_later.mp3",
+              "choices": [],
+              "nextNodeId": null,
+              "action": null
+            },
+            {
+              "id": "monkey_helped",
+              "speaker": "बंदर दोस्त",
+              "text": "आगे पानी का दरवाज़ा है। 'पा' और 'नी' इकट्ठा करो और खोलो!",
+              "textEnglish": "The water door is ahead. Collect 'paa' and 'nee' and open it!",
+              "audioPath": "assets/audio/speech/hindi/dialogue/monkey_helped.mp3",
+              "choices": [],
+              "nextNodeId": null,
+              "action": null
+            },
+            {
+              "id": "monkey_done",
+              "speaker": "बंदर दोस्त",
+              "text": "शाबाश! तुमने पानी का दरवाज़ा खोल दिया! अब और दरवाज़े खोलो!",
+              "textEnglish": "Great! You opened the water door! Now open the rest!",
+              "audioPath": "assets/audio/speech/hindi/dialogue/monkey_done.mp3",
               "choices": [],
               "nextNodeId": null,
               "action": null

@@ -22,15 +22,18 @@ export class DialogueScene extends Phaser.Scene {
   private isTyping: boolean = false;
   private fullText: string = '';
   private charIndex: number = 0;
-  private onComplete?: () => void;
+  private onComplete?: (finalNodeId: string) => void;
   private spaceKey!: Phaser.Input.Keyboard.Key;
   private enterKey!: Phaser.Input.Keyboard.Key;
+  private showingChoices: boolean = false;
+  private choiceButtons: Phaser.GameObjects.Container[] = [];
+  private typewriterTimer?: Phaser.Time.TimerEvent;
 
   constructor() {
     super({ key: 'DialogueScene' });
   }
 
-  create(data: { dialogue: DialogueNode[]; onComplete?: () => void }): void {
+  create(data: { dialogue: DialogueNode[]; onComplete?: (finalNodeId: string) => void }): void {
     this.dialogueData = data.dialogue;
     this.onComplete = data.onComplete;
 
@@ -100,6 +103,9 @@ export class DialogueScene extends Phaser.Scene {
       AudioManager.getInstance().speakDialogue((node as any).audioPath);
     }
 
+    this.destroyChoiceButtons();
+    this.showingChoices = false;
+
     // Cancel any previous typewriter timer
     this.isTyping = true;
     this.fullText = node.text;
@@ -107,7 +113,10 @@ export class DialogueScene extends Phaser.Scene {
     this.bodyText.setText('');
     this.continueHint.setVisible(false);
 
-    this.time.addEvent({
+    if (this.typewriterTimer) {
+      this.typewriterTimer.remove();
+    }
+    this.typewriterTimer = this.time.addEvent({
       delay: 30,
       callback: this.typeNextChar,
       callbackScope: this,
@@ -122,15 +131,17 @@ export class DialogueScene extends Phaser.Scene {
 
     if (this.charIndex >= this.fullText.length) {
       this.isTyping = false;
-      this.continueHint.setVisible(true);
+      this.onTypewriterComplete();
     }
   }
 
   private advance(): void {
+    if (this.showingChoices) return;
+
     if (this.isTyping) {
       this.isTyping = false;
       this.bodyText.setText(this.fullText);
-      this.continueHint.setVisible(true);
+      this.onTypewriterComplete();
       return;
     }
 
@@ -146,12 +157,79 @@ export class DialogueScene extends Phaser.Scene {
     this.endDialogue();
   }
 
+  private onTypewriterComplete(): void {
+    if (this.currentNode.choices && this.currentNode.choices.length > 1) {
+      this.showChoices(this.currentNode.choices);
+    } else {
+      this.continueHint.setVisible(true);
+    }
+  }
+
+  private showChoices(choices: Array<{ text: string; nextNodeId: string }>): void {
+    this.showingChoices = true;
+    this.destroyChoiceButtons();
+
+    const boxWidth = Math.min(900, this.cameras.main.width - 80);
+    const boxHeight = 180;
+    const count = choices.length;
+    const btnWidth = Math.min(160, Math.floor((boxWidth - 80) / count - 12));
+    const btnHeight = 48;
+    const gap = 16;
+    const totalWidth = count * btnWidth + (count - 1) * gap;
+    const startX = -totalWidth / 2 + btnWidth / 2;
+    const btnY = boxHeight / 2 - 28;
+
+    choices.forEach((choice, i) => {
+      const btnX = startX + i * (btnWidth + gap);
+      const container = this.add.container(btnX, btnY);
+
+      const bg = this.add.rectangle(0, 0, btnWidth, btnHeight, 0x334466, 0.9);
+      bg.setStrokeStyle(2, 0xFFD700, 0.7);
+      container.add(bg);
+
+      const label = this.add.text(0, 0, choice.text, {
+        fontFamily: 'Noto Sans Devanagari, system-ui, sans-serif',
+        fontSize: '18px',
+        color: '#FFFFFF',
+      }).setOrigin(0.5);
+      container.add(label);
+
+      container.setSize(btnWidth, btnHeight);
+      container.setInteractive();
+
+      container.on('pointerover', () => bg.setFillStyle(0x445577, 0.95));
+      container.on('pointerout', () => bg.setFillStyle(0x334466, 0.9));
+      container.on('pointerdown', () => this.handleChoice(choice.nextNodeId));
+
+      this.dialogueBox.add(container);
+      this.choiceButtons.push(container);
+    });
+  }
+
+  private handleChoice(nextNodeId: string): void {
+    this.destroyChoiceButtons();
+    this.showingChoices = false;
+
+    const nextNode = this.dialogueData.find((n) => n.id === nextNodeId);
+    if (nextNode) {
+      this.showNode(nextNode);
+    } else {
+      this.endDialogue();
+    }
+  }
+
+  private destroyChoiceButtons(): void {
+    this.choiceButtons.forEach((btn) => btn.destroy());
+    this.choiceButtons = [];
+  }
+
   private endDialogue(): void {
+    const finalNodeId = this.currentNode.id;
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.stop('DialogueScene');
       if (this.onComplete) {
-        this.onComplete();
+        this.onComplete(finalNodeId);
       }
     });
   }

@@ -67,6 +67,8 @@ export class GameScene extends Phaser.Scene {
   private currentAnim: string = '';
 
   private gemsCollected: number = 0;
+  private monkeyGemGiven: boolean = false;
+  private completedDoorWords: Set<string> = new Set();
   private deathsThisLevel: number = 0;
   private levelCompleteGuard: boolean = false;
   private levelCompleteTimer?: Phaser.Time.TimerEvent;
@@ -93,6 +95,8 @@ export class GameScene extends Phaser.Scene {
     this.currentAnim = '';
     this.currentDialogue = null;
     this.gemsCollected = 0;
+    this.monkeyGemGiven = false;
+    this.completedDoorWords = new Set();
     this.deathsThisLevel = 0;
     this.levelBoss = null;
     this.levelCompleteGuard = false;
@@ -632,6 +636,7 @@ export class GameScene extends Phaser.Scene {
       AudioManager.getInstance().playDoorOpen();
       AudioManager.getInstance().startWorldMusic(this.getWorldFromLevelId(this.levelId));
       this.showMessage(`Correct! "${data.word}" means "${data.translation}"`);
+      this.completedDoorWords.add(wordId);
 
       if (this.activeDoors.length === 0) {
         this.levelCompleteTimer = this.time.delayedCall(2000, () => this.levelComplete());
@@ -1425,6 +1430,51 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  private spawnMonkeyGem(): void {
+    const mx = 600;
+    const my = 410;
+
+    const gem = this.physics.add.sprite(mx, my, 'letter-placeholder');
+    gem.setScale(0.7);
+    gem.setTint(0xFFD700);
+    gem.setDepth(8);
+    (gem.body as Phaser.Physics.Arcade.Body).setSize(20, 20);
+    (gem.body as Phaser.Physics.Arcade.Body).allowGravity = false;
+    this.gemsGroup.add(gem);
+
+    const label = this.add.text(mx, my, '💎', {
+      fontSize: '16px',
+    }).setOrigin(0.5).setDepth(9);
+
+    this.tweens.add({
+      targets: [gem, label],
+      y: my - 8,
+      duration: 1500 + Math.random() * 500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    (gem as any).label = label;
+
+    const text = this.add.text(mx, my - 50, '🐵 Monkey gave you a gem!', {
+      fontFamily: 'Noto Sans, system-ui, sans-serif',
+      fontSize: '16px', color: '#FFD700',
+      backgroundColor: '#000000aa', padding: { x: 10, y: 4 },
+    }).setOrigin(0.5).setDepth(15).setAlpha(0);
+
+    this.tweens.add({
+      targets: text,
+      y: my - 90,
+      alpha: { from: 1, to: 0 },
+      duration: 2500,
+      ease: 'Sine.easeOut',
+      onComplete: () => text.destroy(),
+    });
+
+    AudioManager.getInstance().playCollect();
+  }
+
   private invincibleTimer?: Phaser.Time.TimerEvent;
 
   private damagePlayer(amount: number = 1): void {
@@ -1562,17 +1612,124 @@ export class GameScene extends Phaser.Scene {
     this.player.setVelocityY(0);
     this.touchControls?.reset();
 
+    let dialogues = npcData.dialogues;
+    if (npcData.id === 'monkey_friend' && this.monkeyGemGiven) {
+      const hintNode = this.buildMonkeyHintNode();
+      if (hintNode) dialogues = [hintNode];
+    }
+
     this.scene.launch('DialogueScene', {
-      dialogue: npcData.dialogues,
-      onComplete: () => {
+      dialogue: dialogues,
+      onComplete: (finalNodeId: string) => {
         this.currentDialogue = null;
         this.nearNPC = null;
         this.scene.resume('GameScene');
         this.scene.resume('UIScene');
         AudioManager.getInstance().startWorldMusic(this.getWorldFromLevelId(this.levelId));
+
+        if (finalNodeId === 'monkey_help' && !this.monkeyGemGiven) {
+          this.spawnMonkeyGem();
+          this.monkeyGemGiven = true;
+        }
       },
     });
     this.currentDialogue = this.scene.get('DialogueScene');
+  }
+
+  private buildMonkeyHintNode(): any {
+    const guardedWords: Set<string> = new Set();
+    this.activeGuards.forEach((guard, id) => {
+      if (!this.defeatedGuards.has(id)) {
+        guardedWords.add((guard as any).guardWordId);
+      }
+    });
+
+    const remaining = this.activeDoors.map((d) => d.wordId);
+
+    if (remaining.length === 0) {
+      return {
+        id: 'monkey_hint_done',
+        speaker: 'बंदर दोस्त',
+        text: 'शाबाश! तुमने सब दरवाज़े खोल दिए! अब आगे बढ़ो!',
+        textEnglish: "Great! You've opened all the doors! Now go ahead!",
+        audioPath: 'assets/audio/speech/hindi/dialogue/monkey_done.mp3',
+        choices: [],
+        nextNodeId: null,
+      };
+    }
+
+    const single = remaining.length === 1;
+    let hindiText = '';
+    let englishText = '';
+
+    if (!single) {
+      hindiText = 'बचे हुए दरवाज़े: ';
+      englishText = 'Remaining doors: ';
+    }
+
+    remaining.forEach((wordId, i) => {
+      const word = this.levelWords.find((w: any) => w.id === wordId);
+      if (!word) return;
+
+      if (i > 0 && i === remaining.length - 1) {
+        hindiText += ' और ';
+        englishText += ' and ';
+      } else if (i > 0) {
+        hindiText += ', ';
+        englishText += ', ';
+      }
+
+      if (guardedWords.has(wordId)) {
+        hindiText += `${word.script} (रक्षक है!)`;
+        englishText += `${word.translation} (guard!)`;
+      } else {
+        hindiText += word.script;
+        englishText += word.translation;
+      }
+    });
+
+    if (remaining.length === 1) {
+      const wordId = remaining[0];
+      const word = this.levelWords.find((w: any) => w.id === wordId);
+      if (guardedWords.has(wordId) && word) {
+        const letters = (word.splitLetters || []).join(', ');
+        hindiText = `${word.script} का दरवाज़ा रक्षक ने रोका है! '${letters}' इकट्ठा करो और '${word.script}' बनाओ!`;
+        englishText = `The ${word.translation} door has a guard! Collect '${letters}' and spell '${word.translation}'!`;
+      } else if (word) {
+        hindiText = `${word.script} के अक्षर इकट्ठा करो और दरवाज़ा खोलो!`;
+        englishText = `Collect ${word.translation}'s letters and open the door!`;
+      }
+    } else if (remaining.length === 2) {
+      const guarded = remaining.filter((w) => guardedWords.has(w));
+      if (guarded.length > 0) {
+        hindiText += ' — पहले रक्षकों को हराओ!';
+        englishText += ' — defeat guards first!';
+      } else {
+        hindiText += ' — इकट्ठा करो और खोलो!';
+        englishText += ' — collect letters and open!';
+      }
+    } else {
+      const guardedCount = remaining.filter((w) => guardedWords.has(w)).length;
+      hindiText = `${remaining.length} दरवाज़े और बचे हैं। `;
+      englishText = `${remaining.length} doors remain. `;
+      if (guardedCount > 0) {
+        hindiText += `${guardedCount} के पास रक्षक हैं — उन्हें पहले हराओ!`;
+        englishText += `${guardedCount} have guards — defeat them first!`;
+      } else {
+        hindiText += 'अक्षर इकट्ठा करो और खोलो!';
+        englishText += 'Collect letters and open!';
+      }
+    }
+
+    return {
+      id: 'monkey_hint',
+      speaker: 'बंदर दोस्त',
+      text: hindiText,
+      textEnglish: englishText,
+      audioPath: 'assets/audio/speech/hindi/dialogue/monkey_hint.mp3',
+      choices: [],
+      nextNodeId: null,
+    };
   }
 
   private manageInteractButton(): void {

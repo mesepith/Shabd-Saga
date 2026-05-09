@@ -19,13 +19,13 @@
 | Landscape lock + rotate prompt | ✓ | ✓ | Done |
 | Bottom crop / blank space | ✓ No crop | ✓ No crop | Done |
 
-### NEXT: NPC Dialogue Choice UI → Tiled Level Maps
+### NEXT: Tiled Level Maps
 | Order | Task | Why |
 |-------|------|-----|
 | ~~1~~ | ~~Enemy difficulty balancing~~ ✓ | Per-level speed/cooldown config |
 | ~~2~~ | ~~Boss sprites (proper art)~~ ✓ | 3 unique 128×128 designs |
 | ~~3~~ | ~~Real audio assets~~ ✓ | 9 WAV tracks + synthesized SFX |
-| 4 | **NPC dialogue choice UI** | Monkey has 2 choices, currently auto-picks first. Small scope, completes dialogue system |
+| ~~4~~ | ~~NPC dialogue choice UI~~ ✓ | 2-choice buttons in dialogue box |
 | 5 | Tiled level maps | Big creative project |
 
 ### What's Working
@@ -127,8 +127,10 @@ const nextId = this.currentNode.choices?.[0]?.nextNodeId || this.currentNode.nex
 ```
 Supports both JSON formats: `nextNodeId` directly on node, OR `choices[0].nextNodeId`.
 
-### Known: Choice UI Not Yet Built
-Monkey NPC has 2 dialogue choices ("Sure!" / "Maybe later"). Current code picks the first one automatically. A visible choice button row inside the dialogue box is the recommended next task.
+### Choice UI (Implemented May 2026)
+Monkey NPC has 2 dialogue choices ("Sure!" / "Maybe later"). When a node has 2+ choices, `onTypewriterComplete()` renders tappable choice buttons inside the dialogue box. Each button triggers `handleChoice()` which navigates to the chosen node. Keyboard Space/Enter are blocked while choices are showing to prevent accidental auto-pick.
+
+**Gameplay consequences**: Choosing "सुर!" (Sure!) spawns a WisdomGem reward at the monkey's position and permanently changes the dialogue to a thank-you message. Choosing "बाद में" (Maybe later) gives no reward — the player can retry later. The `onComplete` callback now receives `finalNodeId` so GameScene can apply per-choice outcomes.
 
 ---
 
@@ -149,7 +151,7 @@ On any boss level, press **B** key to skip directly to the boss fight. Calls `la
 - [x] Music/SFX: 9 WAV tracks + synthesized SFX — DONE
 - [x] Dialogue choices: `advance()` now reads `choices[0].nextNodeId` — working
 - [x] Dialogue audio: `Howler.stop()` global call removed, speech plays fully — fixed
-- [ ] NPC dialogue choice UI — monkey's 2 choices need visible buttons
+- [x] NPC dialogue choice UI — monkey's 2 choices have visible tappable buttons
 - [ ] Tiled level maps not created
 
 ---
@@ -203,7 +205,5 @@ localStorage.setItem('shabd_saga_progress', JSON.stringify({languages:{hindi:{co
 ---
 
 ## Recommended Next Task
-### NPC Dialogue Choice UI
-The monkey NPC has 2 dialogue choices but the UI auto-picks the first one. Adding clickable choice buttons inside `DialogueScene` would complete the dialogue system (~50 lines of code). Small scope, high impact.
-
-After that: Tiled Level Maps — the biggest visual/design upgrade remaining.
+### Tiled Level Maps
+The biggest visual/design upgrade remaining. Create proper `.tmx` tile map files for each level with terrain, platforms, decorations, and enemy/NPC/collectible placement.

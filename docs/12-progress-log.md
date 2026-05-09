@@ -883,7 +883,52 @@ tsc --noEmit  ✓  (zero errors)
 vite build    ✓  (~2.8s, 24 modules)
 ```
 
-### Next: NPC Dialogue Choice UI → Tiled Level Maps
+### Next: Tiled Level Maps
+
+---
+
+## 2026-05-09 — Monkey Dialogue: Audio + Gameplay Consequences
+
+### Completed
+- [x] Monkey dialogue expanded from 1 node to 3 branching nodes with 2 choices ("Sure!" / "Maybe later")
+- [x] All 3 monkey dialogue nodes have high-quality Hindi audio (Lekha voice, 140 wpm, MP3):
+  - `monkey_intro.mp3` (50KB) — "Hey! I'm the monkey. Will you help me?"
+  - `monkey_help.mp3` (64KB) — "Great! Take this gem. The water door is ahead."
+  - `monkey_later.mp3` (25KB) — "No problem! Come back when ready."
+- [x] **Gameplay consequence**: Choosing "Sure!" spawns a WisdomGem (💎) at monkey's position — directly impacts star rating
+- [x] Monkey gem only given ONCE — tracked via `monkeyGemGiven` flag
+- [x] After gem given, future interactions skip choices and show thank-you message only (permanent NPC state change)
+- [x] Choosing "Maybe later" gives no reward — player can retry and choose differently
+- [x] "Monkey gave you a gem!" float text with fade animation on reward
+- [x] `DialogueScene.onComplete` now passes `finalNodeId` so GameScene can apply per-choice outcomes
+- [x] `handleNPCInteraction()` — conditional dialogue substitution for monkey when gem already given
+- [x] Both copies of `hindi.json` synced with audioPath and refined text
+- [x] Zero TypeScript errors, clean Vite build
+
+### Architecture
+
+```
+Player approaches monkey → handleNPCInteraction()
+  ├── monkeyGemGiven = false → show full dialogues (includes intro with 2 choices)
+  │   ├── Pick "Sure!" → monkey_help → onComplete('monkey_help')
+  │   │   → spawnMonkeyGem() at (600, 410) → monkeyGemGiven = true
+  │   └── Pick "Maybe later" → monkey_later → onComplete('monkey_later')
+  │       → no-op, player can retry
+  └── monkeyGemGiven = true → show [monkey_help] only (no choices, thank-you message)
+```
+
+### Files Modified
+- `src/scenes/DialogueScene.ts` — `onComplete` now receives `(finalNodeId: string)`; `endDialogue()` passes `currentNode.id`
+- `src/scenes/GameScene.ts` — `monkeyGemGiven` flag; `spawnMonkeyGem()` method; `handleNPCInteraction()` conditional dialogue + outcome handling
+- `src/config/languages/hindi.json` — monkey dialogue: audioPath added to branch nodes, text refined with gem mention
+- `public/data/hindi.json` — synced
+- `public/assets/audio/speech/hindi/dialogue/` — 3 new/updated MP3 files
+
+### Build
+```
+tsc --noEmit  ✓  (zero errors)
+vite build    ✓  (2.96s, 24 modules)
+```
 
 ---
 
