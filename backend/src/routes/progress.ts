@@ -40,7 +40,7 @@ router.post('/', async (req, res) => {
     };
 
     if (existingIndex >= 0) {
-      progress.completedLevels[existingIndex] = levelData;
+      Object.assign(progress.completedLevels[existingIndex], levelData);
     } else {
       progress.completedLevels.push(levelData);
     }
@@ -143,7 +143,7 @@ router.post('/sync', async (req, res) => {
         };
 
         if (existingIndex >= 0) {
-          record.completedLevels[existingIndex] = levelData;
+          Object.assign(record.completedLevels[existingIndex], levelData);
         } else {
           record.completedLevels.push(levelData);
         }
