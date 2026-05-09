@@ -3,7 +3,7 @@
 > **READ THIS FIRST** when starting a new AI session on Shabd Saga.
 > The AI should also read `docs/12-progress-log.md` for full history.
 
-## Quick Status (May 2026) — Screen Transitions Complete: Smooth branded fades (600ms, #1a1a2e) between all scenes. Tiled maps verified on Phaser 3.90.
+## Quick Status (May 2026) — Object Layer Integration Complete: Entity spawning is now data-driven from tilemap `objects` layer. Stolen letter respawn fixed.
 
 ### Mobile Testing Results (iPhone 12 iOS 18.7.8 + OnePlus Nord CE3 Android 15)
 | Feature | iPhone | Android Phone | Status |
@@ -20,7 +20,7 @@
 | Bottom crop / blank space | ✓ No crop | ✓ No crop | Done |
 | Tiled level maps | ✓ Verified | ✓ Verified | Done |
 
-### NEXT: Object Layer Integration
+### NEXT: Tileset Visual Polish
 | Order | Task | Why |
 |-------|------|-----|
 | ~~1~~ | ~~Enemy difficulty balancing~~ ✓ | Per-level speed/cooldown config |
@@ -30,7 +30,7 @@
 | ~~5~~ | ~~Dialogue audio~~ ✓ | 5 monkey, 3 owl, 2 deer voice MP3s (Lekha TTS) |
 | ~~6~~ | ~~Tiled level maps~~ ✓ | 5 levels × 3 worlds, proper tileset spritesheets, parallax backgrounds |
 | ~~7~~ | ~~Screen transitions~~ ✓ | Unified 600ms branded fades, overlay close transitions, pause menu fix |
-| 8 | Object layer integration | Wire tilemap object layers to entity spawning |
+| ~~8~~ | ~~Object layer integration~~ ✓ | Tilemap `objects` layer drives all entity spawning (doors, enemies, NPCs, gems, health, letters, checkpoints, player spawn) |
 | 9 | Tileset visual polish | Add shading, highlights, patterns to 20 tiles per world |
 
 ### What's Working
@@ -45,7 +45,7 @@
 - **Dialogue audio**: All NPC dialogue nodes have high-quality Hindi TTS audio (macOS Lekha voice, 140 wpm, MP3). 5 monkey nodes, 3 owl nodes, 2 deer nodes
 - **NPC game-state tracking**: `monkeyGemGiven`, `owlTaught`, `deerTaught` flags + `completedDoorWords` Set.
 - **Monkey gem reward**: Choosing "Sure!" spawns a WisdomGem at monkey's position. Permanent NPC state change — future talks give hints, not choices
-- Shadow Creeper enemies, stolen letter respawn
+- Shadow Creeper enemies, **stolen letter respawn** (fixed: deferred destroy+respawn outside forEach to prevent silent abort; respawn Y placed near ground for reachability)
 - Player animations, checkpoint/respawn
 - Health pickups, WisdomGems, star rating
 - World-specific parallax backgrounds, LevelSelectScene
@@ -60,6 +60,41 @@
 - **B** key = skip to boss (dev shortcut on boss levels)
 - **`window.game`** exposed for console access
 - **Screen transitions**: Unified `TransitionManager` — 600ms branded fades (#1a1a2e), all 11 scene transitions consistent (Boot→Preload→Menu→LevelSelect→Game, pause menu restart/quit, overlay open/close)
+- **Object Layer Integration**: All 9 entity types (player spawn, letters, doors, NPCs, creepers, guards, checkpoints, health pickups, gems) are now spawned from tilemap `objects` layer. Each spawn method falls back to hardcoded/config positions when tilemap unavailable (procedural mode). Positions from tilemap byte-identical to previous hardcoded arrays — zero behavioral change.
+
+---
+
+## Object Layer Integration (May 2026 — Complete)
+
+### Overview
+All entity spawning is now driven by the tilemap `objects` layer. `parseTilemapObjects()` reads the object layer and returns a typed `TilemapEntities` struct. Each spawn method accepts optional tilemap data and falls back to hardcoded/config positions when unavailable.
+
+### TilemapEntities Interface (`src/scenes/GameScene.ts`)
+| Field | Type | Tilemap Object Type |
+|-------|------|---------------------|
+| `playerSpawn` | `{x,y} \| null` | `player-spawn` |
+| `letters` | `{x,y}[]` | `letter` (×20) |
+| `doors` | `{x,y,wordId}[]` | `door` (×5-6, matched by wordId) |
+| `npcs` | `{x,y,npcId,spriteKey}[]` | `npc` (×1, matched by npcId) |
+| `creepers` | `{x,y,patrolRange,speed,contactCooldown}[]` | `enemy-creeper` (×2-3) |
+| `guards` | `{x,y,guardWordId}[]` | `enemy-guard` (×1) |
+| `checkpoints` | `{x,y,id,activated}[]` | `checkpoint` (×1-2) |
+| `healthPickups` | `{x,y}[]` | `health-pickup` (×2) |
+| `gems` | `{x,y}[]` | `gem` (×5) |
+
+### Spawn Priority
+For each entity type, tilemap positions take priority over hindi.json positions, which take priority over hardcoded defaults. When `createProceduralLevel()` is called (tilemap load failure), `tilemapEntities` is set to `undefined`, triggering all fallbacks.
+
+### Entity Cross-Referencing
+- **Doors**: Tilemap `wordId` property matched against `hindi.json` words array. Unmatched doors skipped; unmatched words fall back to default positions.
+- **NPCs**: Tilemap `npcId` matched against `hindi.json` npcs array. NPC only spawns if it exists in both (dialogue config comes from hindi.json).
+- **Creepers/Guards**: When tilemap data exists, it completely replaces hindi.json enemy configs. Guard `guardWordId` links to word for door-blocking mechanic.
+- **Monkey gem**: Spawns at monkey NPC's tilemap position (or hardcoded 600,410 fallback).
+
+### Stolen Letter Respawn Fix
+- **Bug**: `letter.destroy()` inside `forEach` over `lettersGroup.getChildren()` silently aborted the callback, so `respawnLetter()` was never called when stolen letters expired.
+- **Fix**: Collect expired letter data + references in forEach, destroy + respawn in separate passes after iteration.
+- **Position fix**: Respawn Y changed from `cam.height * 0.25` (y≈180-300, unreachable) to `cam.height - 150` (y≈530-570, near ground).
 
 ---
 
@@ -396,10 +431,10 @@ localStorage.setItem('shabd_saga_progress', JSON.stringify({languages:{hindi:{co
 
 The AI should read this file and `docs/12-progress-log.md`, then continue with the next task.
 
-### Recommended Next Task: Object Layer Integration
-Wire tilemap `objects` layer to drive entity spawning (doors, enemies, NPCs, gems, health) instead of hardcoded arrays in GameScene. Tilemap JSONs already define these positions in their `objects` layer — they just need to be read at runtime. Medium effort, high impact — removes hardcoded coordinates, makes levels data-driven.
+### Recommended Next Task: Tileset Visual Polish
+The 3 tileset spritesheets (`jungle-tiles.png`, `village-tiles.png`, `palace-tiles.png`) were generated with simple flat-colored SVG shapes. Add shading, gradients, highlights, and patterns to make the environments feel richer. The generator script is `scripts/generate-tilesets.ts` — it renders each tile into a canvas, composites the 20 tiles into a 320×256 spritesheet. Modify the tile drawing functions to add depth (drop shadows, edge highlights, texture patterns, color variations).
 
 ### Secondary Tasks (in priority order)
-1. **Tileset Visual Polish** — Current tiles are simple SVG shapes. Add shading, gradients, highlights, and patterns to the 3 tileset spritesheets for richer environments.
-2. **Tilemap Mobile Testing** — Full playthrough of all 5 levels on real iPhone/Android to verify tilemap rendering and performance.
-3. **Mobile Testing** — Run `npm run dev` and test full game flow (all scenes, transitions, music) on iPhone 12 (iOS 18.7.8) + OnePlus Nord CE3 (Android 15).
+1. **Tilemap Mobile Testing** — Full playthrough of all 5 levels on real iPhone/Android to verify tilemap rendering and performance.
+2. **Mobile Testing** — Run `npm run dev` and test full game flow (all scenes, transitions, music) on iPhone 12 (iOS 18.7.8) + OnePlus Nord CE3 (Android 15).
+3. **Progressive Difficulty** — Consider making entity positions in tilemaps vary per level instead of reusing the same coordinates. The `scripts/generate-tilemaps.ts` layout functions already support per-level customization.

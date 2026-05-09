@@ -609,6 +609,41 @@ vite build    ✓  (2.83s, 25 modules)
 
 ---
 
+## 2026-05-10 — Object Layer Integration Complete + Stolen Letter Respawn Fix
+
+### Completed
+- [x] **Object Layer Integration**: All 9 entity types now read from tilemap `objects` layer
+  - Added `TilemapEntities` interface with typed fields for player spawn, letters, doors, NPCs, creepers, guards, checkpoints, health, gems
+  - Added `getObjectProp()` helper to extract Tiled property values
+  - Added `parseTilemapObjects()` method that reads object layer and builds typed config
+  - `createTilemap()` calls `parseTilemapObjects()` after layer creation and stores result as `this.tilemapEntities`
+  - `createProceduralLevel()` sets `this.tilemapEntities = undefined` to trigger fallbacks
+  - Player spawn reads from `tilemapEntities.playerSpawn` (falls back to 100,570)
+  - All 7 spawn methods (`spawnLetters`, `spawnDoors`, `spawnNPCs`, `spawnEnemies`, `spawnCheckpoints`, `spawnHealthPickups`, `spawnGems`) accept optional tilemap data with graceful fallback
+  - `spawnMonkeyGem()` derives position from tilemap monkey NPC position
+  - Positions from tilemap are byte-identical to previously hardcoded arrays — zero behavioral change
+- [x] **Stolen letter respawn fix**: Two bugs fixed in expired stolen letter handling
+  - **Respawn silently failing**: `letter.destroy()` was called inside `forEach` over `lettersGroup.getChildren()`, mutating the array mid-iteration and aborting callback execution so `respawnLetter()` never ran. Fixed by collecting expired data in forEach, then destroying + respawning in separate passes.
+  - **Respawn position unreachable**: Expired letters respawned at `cam.height * 0.25` (y≈180-300, far above 132px jump range). Changed to `cam.height - 150` (y≈530-570, near ground).
+
+### Files Modified
+- `src/scenes/GameScene.ts` — ~180 lines added/modified: `TilemapEntities` interface, `getObjectProp()` helper, `parseTilemapObjects()` method, `tilemapEntities` field, updated `createTilemap()`, `createProceduralLevel()`, player spawn, `loadLevelData()`, and all 7 spawn methods, `spawnMonkeyGem()`, stolen letter expiry/respawn restructured
+- `docs/AI-SESSION-HANDOFF.md` — Updated status, architecture section, and next tasks
+- `docs/12-progress-log.md` — This entry
+
+### Build
+```
+tsc --noEmit  ✓  (zero errors)
+vite build    ✓  (3.02s, 25 modules, 122.91 kB gzip: 31.91 kB)
+```
+
+### Pending
+- [ ] Tileset visual polish (shading, highlights, patterns)
+- [ ] Tilemap mobile testing (real devices)
+- [ ] Progressive difficulty via per-level tilemap entity layout
+
+---
+
 ## Template for Future Entries
 
 ```
