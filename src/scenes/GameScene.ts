@@ -4,10 +4,31 @@ import { TouchControls } from '../systems/TouchControls';
 import { AudioManager } from '../systems/AudioManager';
 import { TransitionManager } from '../systems/TransitionManager';
 
+interface TilemapEntities {
+  playerSpawn: { x: number; y: number } | null;
+  letters: { x: number; y: number }[];
+  doors: { x: number; y: number; wordId: string }[];
+  npcs: { x: number; y: number; npcId: string; spriteKey: string }[];
+  creepers: { x: number; y: number; patrolRange: number; speed: number; contactCooldown: number }[];
+  guards: { x: number; y: number; guardWordId: string }[];
+  checkpoints: { x: number; y: number; id: string; activated: boolean }[];
+  healthPickups: { x: number; y: number }[];
+  gems: { x: number; y: number }[];
+}
+
+function getObjectProp(obj: any, name: string, defaultValue?: any): any {
+  if (!obj.properties) return defaultValue;
+  for (const p of obj.properties) {
+    if (p.name === name) return p.value;
+  }
+  return defaultValue;
+}
+
 export class GameScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
   private platforms!: Phaser.Physics.Arcade.StaticGroup | Phaser.Tilemaps.TilemapLayer;
   private tilemap?: Phaser.Tilemaps.Tilemap;
+  private tilemapEntities?: TilemapEntities;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
   private spaceBar!: Phaser.Input.Keyboard.Key;
@@ -114,7 +135,9 @@ export class GameScene extends Phaser.Scene {
     this.createTilemap();
 
     // Player
-    this.player = this.physics.add.sprite(100, 570, 'player-placeholder');
+    const playerSpawnX = this.tilemapEntities?.playerSpawn?.x ?? 100;
+    const playerSpawnY = this.tilemapEntities?.playerSpawn?.y ?? 570;
+    this.player = this.physics.add.sprite(playerSpawnX, playerSpawnY, 'player-placeholder');
     this.player.setBounce(0.1);
     this.player.setCollideWorldBounds(true);
     this.player.setDepth(10);
@@ -209,7 +232,6 @@ export class GameScene extends Phaser.Scene {
 
       console.log(`[GameScene] Tilemap attempt: key=${tilemapKey} tileset=${tilesetName} texture=${tilesetKey}`);
 
-      // Try to get tilemap data from cache (loaded by PreloadScene)
       const tilemapData = this.cache.tilemap.get(tilemapKey);
       console.log(`[GameScene] Cache has tilemap data:`, !!tilemapData);
       console.log(`[GameScene] Cache has texture:`, this.textures.exists(tilesetKey));
@@ -266,6 +288,8 @@ export class GameScene extends Phaser.Scene {
         }
       }
 
+      this.tilemapEntities = this.parseTilemapObjects(map);
+
       console.log('[GameScene] ✅ TILEMAP LOADED — visual layers active:', this.levelId);
     } catch (e) {
       console.error('[GameScene] Tilemap error:', e);
@@ -273,9 +297,97 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private parseTilemapObjects(map: Phaser.Tilemaps.Tilemap): TilemapEntities | undefined {
+    const objectLayer = map.getObjectLayer('objects');
+    if (!objectLayer || !objectLayer.objects || objectLayer.objects.length === 0) {
+      console.warn('[GameScene] No objects layer found in tilemap');
+      return undefined;
+    }
+
+    const result: TilemapEntities = {
+      playerSpawn: null,
+      letters: [],
+      doors: [],
+      npcs: [],
+      creepers: [],
+      guards: [],
+      checkpoints: [],
+      healthPickups: [],
+      gems: [],
+    };
+
+    for (const obj of objectLayer.objects) {
+      switch (obj.type) {
+        case 'player-spawn':
+          result.playerSpawn = { x: obj.x!, y: obj.y! };
+          break;
+        case 'letter':
+          result.letters.push({ x: obj.x!, y: obj.y! });
+          break;
+        case 'door':
+          result.doors.push({
+            x: obj.x!, y: obj.y!,
+            wordId: getObjectProp(obj, 'wordId', '') as string,
+          });
+          break;
+        case 'npc':
+          result.npcs.push({
+            x: obj.x!, y: obj.y!,
+            npcId: getObjectProp(obj, 'npcId', '') as string,
+            spriteKey: getObjectProp(obj, 'spriteKey', 'npc-owl') as string,
+          });
+          break;
+        case 'enemy-creeper':
+          result.creepers.push({
+            x: obj.x!, y: obj.y!,
+            patrolRange: getObjectProp(obj, 'patrolRange', 150) as number,
+            speed: getObjectProp(obj, 'speed', 70) as number,
+            contactCooldown: getObjectProp(obj, 'contactCooldown', 1500) as number,
+          });
+          break;
+        case 'enemy-guard':
+          result.guards.push({
+            x: obj.x!, y: obj.y!,
+            guardWordId: getObjectProp(obj, 'guardWordId', '') as string,
+          });
+          break;
+        case 'checkpoint':
+          result.checkpoints.push({
+            x: obj.x!, y: obj.y!,
+            id: getObjectProp(obj, 'id', 'start') as string,
+            activated: getObjectProp(obj, 'activated', 'false') === 'true',
+          });
+          break;
+        case 'health-pickup':
+          result.healthPickups.push({ x: obj.x!, y: obj.y! });
+          break;
+        case 'gem':
+          result.gems.push({ x: obj.x!, y: obj.y! });
+          break;
+        default:
+          break;
+      }
+    }
+
+    console.log('[GameScene] Parsed tilemap objects:', {
+      playerSpawn: !!result.playerSpawn,
+      letters: result.letters.length,
+      doors: result.doors.length,
+      npcs: result.npcs.length,
+      creepers: result.creepers.length,
+      guards: result.guards.length,
+      checkpoints: result.checkpoints.length,
+      healthPickups: result.healthPickups.length,
+      gems: result.gems.length,
+    });
+
+    return result;
+  }
+
   private createProceduralLevel(): void {
     const { width, height } = this.cameras.main;
     this.tilemap = undefined;
+    this.tilemapEntities = undefined;
 
     this.createParallaxBackground();
     this.platforms = this.physics.add.staticGroup();
@@ -313,13 +425,14 @@ export class GameScene extends Phaser.Scene {
         });
         this.lettersGroup.clear(true, true);
         this.levelWords = level.words;
-        this.spawnLetters(level.words);
-        this.spawnDoors(level.words);
-        this.spawnNPCs(level.npcs || []);
-        this.spawnEnemies(level.enemies || []);
-        this.spawnCheckpoints(level.checkpoints || []);
-        this.spawnHealthPickups();
-        this.spawnGems();
+        const tm = this.tilemapEntities;
+        this.spawnLetters(level.words, tm?.letters);
+        this.spawnDoors(level.words, tm?.doors);
+        this.spawnNPCs(level.npcs || [], tm?.npcs);
+        this.spawnEnemies(level.enemies || [], tm?.creepers, tm?.guards);
+        this.spawnCheckpoints(level.checkpoints || [], tm?.checkpoints);
+        this.spawnHealthPickups(tm?.healthPickups);
+        this.spawnGems(tm?.gems);
         AudioManager.getInstance().startWorldMusic(this.getWorldFromLevelId(this.levelId));
         console.log('[GameScene] Doors spawned:', this.activeDoors.length);
         this.showMessage(`World: ${level.name} — ${level.words.length} words to learn!`);
@@ -330,8 +443,8 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private spawnLetters(words: any[]): void {
-    const positions = [
+  private spawnLetters(words: any[], tilemapLetters?: { x: number; y: number }[]): void {
+    const defaultPositions = [
       { x: 200, y: 530 }, { x: 300, y: 500 }, { x: 400, y: 460 },
       { x: 500, y: 420 }, { x: 600, y: 380 }, { x: 700, y: 340 },
       { x: 800, y: 300 }, { x: 900, y: 260 }, { x: 1000, y: 220 },
@@ -340,6 +453,7 @@ export class GameScene extends Phaser.Scene {
       { x: 980, y: 350 }, { x: 1080, y: 300 }, { x: 1150, y: 260 },
       { x: 250, y: 450 }, { x: 550, y: 560 },
     ];
+    const positions = tilemapLetters && tilemapLetters.length > 0 ? tilemapLetters : defaultPositions;
 
     let letterIndex = 0;
     words.forEach((word) => {
@@ -414,11 +528,11 @@ export class GameScene extends Phaser.Scene {
     );
   }
 
-  private spawnDoors(words: any[]): void {
+  private spawnDoors(words: any[], tilemapDoors?: { x: number; y: number; wordId: string }[]): void {
     console.log('[spawnDoors] Creating doors for', words.length, 'words');
     const { height } = this.cameras.main;
 
-    const doorPositions = [
+    const defaultDoorPositions = [
       { x: 350, y: height - 95 },
       { x: 470, y: height - 95 },
       { x: 590, y: height - 95 },
@@ -427,9 +541,22 @@ export class GameScene extends Phaser.Scene {
       { x: 950, y: height - 95 },
     ];
 
-    words.forEach((word, i) => {
-      if (i >= doorPositions.length) return;
-      const pos = doorPositions[i];
+    const useTilemap = tilemapDoors && tilemapDoors.length > 0;
+    let defaultIndex = 0;
+
+    words.forEach((word) => {
+      let pos: { x: number; y: number } | null = null;
+
+      if (useTilemap) {
+        const match = tilemapDoors!.find((d) => d.wordId === word.id);
+        if (match) pos = { x: match.x, y: match.y };
+      }
+
+      if (!pos) {
+        if (defaultIndex >= defaultDoorPositions.length) return;
+        pos = defaultDoorPositions[defaultIndex];
+        defaultIndex++;
+      }
 
       const door = this.physics.add.sprite(pos.x, pos.y, 'door-placeholder');
       door.setDisplaySize(56, 84);
@@ -451,7 +578,7 @@ export class GameScene extends Phaser.Scene {
         stroke: '#000000', strokeThickness: 2,
       }).setOrigin(0.5).setDepth(90);
 
-      console.log('[spawnDoors] Door', i, 'wordId:', word.id, 'translation:', word.translation, 'at x:', pos.x);
+      console.log('[spawnDoors] Door wordId:', word.id, 'translation:', word.translation, 'at x:', pos.x);
 
       this.activeDoors.push({ wordId: word.id, door });
 
@@ -506,9 +633,16 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private spawnNPCs(npcs: any[]): void {
+  private spawnNPCs(npcs: any[], tilemapNPCs?: { x: number; y: number; npcId: string; spriteKey: string }[]): void {
     npcs.forEach((npc) => {
-      const { x, y } = npc.position;
+      let x = npc.position.x;
+      let y = npc.position.y;
+
+      if (tilemapNPCs && tilemapNPCs.length > 0) {
+        const match = tilemapNPCs.find((t) => t.npcId === npc.id);
+        if (match) { x = match.x; y = match.y; }
+      }
+
       const spriteKey = npc.spriteKey === 'npc-placeholder'
         ? this.getNPCKey(npc.id)
         : npc.spriteKey;
@@ -1096,36 +1230,61 @@ export class GameScene extends Phaser.Scene {
 
   // ── Enemy System ──
 
-  private spawnEnemies(enemies: any[]): void {
+  private spawnEnemies(
+    enemies: any[],
+    tilemapCreepers?: { x: number; y: number; patrolRange: number; speed: number; contactCooldown: number }[],
+    tilemapGuards?: { x: number; y: number; guardWordId: string }[]
+  ): void {
     const { height } = this.cameras.main;
-    if (!enemies || enemies.length === 0) {
+
+    let creeperConfigs: any[] = [];
+    let guardConfigs: any[] = [];
+
+    if (tilemapCreepers && tilemapCreepers.length > 0) {
+      creeperConfigs = tilemapCreepers.map((t, i) => ({
+        id: `creeper_${i + 1}`,
+        type: 'shadow-creeper',
+        position: { x: t.x, y: t.y },
+        patrolRange: t.patrolRange,
+        speed: t.speed,
+        contactCooldown: t.contactCooldown,
+      }));
+    } else if (enemies && enemies.length > 0) {
+      creeperConfigs = enemies.filter((e) => e.type !== 'letter-guard');
+    } else {
       if (this.levelId === 'world-1-level-1') {
-        enemies = [
+        creeperConfigs = [
           { id: 'creeper_1', type: 'shadow-creeper', position: { x: 550, y: height - 90 }, patrolRange: 200 },
           { id: 'creeper_2', type: 'shadow-creeper', position: { x: 720, y: 410 }, patrolRange: 140 },
         ];
       } else if (this.levelId === 'world-1-level-2') {
-        enemies = [
+        creeperConfigs = [
           { id: 'creeper_1', type: 'shadow-creeper', position: { x: 400, y: height - 90 }, patrolRange: 240 },
           { id: 'creeper_2', type: 'shadow-creeper', position: { x: 750, y: height - 90 }, patrolRange: 200 },
           { id: 'creeper_3', type: 'shadow-creeper', position: { x: 1050, y: 410 }, patrolRange: 160 },
         ];
       } else {
-        enemies = [
+        creeperConfigs = [
           { id: 'creeper_1', type: 'shadow-creeper', position: { x: 500, y: height - 90 }, patrolRange: 200 },
           { id: 'creeper_2', type: 'shadow-creeper', position: { x: 850, y: 410 }, patrolRange: 160 },
         ];
       }
     }
 
-    enemies.forEach((enemy: any) => {
+    if (tilemapGuards && tilemapGuards.length > 0) {
+      guardConfigs = tilemapGuards.map((t, i) => ({
+        id: `guard_${i + 1}`,
+        type: 'letter-guard',
+        position: { x: t.x, y: t.y },
+        guardWordId: t.guardWordId,
+      }));
+    } else if (enemies && enemies.length > 0) {
+      guardConfigs = enemies.filter((e) => e.type === 'letter-guard');
+    }
+
+    creeperConfigs.forEach((enemy: any) => {
       const { x, y } = enemy.position;
       const range = enemy.patrolRange || 150;
-
-      if (enemy.type === 'letter-guard') {
-        this.spawnGuard(enemy);
-        return;
-      }
 
       const hw = enemy.hitboxWidth || 40;
       const hh = enemy.hitboxHeight || 40;
@@ -1158,6 +1317,10 @@ export class GameScene extends Phaser.Scene {
       const zone = this.add.rectangle(x, y + 30, range * 2, 4, 0x9922AA, 0.2);
       zone.setDepth(4);
       this.enemyPatrolZones.set(enemy.id, { left: x - range, right: x + range });
+    });
+
+    guardConfigs.forEach((guard: any) => {
+      this.spawnGuard(guard);
     });
 
     // Overlap registration removed — now checked manually in updateEnemies()
@@ -1348,12 +1511,23 @@ export class GameScene extends Phaser.Scene {
     this.showMessage(`"${char}" reappeared nearby!`);
   }
 
-  private spawnCheckpoints(checkpoints: any[]): void {
-    if (!checkpoints || checkpoints.length === 0) {
-      checkpoints = [{ id: 'start', x: 100, y: 450, activated: true }];
+  private spawnCheckpoints(
+    checkpoints: any[],
+    tilemapCheckpoints?: { x: number; y: number; id: string; activated: boolean }[]
+  ): void {
+    let cpConfigs: any[];
+
+    if (tilemapCheckpoints && tilemapCheckpoints.length > 0) {
+      cpConfigs = tilemapCheckpoints.map((t) => ({
+        id: t.id, x: t.x, y: t.y, activated: t.activated,
+      }));
+    } else if (checkpoints && checkpoints.length > 0) {
+      cpConfigs = checkpoints;
+    } else {
+      cpConfigs = [{ id: 'start', x: 100, y: 450, activated: true }];
     }
 
-    checkpoints.forEach((cp: any) => {
+    cpConfigs.forEach((cp: any) => {
       const flag = this.add.rectangle(cp.x, cp.y - 20, 6, 40, 0xFFD700, 0.9);
       flag.setDepth(7);
       this.physics.add.existing(flag, true);
@@ -1402,12 +1576,13 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private spawnHealthPickups(): void {
+  private spawnHealthPickups(tilemapHealth?: { x: number; y: number }[]): void {
     this.healthPickupsGroup.clear(true, true);
 
-    const positions = [
+    const defaultPositions = [
       { x: 500, y: 590 }, { x: 800, y: 430 },
     ];
+    const positions = tilemapHealth && tilemapHealth.length > 0 ? tilemapHealth : defaultPositions;
 
     positions.forEach((pos) => {
       const pickup = this.physics.add.sprite(pos.x, pos.y, 'letter-placeholder');
@@ -1449,14 +1624,14 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private spawnGems(): void {
+  private spawnGems(tilemapGems?: { x: number; y: number }[]): void {
     this.gemsGroup.clear(true, true);
 
-    // Default gem positions across the level
-    const positions = [
+    const defaultPositions = [
       { x: 350, y: 590 }, { x: 650, y: 440 }, { x: 900, y: 360 },
       { x: 1050, y: 280 }, { x: 550, y: 580 },
     ];
+    const positions = tilemapGems && tilemapGems.length > 0 ? tilemapGems : defaultPositions;
 
     positions.forEach((pos) => {
       const gem = this.physics.add.sprite(pos.x, pos.y, 'letter-placeholder');
@@ -1517,8 +1692,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private spawnMonkeyGem(): void {
-    const mx = 600;
-    const my = 410;
+    let mx = 600;
+    let my = 410;
+
+    if (this.tilemapEntities?.npcs) {
+      const monkeyNPC = this.tilemapEntities.npcs.find((n) => n.npcId === 'monkey_friend');
+      if (monkeyNPC) { mx = monkeyNPC.x; my = monkeyNPC.y; }
+    }
 
     const gem = this.physics.add.sprite(mx, my, 'letter-placeholder');
     gem.setScale(0.7);
@@ -2088,6 +2268,9 @@ export class GameScene extends Phaser.Scene {
     });
 
     // Clean up stolen letters — animate position + check expiry
+    const expiredLetters: Array<{ char: string; wordId: string; wordScript: string; audioPath: string }> = [];
+    const toDestroy: any[] = [];
+
     this.lettersGroup.getChildren().forEach((letter: any) => {
       if (letter.stolen) {
         if (letter.charText) {
@@ -2102,7 +2285,6 @@ export class GameScene extends Phaser.Scene {
         if (remaining < 10000 && remaining > 0) {
           if (!letter._warnedExpiry) {
             letter._warnedExpiry = true;
-            // Speed up the glow pulse to warn player
             if (letter.glow) {
               this.tweens.killTweensOf(letter.glow);
               this.tweens.add({
@@ -2113,7 +2295,6 @@ export class GameScene extends Phaser.Scene {
                 repeat: -1,
               });
             }
-            // Flash the letter red
             this.tweens.add({
               targets: letter,
               alpha: 0.3,
@@ -2125,25 +2306,29 @@ export class GameScene extends Phaser.Scene {
         }
 
         if (now > letter.lifespan) {
-          // Expired — respawn the letter so player isn't soft-locked
-          const char = letter.charValue;
-          const wid = letter.wordId;
-          const ws = letter.wordScript;
-          const ap = letter.audioPath;
-
-          // Destroy old letter visuals
-          if (letter.charText) letter.charText.destroy();
-          if (letter.glow) letter.glow.destroy();
-          letter.destroy();
-
-          // Spawn the letter at the player's camera position so it's always reachable
-          const cam = this.cameras.main;
-          const rx = cam.scrollX + (cam.width * 0.2) + Phaser.Math.Between(-60, 60);
-          const ry = cam.scrollY + (cam.height * 0.25) + Phaser.Math.Between(0, 120);
-          this.respawnLetter(char, wid, ws, ap, rx, ry);
+          expiredLetters.push({
+            char: letter.charValue,
+            wordId: letter.wordId,
+            wordScript: letter.wordScript,
+            audioPath: letter.audioPath,
+          });
+          toDestroy.push(letter);
         }
       }
     });
+
+    for (const l of toDestroy) {
+      if (l.charText) l.charText.destroy();
+      if (l.glow) l.glow.destroy();
+      l.destroy();
+    }
+
+    for (const expired of expiredLetters) {
+      const cam = this.cameras.main;
+      const rx = cam.scrollX + (cam.width * 0.25) + Phaser.Math.Between(-80, 80);
+      const ry = cam.scrollY + cam.height - 150 + Phaser.Math.Between(-40, 0);
+      this.respawnLetter(expired.char, expired.wordId, expired.wordScript, expired.audioPath, rx, ry);
+    }
   }
 
   private updateGuards(): void {
