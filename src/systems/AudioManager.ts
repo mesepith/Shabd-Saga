@@ -224,8 +224,6 @@ export class AudioManager {
       this.musicHowl = null;
       this.activeMusicKey = '';
     }
-    // Kill any stray Howler playback globally
-    try { Howler.stop(); } catch {}
   }
 
   fadeOutMusic(ms: number = 600): void {

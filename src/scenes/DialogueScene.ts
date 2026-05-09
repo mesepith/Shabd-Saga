@@ -23,6 +23,8 @@ export class DialogueScene extends Phaser.Scene {
   private fullText: string = '';
   private charIndex: number = 0;
   private onComplete?: () => void;
+  private spaceKey!: Phaser.Input.Keyboard.Key;
+  private enterKey!: Phaser.Input.Keyboard.Key;
 
   constructor() {
     super({ key: 'DialogueScene' });
@@ -34,15 +36,12 @@ export class DialogueScene extends Phaser.Scene {
 
     const { width, height } = this.cameras.main;
 
-    // Semi-transparent overlay
     const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.5);
     overlay.setDepth(300);
 
-    // Dialogue box container
     this.dialogueBox = this.add.container(width / 2, height - 120);
     this.dialogueBox.setDepth(301);
 
-    // Box background
     const boxWidth = Math.min(900, width - 80);
     const boxHeight = 180;
     const boxBg = this.add.graphics();
@@ -52,49 +51,41 @@ export class DialogueScene extends Phaser.Scene {
     boxBg.strokeRoundedRect(-boxWidth / 2, -boxHeight / 2, boxWidth, boxHeight, 12);
     this.dialogueBox.add(boxBg);
 
-    // Speaker name
     this.speakerText = this.add.text(-boxWidth / 2 + 20, -boxHeight / 2 + 15, '', {
       fontFamily: 'Noto Sans Devanagari, system-ui, sans-serif',
-      fontSize: '22px',
-      color: '#FFD700',
-      fontStyle: 'bold',
+      fontSize: '22px', color: '#FFD700', fontStyle: 'bold',
     });
     this.dialogueBox.add(this.speakerText);
 
-    // Body text (Hindi)
     this.bodyText = this.add.text(-boxWidth / 2 + 20, -boxHeight / 2 + 45, '', {
       fontFamily: 'Noto Sans Devanagari, system-ui, sans-serif',
-      fontSize: '18px',
-      color: '#FFFFFF',
-      wordWrap: { width: boxWidth - 80 },
-      lineSpacing: 6,
+      fontSize: '18px', color: '#FFFFFF',
+      wordWrap: { width: boxWidth - 80 }, lineSpacing: 6,
     });
     this.dialogueBox.add(this.bodyText);
 
-    // English translation
     this.englishText = this.add.text(-boxWidth / 2 + 20, -boxHeight / 2 + 105, '', {
       fontFamily: 'Noto Sans, system-ui, sans-serif',
-      fontSize: '14px',
-      color: '#8888AA',
-      wordWrap: { width: boxWidth - 80 },
-      fontStyle: 'italic',
+      fontSize: '14px', color: '#8888AA',
+      wordWrap: { width: boxWidth - 80 }, fontStyle: 'italic',
     });
     this.dialogueBox.add(this.englishText);
 
-    // Continue hint
     this.continueHint = this.add.text(boxWidth / 2 - 20, boxHeight / 2 - 25, '▼ Tap to continue', {
       fontFamily: 'Noto Sans, system-ui, sans-serif',
-      fontSize: '12px',
-      color: '#666688',
+      fontSize: '14px', color: '#AAFFAA',
+      backgroundColor: '#00000088', padding: { x: 8, y: 4 },
     });
     this.continueHint.setOrigin(1, 0.5);
     this.continueHint.setVisible(false);
     this.dialogueBox.add(this.continueHint);
 
-    // Start first dialogue
+    // Create persistent keyboard keys (not recreated per frame)
+    this.spaceKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.enterKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+
     this.showNode(this.dialogueData[0]);
 
-    // Click/tap anywhere to advance dialogue
     this.input.on('pointerdown', () => {
       this.advance();
     });
@@ -105,20 +96,19 @@ export class DialogueScene extends Phaser.Scene {
     this.speakerText.setText(node.speaker);
     this.englishText.setText(node.textEnglish);
 
-    // Play dialogue audio via AudioManager (cached Howler.js)
     if ((node as any).audioPath) {
       AudioManager.getInstance().speakDialogue((node as any).audioPath);
     }
 
-    // Typewriter effect for body text
+    // Cancel any previous typewriter timer
+    this.isTyping = true;
     this.fullText = node.text;
     this.charIndex = 0;
     this.bodyText.setText('');
     this.continueHint.setVisible(false);
-    this.isTyping = true;
 
     this.time.addEvent({
-      delay: 30, // ms per character
+      delay: 30,
       callback: this.typeNextChar,
       callbackScope: this,
       repeat: this.fullText.length - 1,
@@ -127,7 +117,6 @@ export class DialogueScene extends Phaser.Scene {
 
   private typeNextChar(): void {
     if (!this.isTyping) return;
-
     this.charIndex++;
     this.bodyText.setText(this.fullText.substring(0, this.charIndex));
 
@@ -138,7 +127,6 @@ export class DialogueScene extends Phaser.Scene {
   }
 
   private advance(): void {
-    // If still typing, skip to full text
     if (this.isTyping) {
       this.isTyping = false;
       this.bodyText.setText(this.fullText);
@@ -146,7 +134,7 @@ export class DialogueScene extends Phaser.Scene {
       return;
     }
 
-    const nextId = this.currentNode.nextNodeId;
+    const nextId = this.currentNode.choices?.[0]?.nextNodeId || this.currentNode.nextNodeId;
     if (nextId) {
       const nextNode = this.dialogueData.find((n) => n.id === nextId);
       if (nextNode) {
@@ -155,7 +143,6 @@ export class DialogueScene extends Phaser.Scene {
       }
     }
 
-    // End of dialogue
     this.endDialogue();
   }
 
@@ -170,9 +157,7 @@ export class DialogueScene extends Phaser.Scene {
   }
 
   update(): void {
-    // Space/Enter to advance
-    if (Phaser.Input.Keyboard.JustDown(this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)) ||
-        Phaser.Input.Keyboard.JustDown(this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER))) {
+    if (Phaser.Input.Keyboard.JustDown(this.spaceKey) || Phaser.Input.Keyboard.JustDown(this.enterKey)) {
       this.advance();
     }
   }
