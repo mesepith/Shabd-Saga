@@ -3,7 +3,7 @@
 > **READ THIS FIRST** when starting a new AI session on Shabd Saga.
 > The AI should also read `docs/12-progress-log.md` for full history.
 
-## Quick Status (May 2026) — Object Layer Integration Complete: Entity spawning is now data-driven from tilemap `objects` layer. Stolen letter respawn fixed.
+## Quick Status (May 2026) — Tileset Visual Polish Complete: All 60 tiles across 3 worlds now have SVG gradients, highlights, texture patterns, and depth cues. Next: Progressive Difficulty.
 
 ### Mobile Testing Results (iPhone 12 iOS 18.7.8 + OnePlus Nord CE3 Android 15)
 | Feature | iPhone | Android Phone | Status |
@@ -20,7 +20,7 @@
 | Bottom crop / blank space | ✓ No crop | ✓ No crop | Done |
 | Tiled level maps | ✓ Verified | ✓ Verified | Done |
 
-### NEXT: Tileset Visual Polish
+### NEXT: Progressive Difficulty
 | Order | Task | Why |
 |-------|------|-----|
 | ~~1~~ | ~~Enemy difficulty balancing~~ ✓ | Per-level speed/cooldown config |
@@ -30,8 +30,9 @@
 | ~~5~~ | ~~Dialogue audio~~ ✓ | 5 monkey, 3 owl, 2 deer voice MP3s (Lekha TTS) |
 | ~~6~~ | ~~Tiled level maps~~ ✓ | 5 levels × 3 worlds, proper tileset spritesheets, parallax backgrounds |
 | ~~7~~ | ~~Screen transitions~~ ✓ | Unified 600ms branded fades, overlay close transitions, pause menu fix |
-| ~~8~~ | ~~Object layer integration~~ ✓ | Tilemap `objects` layer drives all entity spawning (doors, enemies, NPCs, gems, health, letters, checkpoints, player spawn) |
-| 9 | Tileset visual polish | Add shading, highlights, patterns to 20 tiles per world |
+| ~~8~~ | ~~Object layer integration~~ ✓ | Tilemap `objects` layer drives all entity spawning |
+| ~~9~~ | ~~Tileset visual polish~~ ✓ | SVG gradients, highlights, texture patterns, depth cues for all 60 tiles |
+| 10 | Progressive difficulty | Entity positions, enemy escalation, platform challenge vary per level |
 
 ### What's Working
 - All 9 Phaser scenes load and function
@@ -95,6 +96,44 @@ For each entity type, tilemap positions take priority over hindi.json positions,
 - **Bug**: `letter.destroy()` inside `forEach` over `lettersGroup.getChildren()` silently aborted the callback, so `respawnLetter()` was never called when stolen letters expired.
 - **Fix**: Collect expired letter data + references in forEach, destroy + respawn in separate passes after iteration.
 - **Position fix**: Respawn Y changed from `cam.height * 0.25` (y≈180-300, unreachable) to `cam.height - 150` (y≈530-570, near ground).
+
+---
+
+## Tileset Visual Polish (May 2026 — Complete)
+
+### Overview
+All 60 tiles across 3 world-specific spritesheets now use SVG gradients, highlights, texture patterns, and depth cues instead of flat colors. No runtime changes — only the build-time generator script (`scripts/generate-tilesets.ts`).
+
+### Techniques Used
+| Technique | Purpose | Example |
+|-----------|---------|---------|
+| `linearGradient` / `radialGradient` | Depth shading (lit tops, shadowed bottoms) | Ground tiles, rocks, pillars, carpets |
+| Semi-transparent highlight rects/ellipses | Edge highlights, polished surfaces | Cobblestone tops, door panels, marble veins |
+| Darkened noise dots/small shapes | Surface texture, grittiness | Dirt pebbles, grass dots, wall imperfections |
+| Overlapping layered shapes | Complex forms with depth | Cloud layering, bush clusters, rock cracks |
+| Radial glow | Atmospheric lighting | Candle flame, sun rays, moonlight halo |
+| Metallic gradient | Gold/metal shine | Throne crown, door knob, pillar capitals, gold trim |
+| Wood grain lines | Natural wood texture | Planks, fences, tree trunks |
+
+### Gradient Banks
+| World | Gradients | Key additions |
+|-------|-----------|---------------|
+| Jungle | 14 | `jg-grass`, `jg-dirt`, `jg-wood`, `jg-rock`, `jg-rock-round`, `jg-bush`, `jg-sky`, `jg-sun`, `jg-cloud`, `jg-mtn`, `jg-mtn-far`, `jg-flower`, `jg-gold` |
+| Village | 12 | `vg-cobble`, `vg-road`, `vg-wood-h`, `vg-wood-v`, `vg-wall`, `vg-roof`, `vg-sky`, `vg-hills`, `vg-straw`, `vg-canopy`, `vg-chimney`, `vg-fence` |
+| Palace | 13 | `pg-marble`, `pg-marble-dark`, `pg-pillar`, `pg-pillar-simple`, `pg-gold`, `pg-gold-h`, `pg-stone`, `pg-carpet`, `pg-curtain`, `pg-sky`, `pg-candle-glow`, `pg-moon-glow`, `pg-throne-velvet` |
+
+### Per-Tile Polish Summary
+- **Jungle**: Gradient ground/dirt/platform bodies, rock cracks + highlight arcs, bush radial gradients + dappled light, vine layered leaves, flower radial petals + gold center, tree bark ridges, layered cloud shapes, mountain snow caps + ridge lines, sun rays, grass blades with yellow tips
+- **Village**: Cobblestone highlight tops, wood grain nails + shadow gaps, house wall plaster dots, roof tile rows + ridge highlight, window glass sheen + interior glow, door panel bevels, fence post caps, chimney brick lines + smoke, straw texture lines, market canopy scallops + goods silhouettes
+- **Palace**: Cylindrical pillar fluting lines, marble vein paths + polish dots, stone wall individual stone highlights, carpet gold stripe patterns, curtain fold gradients, candle radial glow + flame teardrop + wax drip, star cross-rays + varied sizes, moonlight halo + craters, throne metallic gradients + velvet + gold armrests, gold trim gem inlays
+
+### Build Verification
+```bash
+npx tsx scripts/generate-tilesets.ts   # All 57 active tiles rendered, 3 empty tiles skipped
+npm run lint                           # Zero TypeScript errors
+npm run build                          # Clean build (2.89s)
+```
+No runtime code changes — tilesets load identically to before via Phaser's tilemap loader.
 
 ---
 
@@ -294,7 +333,9 @@ On any boss level, press **B** key to skip directly to the boss fight. Calls `la
 - [x] Monkey gem reward: permanent NPC state change, no stale hints — fixed
 - [x] Tiled level maps — DONE (5 levels, 3 world-specific tilesets, parallax layers, procedural fallback)
 - [x] Screen transitions — DONE (unified TransitionManager, 600ms branded fades, all 11 scene transitions, overlay open/close fades, pause menu fix, music stop on quit)
+- [x] Tileset visual polish — DONE (SVG gradients, highlights, texture patterns, depth cues — all 60 tiles across 3 worlds)
 - [ ] Tilemap mobile testing — pending
+- [ ] Progressive difficulty — pending (entity positions, enemy escalation, platform challenge vary per level)
 
 ---
 
@@ -431,10 +472,14 @@ localStorage.setItem('shabd_saga_progress', JSON.stringify({languages:{hindi:{co
 
 The AI should read this file and `docs/12-progress-log.md`, then continue with the next task.
 
-### Recommended Next Task: Tileset Visual Polish
-The 3 tileset spritesheets (`jungle-tiles.png`, `village-tiles.png`, `palace-tiles.png`) were generated with simple flat-colored SVG shapes. Add shading, gradients, highlights, and patterns to make the environments feel richer. The generator script is `scripts/generate-tilesets.ts` — it renders each tile into a canvas, composites the 20 tiles into a 320×256 spritesheet. Modify the tile drawing functions to add depth (drop shadows, edge highlights, texture patterns, color variations).
+### Recommended Next Task: Progressive Difficulty
+Entity positions in `scripts/generate-tilemaps.ts` currently reuse the same coordinates across all 5 levels (identical letter splays, door positions, gem/health locations). The layout functions already support per-level customization. Vary entity placement, enemy speed/cooldown escalation, and platform challenge per level to create a real difficulty curve:
+- **World 1 Level 1** (tutorial): Easy — spread letters near ground, slow enemies, generous platforms
+- **World 1 Level 2** (boss): Medium — letters on platforms, faster enemies, gap jumps
+- **World 2 Level 1**: Medium — letters across wider area, mid-speed enemies
+- **World 2 Level 2** (boss): Hard — high/tricky letter placement, fast enemies, complex platforms
+- **World 3 Level 1** (boss): Hard — most challenging layout, fastest enemies, pillar jumps
 
 ### Secondary Tasks (in priority order)
-1. **Tilemap Mobile Testing** — Full playthrough of all 5 levels on real iPhone/Android to verify tilemap rendering and performance.
+1. **Tilemap Mobile Testing** — Full playthrough of all 5 tilemap-based levels on real iPhone/Android to verify tilemap rendering and performance.
 2. **Mobile Testing** — Run `npm run dev` and test full game flow (all scenes, transitions, music) on iPhone 12 (iOS 18.7.8) + OnePlus Nord CE3 (Android 15).
-3. **Progressive Difficulty** — Consider making entity positions in tilemaps vary per level instead of reusing the same coordinates. The `scripts/generate-tilemaps.ts` layout functions already support per-level customization.

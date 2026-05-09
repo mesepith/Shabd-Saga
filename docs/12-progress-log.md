@@ -638,7 +638,53 @@ vite build    ✓  (3.02s, 25 modules, 122.91 kB gzip: 31.91 kB)
 ```
 
 ### Pending
-- [ ] Tileset visual polish (shading, highlights, patterns)
+- [x] Tileset visual polish (shading, highlights, patterns)
+- [ ] Tilemap mobile testing (real devices)
+- [ ] Progressive difficulty via per-level tilemap entity layout
+
+---
+
+## 2026-05-10 — Tileset Visual Polish Complete
+
+### Completed
+- [x] SVG gradient infrastructure: `linearGradient()`, `radialGradient()`, and 39 per-world gradient definitions (14 jungle, 12 village, 13 palace)
+- [x] All 60 tiles across 3 worlds enhanced with:
+  - **Jungle (20)**: Vertical gradients on ground/dirt/platforms, radial gradients on rocks/bushes/flowers, layered clouds, mountain snow caps/ridge lines, sun rays, rock cracks + highlight arcs, tree bark ridges, vine layered leaves, grass blade yellow tips, gold flower center
+  - **Village (20)**: Cobblestone highlight tops, wood grain gradients + nail dots, house wall plaster texture, roof tile rows + ridge highlight, window glass sheen + interior glow, door panel bevels + metallic knob, fence post caps, chimney brick lines + smoke plume, straw texture lines, market canopy scallops + goods silhouettes
+  - **Palace (20)**: Cylindrical pillar fluting lines, marble vein paths + polish dots, metallic gold gradients on capitals/throne/gold-trim, stone wall individual stone highlights + mortar gaps, carpet gold stripe patterns, curtain fold gradients, candle radial glow + flame teardrop + wax drip, star cross-rays, moonlight halo + craters, throne velvet + gold armrests + crown, gem inlays on gold trim
+- [x] 3 empty tiles (transparent) correctly skipped during render
+- [x] No sharp/librsvg SVG filter dependency — all effects via gradients + layered semi-transparent shapes (cross-platform safe)
+- [x] Zero TypeScript errors, clean Vite build (2.89s)
+- [x] Tilemaps regenerated cleanly (5 JSONs)
+- [x] AI-SESSION-HANDOFF.md and 12-progress-log.md updated
+
+### Techniques Used
+1. **Gradient shading**: `linearGradient` for top→bottom depth, `radialGradient` for spherical light on rocks/bushes
+2. **Edge highlights**: Semi-transparent white/light rects at tops of cobblestone, marble, grass caps
+3. **Texture dots**: Small ellipses/circles at low opacity for pebbles, grass speckles, stars, wall imperfections
+4. **Layered depth**: 5+ overlapping ellipses for clouds, 3-4 bush clusters, 4+ rock layers
+5. **Cylinder shading**: Horizontal gradient bright→dark→bright for pillar 3D effect
+6. **Metallic gradients**: Multi-stop linear gradients (gold, wood grain)
+7. **Atmospheric glow**: Large radial gradients with fading opacity for candle, sun, moon
+
+### Decisions Made
+1. No SVG filters used — sharp/librsvg filter support varies by OS; all effects simulated with layered shapes + gradients
+2. Same color palette — gradient colors derived from existing flat colors, no palette shift
+3. 64×64 tile size unchanged — zero impact on tilemap loading, collision, or rendering
+4. Same empty tile IDs (13/15/15) kept transparent — tilemap JSONs unchanged
+
+### Files Modified
+- `scripts/generate-tilesets.ts` — Full rewrite: +SVG gradient helpers, +per-world gradient banks, enhanced all 60 tile SVG definitions
+- `docs/AI-SESSION-HANDOFF.md` — Updated status, added Tileset Visual Polish section, updated next tasks
+- `docs/12-progress-log.md` — This entry
+
+### Build
+```
+tsc --noEmit  ✓  (zero errors)
+vite build    ✓  (2.89s, 25 modules)
+```
+
+### Pending
 - [ ] Tilemap mobile testing (real devices)
 - [ ] Progressive difficulty via per-level tilemap entity layout
 
