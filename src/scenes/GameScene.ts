@@ -69,6 +69,7 @@ export class GameScene extends Phaser.Scene {
   private gemsCollected: number = 0;
   private monkeyGemGiven: boolean = false;
   private owlTaught: boolean = false;
+  private deerTaught: boolean = false;
   private completedDoorWords: Set<string> = new Set();
   private deathsThisLevel: number = 0;
   private levelCompleteGuard: boolean = false;
@@ -98,6 +99,7 @@ export class GameScene extends Phaser.Scene {
     this.gemsCollected = 0;
     this.monkeyGemGiven = false;
     this.owlTaught = false;
+    this.deerTaught = false;
     this.completedDoorWords = new Set();
     this.deathsThisLevel = 0;
     this.levelBoss = null;
@@ -1623,6 +1625,10 @@ export class GameScene extends Phaser.Scene {
       const hintNode = this.buildOwlHintNode();
       if (hintNode) dialogues = [hintNode];
     }
+    if (npcData.id === 'deer_mother' && this.deerTaught) {
+      const hintNode = this.buildDeerHintNode();
+      if (hintNode) dialogues = [hintNode];
+    }
 
     this.scene.launch('DialogueScene', {
       dialogue: dialogues,
@@ -1639,6 +1645,9 @@ export class GameScene extends Phaser.Scene {
         }
         if (finalNodeId === 'owl_teach' && !this.owlTaught) {
           this.owlTaught = true;
+        }
+        if (finalNodeId === 'deer_intro' && !this.deerTaught) {
+          this.deerTaught = true;
         }
       },
     });
@@ -1812,6 +1821,82 @@ export class GameScene extends Phaser.Scene {
       text: hindiText,
       textEnglish: englishText,
       audioPath: 'assets/audio/speech/hindi/dialogue/owl_hint.mp3',
+      choices: [],
+      nextNodeId: null,
+    };
+  }
+
+  private buildDeerHintNode(): any {
+    const guardedWords: Set<string> = new Set();
+    this.activeGuards.forEach((guard, id) => {
+      if (!this.defeatedGuards.has(id)) {
+        guardedWords.add((guard as any).guardWordId);
+      }
+    });
+
+    const remaining = this.activeDoors.map((d) => d.wordId);
+
+    if (remaining.length === 0) {
+      return {
+        id: 'deer_hint_done',
+        speaker: 'हिरण माँ',
+        text: 'शाबाश बच्चे! तुमने सब दरवाज़े खोल दिए! अब आगे बढ़ो!',
+        textEnglish: "Well done, child! You opened all the doors! Now go ahead!",
+        audioPath: 'assets/audio/speech/hindi/dialogue/deer_intro.mp3',
+        choices: [],
+        nextNodeId: null,
+      };
+    }
+
+    let hindiText = '';
+    let englishText = '';
+
+    if (remaining.length === 1) {
+      const wordId = remaining[0];
+      const word = this.levelWords.find((w: any) => w.id === wordId);
+      if (!word) {
+        hindiText = 'अगला दरवाज़ा खोलो बच्चे!';
+        englishText = 'Open the next door, child!';
+      } else if (guardedWords.has(wordId)) {
+        const letters = (word.splitLetters || []).join(', ');
+        hindiText = `${word.script} का दरवाज़ा एक रक्षक ने रोका है। '${letters}' इकट्ठा करो और '${word.script}' बनाओ, बच्चे!`;
+        englishText = `The ${word.translation} door is blocked by a guard. Collect '${letters}' and spell '${word.translation}', child!`;
+      } else {
+        hindiText = `${word.script} के अक्षर इकट्ठा करो और दरवाज़ा खोलो, बच्चे!`;
+        englishText = `Collect ${word.translation}'s letters and open the door, child!`;
+      }
+    } else if (remaining.length === 2) {
+      hindiText = 'बचे हुए दरवाज़े: ';
+      englishText = 'Remaining doors: ';
+      remaining.forEach((wordId, i) => {
+        const word = this.levelWords.find((w: any) => w.id === wordId);
+        if (!word) return;
+        if (i > 0) { hindiText += ' और '; englishText += ' and '; }
+        hindiText += guardedWords.has(wordId) ? `${word.script} (रक्षक)` : word.script;
+        englishText += guardedWords.has(wordId) ? `${word.translation} (guard)` : word.translation;
+      });
+      const hasGuard = remaining.some((w) => guardedWords.has(w));
+      hindiText += hasGuard ? ' — पहले रक्षक को हराओ!' : ' — दोनों खोलो!';
+      englishText += hasGuard ? ' — defeat the guard first!' : ' — open both!';
+    } else {
+      const guardedCount = remaining.filter((w) => guardedWords.has(w)).length;
+      hindiText = `${remaining.length} दरवाज़े और बचे हैं, बच्चे। `;
+      englishText = `${remaining.length} doors remain, child. `;
+      if (guardedCount > 0) {
+        hindiText += `${guardedCount} के पास रक्षक हैं — पहले उन्हें हराओ!`;
+        englishText += `${guardedCount} have guards — defeat them first!`;
+      } else {
+        hindiText += 'अक्षर इकट्ठा करो और सब खोलो!';
+        englishText += 'Collect letters and open them all!';
+      }
+    }
+
+    return {
+      id: 'deer_hint',
+      speaker: 'हिरण माँ',
+      text: hindiText,
+      textEnglish: englishText,
+      audioPath: 'assets/audio/speech/hindi/dialogue/deer_hint.mp3',
       choices: [],
       nextNodeId: null,
     };
