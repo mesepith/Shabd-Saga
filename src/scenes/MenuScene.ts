@@ -90,6 +90,9 @@ export class MenuScene extends Phaser.Scene {
       duration: 800,
     });
 
+    // How to Play button
+    this.createHowToPlayButton(centerX, height * 0.51);
+
     // Language selector
     this.createLanguageSelector(centerX, height * 0.55);
 
@@ -109,6 +112,36 @@ export class MenuScene extends Phaser.Scene {
     this.input.once('pointerdown', () => {
       AudioManager.getInstance().resume();
       AudioManager.getInstance().startMenuMusic();
+    });
+  }
+
+  private createHowToPlayButton(x: number, y: number): void {
+    const label = this.add.text(x, y, '📖 How to Play', {
+      fontFamily: 'Noto Sans, system-ui, sans-serif',
+      fontSize: '16px',
+      color: '#FFD700',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 1,
+    });
+    label.setOrigin(0.5);
+    label.setInteractive({ useHandCursor: true });
+
+    label.on('pointerover', () => label.setColor('#FFEE88'));
+    label.on('pointerout', () => label.setColor('#FFD700'));
+    label.on('pointerdown', () => {
+      TransitionManager.toScene(this, 'HowToPlayScene');
+    });
+
+    // Subtle underline
+    const underline = this.add.rectangle(x, y + 16, label.width + 20, 2, 0xFFD700, 0.3);
+    this.tweens.add({
+      targets: underline,
+      alpha: 0.6,
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
     });
   }
 

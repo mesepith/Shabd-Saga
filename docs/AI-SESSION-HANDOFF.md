@@ -3,7 +3,7 @@
 > **READ THIS FIRST** when starting a new AI session on Shabd Saga.
 > The AI should also read `docs/12-progress-log.md` for full history.
 
-## Quick Status (May 2026) — Tileset Visual Polish Complete: All 60 tiles across 3 worlds now have SVG gradients, highlights, texture patterns, and depth cues. Next: Progressive Difficulty.
+## Quick Status (May 2026) — Progressive Difficulty Complete + How to Play Tutorial Added. All 5 levels have per-level entity layouts with verified reachability. HowToPlayScene with device-aware interactive control demos. Next: Mobile Testing.
 
 ### Mobile Testing Results (iPhone 12 iOS 18.7.8 + OnePlus Nord CE3 Android 15)
 | Feature | iPhone | Android Phone | Status |
@@ -20,7 +20,7 @@
 | Bottom crop / blank space | ✓ No crop | ✓ No crop | Done |
 | Tiled level maps | ✓ Verified | ✓ Verified | Done |
 
-### NEXT: Progressive Difficulty
+### NEXT: Mobile Testing & Polish
 | Order | Task | Why |
 |-------|------|-----|
 | ~~1~~ | ~~Enemy difficulty balancing~~ ✓ | Per-level speed/cooldown config |
@@ -32,7 +32,10 @@
 | ~~7~~ | ~~Screen transitions~~ ✓ | Unified 600ms branded fades, overlay close transitions, pause menu fix |
 | ~~8~~ | ~~Object layer integration~~ ✓ | Tilemap `objects` layer drives all entity spawning |
 | ~~9~~ | ~~Tileset visual polish~~ ✓ | SVG gradients, highlights, texture patterns, depth cues for all 60 tiles |
-| 10 | Progressive difficulty | Entity positions, enemy escalation, platform challenge vary per level |
+| ~~10~~ | ~~Progressive difficulty~~ ✓ | Per-level letter/gem/health positions, enemy escalation, checkpoints, reachability verified |
+| ~~11~~ | ~~How to Play tutorial~~ ✓ | Device-aware interactive control demos with practice sandbox |
+| 12 | Tilemap mobile testing | Full 5-level playthrough on real iPhone + Android |
+| 13 | Post-processing & polish | Bloom, vignette, particle polish, performance optimization |
 
 ### What's Working
 - All 9 Phaser scenes load and function
@@ -45,7 +48,8 @@
 - **Dynamic NPC hints**: Monkey, Wise Owl, and Deer Mother each give **game-state-aware hints** after their initial interaction — they inspect `activeDoors`, `activeGuards`, and `defeatedGuards` at runtime to tell the player exactly which doors remain, which have guards, and what letters to collect
 - **Dialogue audio**: All NPC dialogue nodes have high-quality Hindi TTS audio (macOS Lekha voice, 140 wpm, MP3). 5 monkey nodes, 3 owl nodes, 2 deer nodes
 - **NPC game-state tracking**: `monkeyGemGiven`, `owlTaught`, `deerTaught` flags + `completedDoorWords` Set.
-- **Monkey gem reward**: Choosing "Sure!" spawns a WisdomGem at monkey's position. Permanent NPC state change — future talks give hints, not choices
+- **How to Play tutorial**: `HowToPlayScene` — device-aware (mobile/desktop), 5-step walkthrough with animated control indicators, practice sandbox with movable character. Accessible from MenuScene via "📖 How to Play" button.
+- **Progressive difficulty**: All 5 levels have unique letter, gem, health, checkpoint, and enemy layouts. Reachability verified — every entity is within 132px (max jump) of a surface. Physics world bounds expanded to 1600 to match camera bounds.
 - Shadow Creeper enemies, **stolen letter respawn** (fixed: deferred destroy+respawn outside forEach to prevent silent abort; respawn Y placed near ground for reachability)
 - Player animations, checkpoint/respawn
 - Health pickups, WisdomGems, star rating
@@ -332,10 +336,12 @@ On any boss level, press **B** key to skip directly to the boss fight. Calls `la
 - [x] Typewriter timer race condition: old timer cancelled before new — fixed
 - [x] Monkey gem reward: permanent NPC state change, no stale hints — fixed
 - [x] Tiled level maps — DONE (5 levels, 3 world-specific tilesets, parallax layers, procedural fallback)
-- [x] Screen transitions — DONE (unified TransitionManager, 600ms branded fades, all 11 scene transitions, overlay open/close fades, pause menu fix, music stop on quit)
-- [x] Tileset visual polish — DONE (SVG gradients, highlights, texture patterns, depth cues — all 60 tiles across 3 worlds)
-- [ ] Tilemap mobile testing — pending
-- [ ] Progressive difficulty — pending (entity positions, enemy escalation, platform challenge vary per level)
+- [x] Screen transitions — DONE (unified TransitionManager, 600ms branded fades)
+- [x] Tileset visual polish — DONE (SVG gradients, all 60 tiles across 3 worlds)
+- [x] Progressive difficulty — DONE (per-level letter/gem/health/checkpoint/enemy layouts, reachability verified, physics bounds 1600)
+- [x] How to Play tutorial — DONE (HowToPlayScene with device-aware interactive demos + practice sandbox)
+- [ ] Tilemap mobile testing — pending (full 5-level playthrough on real devices)
+- [ ] Post-processing polish — pending (bloom, vignette, particle polish)
 
 ---
 
@@ -439,7 +445,8 @@ localStorage.setItem('shabd_saga_progress', JSON.stringify({languages:{hindi:{co
 | `src/scenes/WordPuzzleScene.ts` | Spelling overlay — puzzle music only for GameScene caller |
 | `src/scenes/UIScene.ts` | HUD: health, WordBar, score, gems, pause menu with mute toggle |
 | `src/scenes/DialogueScene.ts` | NPC conversation (~240 lines) — choice UI (`showChoices`, `handleChoice`), `onComplete(finalNodeId)`, typewriter timer fix |
-| `src/scenes/MenuScene.ts` | Animated title menu with AudioManager music |
+| `src/scenes/MenuScene.ts` | Animated title menu with AudioManager music + How to Play button |
+| `src/scenes/HowToPlayScene.ts` | **NEW** — Device-aware interactive control tutorial: 5-step walkthrough, animated key/joystick indicators, practice sandbox with movable character |
 | `src/scenes/LevelSelectScene.ts` | World + level selection |
 | `src/scenes/PreloadScene.ts` | Asset loading — 5 tilemap JSONs + 3 tileset PNGs + sprites/UI |
 | `src/systems/TouchControls.ts` | Left-half joystick + right-half jump zone + dynamic interact button |
@@ -472,14 +479,28 @@ localStorage.setItem('shabd_saga_progress', JSON.stringify({languages:{hindi:{co
 
 The AI should read this file and `docs/12-progress-log.md`, then continue with the next task.
 
-### Recommended Next Task: Progressive Difficulty
-Entity positions in `scripts/generate-tilemaps.ts` currently reuse the same coordinates across all 5 levels (identical letter splays, door positions, gem/health locations). The layout functions already support per-level customization. Vary entity placement, enemy speed/cooldown escalation, and platform challenge per level to create a real difficulty curve:
-- **World 1 Level 1** (tutorial): Easy — spread letters near ground, slow enemies, generous platforms
-- **World 1 Level 2** (boss): Medium — letters on platforms, faster enemies, gap jumps
-- **World 2 Level 1**: Medium — letters across wider area, mid-speed enemies
-- **World 2 Level 2** (boss): Hard — high/tricky letter placement, fast enemies, complex platforms
-- **World 3 Level 1** (boss): Hard — most challenging layout, fastest enemies, pillar jumps
+### Recommended Next Task: Tilemap Mobile Testing
+Full playthrough of all 5 tilemap-based levels on real iPhone (iOS) + Android device. Verify:
+- Tilemap rendering and visual quality on mobile
+- Physics collision with tilemap ground/platforms
+- Entity reachability (letters, gems, health) with touch controls
+- Camera bounds at 1600 width
+- Performance (FPS) on both devices
+- All 5 levels end-to-end: collect letters → defeat guards → open doors → boss fights → level complete
 
-### Secondary Tasks (in priority order)
-1. **Tilemap Mobile Testing** — Full playthrough of all 5 tilemap-based levels on real iPhone/Android to verify tilemap rendering and performance.
-2. **Mobile Testing** — Run `npm run dev` and test full game flow (all scenes, transitions, music) on iPhone 12 (iOS 18.7.8) + OnePlus Nord CE3 (Android 15).
+### Secondary Tasks
+1. **Post-processing polish** — Bloom, vignette, color grading effects
+2. **Particle effects polish** — Letter collection, magic, boss effects
+3. **Performance optimization** — Object pooling, texture atlas, reduce draw calls
+
+### How to Test
+```bash
+npm run dev        # http://localhost:5174 (also at LAN IP for mobile)
+npm run lint       # tsc --noEmit (type-check)
+npm run build      # Vite production build
+```
+
+### Pre-set progress (unlocks all levels):
+```js
+localStorage.setItem('shabd_saga_progress', JSON.stringify({languages:{hindi:{completedLevels:{"world-1-level-1":{levelId:"world-1-level-1",stars:3,wordsLearned:["baagh","haathi","mor","ped","nadee","phool"],gemsCollected:5,timeSpent:0,attempts:1,completedAt:"2026-05-05T00:00:00.000Z"}}}}));
+```

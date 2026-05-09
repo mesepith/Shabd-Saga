@@ -690,6 +690,57 @@ vite build    ✓  (2.89s, 25 modules)
 
 ---
 
+## 2026-05-10 — Progressive Difficulty Implemented + How to Play Tutorial
+
+### Completed
+- [x] **Progressive Difficulty**: All 5 levels now have unique entity layouts (letters, gems, health pickups, checkpoints)
+  - **World 1 Level 1** (Tutorial): All 20 letters at ground level (y=530-570), all 5 gems at ground, health near start, 1 checkpoint, slowest enemies (speed 60-65, cooldown 2000ms)
+  - **World 1 Level 2** (Medium): 10 ground + 10 platform letters, 2 ground + 3 platform gems, 2 checkpoints, mid-speed enemies (90-100, cooldown 1300-1400ms)
+  - **World 2 Level 1** (Medium): 10 ground + 10 platform letters, wider gem spread, 1 checkpoint, mid-speed enemies (80-85, cooldown 1600ms)
+  - **World 2 Level 2** (Hard): 6 ground + 14 platform letters, all gems on platforms, 2 checkpoints (new mid checkpoint), fast enemies (100-105, cooldown 1200-1300ms)
+  - **World 3 Level 1** (Hardest): 4 ground + 16 pillar-platform letters, all gems on platforms, 2 checkpoints (new mid checkpoint), fastest enemies (120-130, cooldown 1000-1100ms)
+- [x] **Reachability fix**: Initial placement had many letters at y=150-200 with no platform below — completely unreachable (440px above ground, max jump = 132px). Rewrote all 5 level layouts with platform-aware placement: every letter is either at y≥530 (ground-reachable) or directly above a known platform within 78-114px of its surface. All 100 letters across 5 levels verified reachable.
+- [x] **Physics world bounds fix**: Physics world bounds defaulted to game config (1280×720), trapping player at x=1280 while entities at x=1440-1590 were unreachable. Added `this.physics.world.setBounds(0, 0, 1600, height)` to match camera bounds.
+- [x] **Enemy config sync**: `hindi.json` (both copies) updated with per-level speed/cooldown/position values matching tilemap data. Mid checkpoints added to w2-l2 and w3-l1.
+- [x] **HowToPlayScene** — New device-aware interactive control tutorial scene:
+  - Detects mobile vs desktop and shows appropriate controls
+  - 5-step walkthrough: Move, Jump, Interact, Collect Letters, Spell Words
+  - Animated control indicators (key caps for desktop, joystick/buttons for mobile)
+  - Practice sandbox with movable character, ground + platform + floating letter
+  - Touch demo: left half joystick, right half jump, with gravity physics
+  - Professional dark-blue themed UI with gold accents, particle effects, step navigation
+- [x] **MenuScene**: Added "📖 How to Play" button between tagline and language selector, launches HowToPlayScene
+
+### Architecture Notes
+1. **Reachability formula**: Player max jump = v²/(2g) = 460²/(2×800) = 132.25px. Safe reachable Y from ground: ≥ 508 (132px + overlap). Platform letters placed within 100px above their platform surface.
+2. **Physics world bounds must match camera bounds** — `setCollideWorldBounds(true)` on player + default 1280 world bounds = half the level unreachable. Now both are 1600.
+3. **HowToPlayScene is device-aware** — uses `game.device.input.touch` + `navigator.maxTouchPoints` for detection. Shows floating joystick demo on mobile, WASD/arrow key caps on desktop.
+4. **Practice sandbox** — simple physics loop in `update()` with gravity (12px/frame²) and ground collision. Character animates automatically on step change, but also responds to real touch/keyboard input.
+
+### Files Modified
+- `scripts/generate-tilemaps.ts` — All 5 level lambdas: unique letter/gem/health/checkpoint/enemy positions per level
+- `src/scenes/GameScene.ts` — `getLetterDefaultPositions()`, `getHealthDefaultPositions()`, `getGemDefaultPositions()` helpers; updated `spawnEnemies` fallback for all 5 levels; updated `spawnCheckpoints` fallback; added `physics.world.setBounds(0,0,1600,height)`
+- `src/config/languages/hindi.json` + `public/data/hindi.json` — Synced enemy speeds/cooldowns/positions; added mid checkpoints to w2-l2 and w3-l1
+- `src/config/GameConfig.ts` — Registered HowToPlayScene
+- `src/scenes/MenuScene.ts` — Added "📖 How to Play" button
+- `src/scenes/HowToPlayScene.ts` — **NEW**: 380-line device-aware tutorial scene
+- `docs/AI-SESSION-HANDOFF.md` — Updated status, next tasks
+- `docs/12-progress-log.md` — This entry
+
+### Build
+```
+tsc --noEmit  ✓  (zero errors)
+vite build    ✓  (3.02s, 26 modules, 129.8 kB gzip: 33.1 kB)
+```
+
+### Pending
+- [ ] Tilemap mobile testing (full 5-level playthrough on real iPhone + Android)
+- [ ] Post-processing polish (bloom, vignette, color grading)
+- [ ] Particle effects polish
+- [ ] Performance optimization
+
+---
+
 ## Template for Future Entries
 
 ```
