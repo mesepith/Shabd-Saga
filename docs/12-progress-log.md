@@ -932,6 +932,48 @@ vite build    ✓  (2.96s, 24 modules)
 
 ---
 
+## 2026-05-09 — Dynamic NPC Hints: Owl + Deer + Monkey State-Awareness Complete
+
+### Completed
+- [x] **Monkey stale hint fixed**: Added `monkey_helped` and `monkey_done` nodes — monkey no longer says "Take this gem!" after gem collected. Monitors `completedDoorWords` to say "Door open!" vs "Hint".
+- [x] **Dynamic monkey hints**: `buildMonkeyHintNode()` inspects `activeDoors`, `activeGuards`, `defeatedGuards` at runtime. Single door + guard → "Collect 'घा, स' and spell 'घास'!" Multiple doors → counts, marks guarded ones. All open → congrats.
+- [x] **Wise Owl dynamic hints**: `buildOwlHintNode()` — teacher-like tone. Tracks `owlTaught` flag (set after `owl_teach` node). Same game-state inspection, owl-appropriate wording ("You can do it!", "You are a good student!").
+- [x] **Deer Mother dynamic hints**: `buildDeerHintNode()` — motherly tone ("child"). Tracks `deerTaught` flag. Same game-state inspection.
+- [x] **Audio for all 3 NPCs**: `monkey_hint.mp3` (18KB), `owl_hint.mp3` (24KB), `deer_hint.mp3` (23KB) — generic prelude audio for dynamic hints. `monkey_done.mp3` (43KB) for all-doors message.
+- [x] **`completedDoorWords` Set**: Filled in `openDoor()` wordSpelled callback. Reset on level start. Used by monkey to determine hint vs done state.
+- [x] 11 total NPC voice MP3s: monkey×6, owl×3, deer×2
+- [x] Zero TypeScript errors, clean Vite build
+
+### Architecture: Dynamic Hint Flow
+```
+NPC interaction → handleNPCInteraction()
+  ├── First talk → show static JSON dialogues
+  │   ├── onComplete('monkey_help') → spawnMonkeyGem(), monkeyGemGiven = true
+  │   ├── onComplete('owl_teach') → owlTaught = true
+  │   └── onComplete('deer_intro') → deerTaught = true
+  └── Already taught → buildXxxHintNode()
+      ├── Inspect activeDoors, activeGuards, defeatedGuards
+      ├── Build dynamic DialogueNode with contextual text + audio
+      └── Return single-node dialogue array
+```
+
+### Files Modified
+- `src/scenes/GameScene.ts` — +`owlTaught`, `deerTaught` flags; +`buildOwlHintNode()`, `buildDeerHintNode()` methods; modified `handleNPCInteraction()` owl/deer branches; `onComplete` owl/deer flag-setting
+- `src/scenes/DialogueScene.ts` — `onComplete(finalNodeId)` signature
+- `src/config/languages/hindi.json` — monkey: added `monkey_helped`, `monkey_done` nodes with audioPath
+- `public/data/hindi.json` — synced
+- `public/assets/audio/speech/hindi/dialogue/` — 7 new/updated MP3 files
+- `docs/AI-SESSION-HANDOFF.md` — fully rewritten
+- `docs/12-progress-log.md` — this entry
+
+### Build
+```
+tsc --noEmit  ✓  (zero errors)
+vite build    ✓  (~3s, 24 modules)
+```
+
+---
+
 ## Template for Future Entries
 
 ```

@@ -3,7 +3,7 @@
 > **READ THIS FIRST** when starting a new AI session on Shabd Saga.
 > The AI should also read `docs/12-progress-log.md` for full history.
 
-## Quick Status (May 2026) — Audio Complete: 9 WAV Music Tracks, Boss SFX, Dialogue Fixed
+## Quick Status (May 2026) — Dialogue System Complete: Choice UI, Dynamic NPC Hints, Full Audio
 
 ### Mobile Testing Results (iPhone 12 iOS 18.7.8 + OnePlus Nord CE3 Android 15)
 | Feature | iPhone | Android Phone | Status |
@@ -25,8 +25,9 @@
 | ~~1~~ | ~~Enemy difficulty balancing~~ ✓ | Per-level speed/cooldown config |
 | ~~2~~ | ~~Boss sprites (proper art)~~ ✓ | 3 unique 128×128 designs |
 | ~~3~~ | ~~Real audio assets~~ ✓ | 9 WAV tracks + synthesized SFX |
-| ~~4~~ | ~~NPC dialogue choice UI~~ ✓ | 2-choice buttons in dialogue box |
-| 5 | Tiled level maps | Big creative project |
+| ~~4~~ | ~~NPC dialogue choice UI~~ ✓ | Choice buttons + game-state-aware dynamic hints |
+| ~~5~~ | ~~Dialogue audio~~ ✓ | 5 monkey, 3 owl, 2 deer voice MP3s (Lekha TTS) |
+| 6 | Tiled level maps | Biggest visual upgrade remaining |
 
 ### What's Working
 - All 9 Phaser scenes load and function
@@ -34,7 +35,11 @@
 - WordPuzzle overlay with drag-to-spell + caller param for boss integration
 - Doors + guards + letter consumption flow
 - Level completion → stars → save
-- NPC dialogue (choices auto-advance, audio plays per node)
+- **NPC dialogue with choice UI**: 2+ choice nodes render tappable gold-bordered buttons in dialogue box. Space/Enter blocked during choices to prevent accidental auto-pick
+- **Dynamic NPC hints**: Monkey, Wise Owl, and Deer Mother each give **game-state-aware hints** after their initial interaction — they inspect `activeDoors`, `activeGuards`, and `defeatedGuards` at runtime to tell the player exactly which doors remain, which have guards, and what letters to collect
+- **Dialogue audio**: All NPC dialogue nodes have high-quality Hindi TTS audio (macOS Lekha voice, 140 wpm, MP3). 5 monkey nodes, 3 owl nodes, 2 deer nodes
+- **NPC game-state tracking**: `monkeyGemGiven`, `owlTaught`, `deerTaught` flags + `completedDoorWords` Set.
+- **Monkey gem reward**: Choosing "Sure!" spawns a WisdomGem at monkey's position. Permanent NPC state change — future talks give hints, not choices
 - Shadow Creeper enemies, stolen letter respawn
 - Player animations, checkpoint/respawn
 - Health pickups, WisdomGems, star rating
@@ -110,27 +115,78 @@ Creates all 9 WAV files using offline PCM synthesis (additive waveforms, bell ha
 
 ---
 
-## Dialogue Architecture (Fixed May 2026)
+## Dialogue Architecture (May 2026 — Complete)
 
 ### DialogueScene Flow
 1. NPC approached → E key or interact button → `handleNPCInteraction()`
 2. Music fades out (400ms)
-3. DialogueScene launches with `npcData.dialogues` array
-4. `showNode()` plays audio via `AudioManager.speakDialogue()`
-5. Typewriter effect renders Hindi text character-by-character
+3. DialogueScene launches with dialogue nodes array
+4. `showNode()` plays audio via `AudioManager.speakDialogue()`, cancels previous typewriter timer
+5. Typewriter effect renders Hindi text character-by-character (30ms/char)
 6. Tap/Space/Enter to advance: first tap skips typewriter, second tap advances to next node
-7. After last node → `endDialogue()` → fade out → resume GameScene + music
+7. When a node has 2+ choices → `onTypewriterComplete()` calls `showChoices()` which renders tappable gold-bordered buttons (160×48px, dark blue fill, gold border, 18px Hindi text). `showingChoices` flag blocks Space/Enter from auto-advancing.
+8. Player taps a choice button → `handleChoice(nextNodeId)` → navigates to chosen node
+9. After last node → `endDialogue()` → passes `finalNodeId` to `onComplete` callback → GameScene resumes + applies per-choice outcomes
 
-### Node Navigation
-```typescript
-const nextId = this.currentNode.choices?.[0]?.nextNodeId || this.currentNode.nextNodeId;
+### Choice UI
+- Rendered dynamically in `showChoices()` — `Container` (Rectangle bg + Text label) added to `dialogueBox`
+- Hover: `pointerover`/`pointerout` tint change (desktop only, no-op on touch)
+- Touch: `pointerdown` fires on all platforms
+- Buttons adapt to box width: `Math.min(160, (boxWidth - 80) / count - 12)` px wide
+
+### NPC Game-State Awareness (3 NPCs)
+All 3 NPCs give **runtime dynamic hints** after their initial interaction. Each has a dedicated method
+in `GameScene.ts` that inspects `activeDoors`, `activeGuards`, and `defeatedGuards`:
+
+| NPC | Flag | Method | Hint audio | All-done audio |
+|-----|------|--------|------------|----------------|
+| Monkey (`monkey_friend`) | `monkeyGemGiven` | `buildMonkeyHintNode()` | `monkey_hint.mp3` | `monkey_done.mp3` |
+| Wise Owl (`wise_owl`) | `owlTaught` | `buildOwlHintNode()` | `owl_hint.mp3` | `owl_teach.mp3` |
+| Deer Mother (`deer_mother`) | `deerTaught` | `buildDeerHintNode()` | `deer_hint.mp3` | `deer_intro.mp3` |
+
+**Hint logic (shared across all 3):**
+- 1 remaining door + guard: `"The {word} door has a guard! Collect '{letters}' and spell '{word}'!"`
+- 1 remaining door, no guard: `"Collect {word}'s letters and open the door!"`
+- 2 remaining doors: lists both, marks guarded ones
+- 3+ remaining doors: count summary — `"{n} doors remain. {g} have guards — defeat them first!"`
+- 0 remaining doors: congratulatory message
+
+### Monkey Dialogue (5 nodes + 5 audio files)
 ```
-Supports both JSON formats: `nextNodeId` directly on node, OR `choices[0].nextNodeId`.
+monkey_intro → [2 choices: "ज़रूर!" / "बाद में"]
+  ├── monkey_help (gem reward, once) → onComplete('monkey_help') → spawnMonkeyGem()
+  └── monkey_later (no reward, retryable)
+monkeyGemGiven=true → monkey_helped (hint — door not open) / monkey_done (congrats — door open)
+```
 
-### Choice UI (Implemented May 2026)
-Monkey NPC has 2 dialogue choices ("Sure!" / "Maybe later"). When a node has 2+ choices, `onTypewriterComplete()` renders tappable choice buttons inside the dialogue box. Each button triggers `handleChoice()` which navigates to the chosen node. Keyboard Space/Enter are blocked while choices are showing to prevent accidental auto-pick.
+### Owl Dialogue (2 nodes + 3 audio files)
+```
+owl_intro → [1 choice: "चलो सीखें!"] → owl_teach → onComplete('owl_teach') → owlTaught=true
+owlTaught=true → buildOwlHintNode() (dynamic hints)
+```
 
-**Gameplay consequences**: Choosing "सुर!" (Sure!) spawns a WisdomGem reward at the monkey's position and permanently changes the dialogue to a thank-you message. Choosing "बाद में" (Maybe later) gives no reward — the player can retry later. The `onComplete` callback now receives `finalNodeId` so GameScene can apply per-choice outcomes.
+### Deer Dialogue (1 node + 2 audio files)
+```
+deer_intro → onComplete('deer_intro') → deerTaught=true
+deerTaught=true → buildDeerHintNode() (dynamic hints)
+```
+
+### Speech Audio Files (11 total — `public/assets/audio/speech/hindi/dialogue/`)
+| File | NPC | Size | Trigger |
+|------|-----|------|---------|
+| `monkey_intro.mp3` | Monkey | 50KB | First talk |
+| `monkey_help.mp3` | Monkey | 64KB | "Sure!" choice |
+| `monkey_later.mp3` | Monkey | 25KB | "Maybe later" choice |
+| `monkey_helped.mp3` | Monkey | 40KB | Hint (door not open) |
+| `monkey_done.mp3` | Monkey | 43KB | All doors open |
+| `monkey_hint.mp3` | Monkey | 18KB | Dynamic hint prelude |
+| `owl_intro.mp3` | Owl | 51KB | First talk |
+| `owl_teach.mp3` | Owl | 50KB | "Let's learn!" → teaches baagh |
+| `owl_hint.mp3` | Owl | 24KB | Dynamic hint prelude |
+| `deer_intro.mp3` | Deer | 51KB | First talk |
+| `deer_hint.mp3` | Deer | 23KB | Dynamic hint prelude |
+
+Audio generated via `say -v "Lekha (Enhanced)" -r 140` → AIFF → ffmpeg MP3 (qscale:a 2).
 
 ---
 
@@ -149,9 +205,10 @@ On any boss level, press **B** key to skip directly to the boss fight. Calls `la
 - [x] Cross-world progression — DONE
 - [x] Boss sprites: 3 unique 128×128 designs — DONE
 - [x] Music/SFX: 9 WAV tracks + synthesized SFX — DONE
-- [x] Dialogue choices: `advance()` now reads `choices[0].nextNodeId` — working
-- [x] Dialogue audio: `Howler.stop()` global call removed, speech plays fully — fixed
-- [x] NPC dialogue choice UI — monkey's 2 choices have visible tappable buttons
+- [x] Dialogue choices: visible tappable buttons with audio — DONE
+- [x] NPC dynamic hints: Monkey, Owl, Deer give game-state-aware hints — DONE
+- [x] Typewriter timer race condition: old timer cancelled before new — fixed
+- [x] Monkey gem reward: permanent NPC state change, no stale hints — fixed
 - [ ] Tiled level maps not created
 
 ---
@@ -180,11 +237,11 @@ localStorage.setItem('shabd_saga_progress', JSON.stringify({languages:{hindi:{co
 | File | Purpose |
 |------|---------|
 | `src/main.ts` | Entry point, audio unlock, DOM fullscreen, orientation, `window.game` export |
-| `src/scenes/GameScene.ts` | Core gameplay (~1846 lines) — enemy config, cross-world progression, `launchBossFight()` |
+| `src/scenes/GameScene.ts` | Core gameplay (~2100 lines) — NPC dynamic hints (3 methods), monkey gem reward, `completedDoorWords`, enemy config, cross-world progression, `launchBossFight()` |
 | `src/scenes/BossScene.ts` | Boss fights (~1272 lines) — per-attack SFX, per-world boss music, victory celebration |
 | `src/scenes/WordPuzzleScene.ts` | Spelling overlay — puzzle music only for GameScene caller |
 | `src/scenes/UIScene.ts` | HUD: health, WordBar, score, gems, pause menu with mute toggle |
-| `src/scenes/DialogueScene.ts` | NPC conversation — choices support, persistent keyboard keys, audio per node |
+| `src/scenes/DialogueScene.ts` | NPC conversation (~240 lines) — choice UI (`showChoices`, `handleChoice`), `onComplete(finalNodeId)`, typewriter timer fix |
 | `src/scenes/MenuScene.ts` | Animated title menu with AudioManager music |
 | `src/scenes/LevelSelectScene.ts` | World + level selection |
 | `src/scenes/PreloadScene.ts` | Asset loading (sprites only — no audio preloads needed) |
@@ -193,12 +250,15 @@ localStorage.setItem('shabd_saga_progress', JSON.stringify({languages:{hindi:{co
 | `src/systems/LanguageManager.ts` | Fetches /data/hindi.json, getWord() cross-level |
 | `src/systems/SaveManager.ts` | localStorage progress |
 | `src/config/GameConfig.ts` | Phaser config, Scale.FIT, activePointers:3 |
-| `src/config/languages/hindi.json` | Hindi words + enemies + guards + boss data |
+| `src/config/languages/hindi.json` | Hindi words + enemies + guards + boss data + NPC dialogues (5 monkey, 2 owl, 1 deer) |
 | `public/data/hindi.json` | Runtime copy of hindi.json |
+| `public/assets/audio/speech/hindi/dialogue/` | 11 NPC voice MP3s (monkey×6, owl×3, deer×2) |
 | `scripts/generate-sprites.ts` | Procedural sprite generation |
 | `scripts/generate-music.ts` | 9-track WAV music generator (offline PCM synthesis) |
+| `scripts/generate-speech.sh` | Hindi TTS generation (macOS `say` + Lekha voice + ffmpeg MP3) |
 | `index.html` | DOM: viewport meta, #fs-btn, #rotate-prompt |
 | `vite.config.ts` | host:'0.0.0.0' for LAN mobile testing |
+| `docs/AI-SESSION-HANDOFF.md` | This file — quick start for new AI sessions |
 | `docs/12-progress-log.md` | Full chronological log |
 | `docs/13-roadmap.md` | Phase plan |
 
@@ -206,4 +266,7 @@ localStorage.setItem('shabd_saga_progress', JSON.stringify({languages:{hindi:{co
 
 ## Recommended Next Task
 ### Tiled Level Maps
-The biggest visual/design upgrade remaining. Create proper `.tmx` tile map files for each level with terrain, platforms, decorations, and enemy/NPC/collectible placement.
+The biggest visual/design upgrade remaining. Create proper `.tmx` tile map files for each level with terrain, platforms, decorations, and enemy/NPC/collectible placement. Currently levels use procedural platform generation — tile maps would bring rich, hand-crafted environments.
+
+### Secondary: Screen Transitions
+Small polish item — iris wipe or dissolve between scenes instead of instant cuts. Would improve the overall feel significantly with minimal effort.

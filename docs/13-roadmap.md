@@ -29,7 +29,7 @@
 
 - [x] NPC dialogue triggers (walk near → E/tap → DialogueScene with audio)
 - [x] Shadow Creeper enemy (patrol AI, letter stealing, player damage)
-- [ ] Letter Guard enemy (word-blocking mechanic)
+- [x] Letter Guard enemy (word-blocking mechanic)
 - [x] Real player sprite animations (idle 2-frame, run 4-frame spritesheets)
 - [x] Checkpoint/respawn system (flags, death → respawn, auto-complete if all doors done)
 - [x] Real music/SFX hooks (wired, files are silent placeholders — real audio in Phase 5)
@@ -39,14 +39,14 @@
 - [x] Dialogue audio playback (Howler.js in DialogueScene)
 - [x] 10+ bugfixes (see progress log May 4)
 
-## Phase 4 — Boss Fights & Progression
-- [ ] Boss entity (multi-phase attack patterns)
-- [ ] BossScene integration (sentence construction mechanic)
-- [ ] Star rating system (1-3 stars per level)
-- [ ] WisdomGem collectibles (hidden bonus items)
-- [ ] LevelSelectScene improvements (star gates, boss indicators)
-- [ ] World 2 (Village) levels + boss
-- [ ] World 3 (Palace) level + boss
+## Phase 4 — Boss Fights & Progression ✅ COMPLETE (May 2026)
+- [x] Boss entity (multi-phase attack patterns)
+- [x] BossScene integration (sentence construction mechanic)
+- [x] Star rating system (1-3 stars per level)
+- [x] WisdomGem collectibles (hidden bonus items)
+- [x] LevelSelectScene improvements (star gates, boss indicators)
+- [x] World 2 (Village) levels + boss
+- [x] World 3 (Palace) level + boss
 
 ## Phase 5 — Polish
 - [ ] Post-processing effects (bloom, vignette, color grading)
