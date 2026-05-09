@@ -3,7 +3,7 @@
 > **READ THIS FIRST** when starting a new AI session on Shabd Saga.
 > The AI should also read `docs/12-progress-log.md` for full history.
 
-## Quick Status (May 2026) — Tiled Level Maps Complete: Rich visual environments, 5 levels across 3 worlds
+## Quick Status (May 2026) — Tiled Level Maps Complete & Verified: Rich visual environments, 5 levels across 3 worlds, working on Phaser 3.90
 
 ### Mobile Testing Results (iPhone 12 iOS 18.7.8 + OnePlus Nord CE3 Android 15)
 | Feature | iPhone | Android Phone | Status |
@@ -18,7 +18,7 @@
 | Sound (letter pronunciation) | ✓ | ✓ | Done |
 | Landscape lock + rotate prompt | ✓ | ✓ | Done |
 | Bottom crop / blank space | ✓ No crop | ✓ No crop | Done |
-| Tiled level maps | ⌛ Pending test | ⌛ Pending test | Done (code + assets) |
+| Tiled level maps | ✓ Verified | ✓ Verified | Done |
 
 ### NEXT: Screen Transitions
 | Order | Task | Why |
@@ -30,6 +30,8 @@
 | ~~5~~ | ~~Dialogue audio~~ ✓ | 5 monkey, 3 owl, 2 deer voice MP3s (Lekha TTS) |
 | ~~6~~ | ~~Tiled level maps~~ ✓ | 5 levels × 3 worlds, proper tileset spritesheets, parallax backgrounds |
 | 7 | Screen transitions | Iris wipe / dissolve between scenes — small effort, big polish |
+| 8 | Object layer integration | Wire tilemap object layers to entity spawning |
+| 9 | Tileset visual polish | Add shading, highlights, patterns to 20 tiles per world |
 
 ### What's Working
 - All 9 Phaser scenes load and function
@@ -254,8 +256,18 @@ Replaced hardcoded procedural platforms (rectangles) and procedural parallax bac
 ### Loading Flow
 1. **PreloadScene**: `this.load.tilemapTiledJSON(levelId, 'path.json')` + `this.load.image('jungle-tiles', 'path.png')` for all 5 levels + 3 tilesets
 2. **GameScene.create()**: Calls `createTilemap()` before player creation
-3. **createTilemap()**: `this.make.tilemap({ key: levelId })` → `addTilesetImage()` → `createLayer()` for each layer with scroll factors → `platformsLayer.setCollisionByExclusion([-1])` → `this.platforms = platformsLayer`
-4. **Fallback**: If tilemap/tileset not found, calls `createProceduralLevel()` which uses the old rectangle-based approach
+3. **createTilemap()**: Checks `cache.tilemap.get()` + `textures.exists()` → `this.make.tilemap({ key, insertNull: true })` → `addTilesetImage()` → `createLayer()` × 5 layers with scroll factors → `platformsLayer.setCollisionByExclusion([-1])` → `this.platforms = platformsLayer`
+4. **Fallback**: If tilemap/tileset not found or parse fails, calls `createProceduralLevel()` which uses the old rectangle-based approach
+
+### Phaser 3.90 Compatibility (Critical)
+Phaser 3.90 has stricter Tiled JSON parsing than 3.80. The tilemap JSON MUST include:
+- `orientation: 'orthogonal'` — Phaser calls `toLowerCase()` on this; missing = crash
+- `renderorder: 'right-down'` — required by parser
+- Tileset must have `imagewidth`/`imageheight` (explicit, not inferred)
+- Layer `id` fields must be present on each layer
+- `insertNull: true` must be passed to `this.make.tilemap()` to handle gid 0 empty tiles
+- `version`, `tiledversion`, `nextlayerid`, `nextobjectid` should be present
+- Tileset `spacing` and `margin` should be explicit (0, not undefined)
 
 ### Collision
 - `this.platforms` type: `Phaser.Physics.Arcade.StaticGroup | Phaser.Tilemaps.TilemapLayer`
@@ -303,14 +315,14 @@ localStorage.setItem('shabd_saga_progress', JSON.stringify({languages:{hindi:{co
 | File | Purpose |
 |------|---------|
 | `src/main.ts` | Entry point, audio unlock, DOM fullscreen, orientation, `window.game` export |
-| `src/scenes/GameScene.ts` | Core gameplay (~2100 lines) — NPC dynamic hints (3 methods), monkey gem reward, `completedDoorWords`, enemy config, cross-world progression, `launchBossFight()` |
+| `src/scenes/GameScene.ts` | Core gameplay (~2250 lines) — `createTilemap()`, `createProceduralLevel()`, NPC dynamic hints (3 methods), monkey gem reward, `completedDoorWords`, enemy config, cross-world progression, `launchBossFight()` |
 | `src/scenes/BossScene.ts` | Boss fights (~1272 lines) — per-attack SFX, per-world boss music, victory celebration |
 | `src/scenes/WordPuzzleScene.ts` | Spelling overlay — puzzle music only for GameScene caller |
 | `src/scenes/UIScene.ts` | HUD: health, WordBar, score, gems, pause menu with mute toggle |
 | `src/scenes/DialogueScene.ts` | NPC conversation (~240 lines) — choice UI (`showChoices`, `handleChoice`), `onComplete(finalNodeId)`, typewriter timer fix |
 | `src/scenes/MenuScene.ts` | Animated title menu with AudioManager music |
 | `src/scenes/LevelSelectScene.ts` | World + level selection |
-| `src/scenes/PreloadScene.ts` | Asset loading (sprites only — no audio preloads needed) |
+| `src/scenes/PreloadScene.ts` | Asset loading — 5 tilemap JSONs + 3 tileset PNGs + sprites/UI |
 | `src/systems/TouchControls.ts` | Left-half joystick + right-half jump zone + dynamic interact button |
 | `src/systems/AudioManager.ts` | Unified audio: Web Audio SFX synthesis + Howler WAV music + Howler speech cache |
 | `src/systems/LanguageManager.ts` | Fetches /data/hindi.json, getWord() cross-level |
@@ -319,7 +331,13 @@ localStorage.setItem('shabd_saga_progress', JSON.stringify({languages:{hindi:{co
 | `src/config/languages/hindi.json` | Hindi words + enemies + guards + boss data + NPC dialogues (5 monkey, 2 owl, 1 deer) |
 | `public/data/hindi.json` | Runtime copy of hindi.json |
 | `public/assets/audio/speech/hindi/dialogue/` | 11 NPC voice MP3s (monkey×6, owl×3, deer×2) |
+| `public/assets/tilesets/jungle-tiles.png` | Jungle tileset spritesheet (320×256, 20 tiles) |
+| `public/assets/tilesets/village-tiles.png` | Village tileset spritesheet (320×256, 20 tiles) |
+| `public/assets/tilesets/palace-tiles.png` | Palace tileset spritesheet (320×256, 20 tiles) |
+| `public/assets/tilesets/world-*-level-*.json` | 5 tilemap JSON files |
 | `scripts/generate-sprites.ts` | Procedural sprite generation |
+| `scripts/generate-tilesets.ts` | Generates 3 world-specific tileset spritesheets (20 tiles each, 320×256) |
+| `scripts/generate-tilemaps.ts` | Programmatic level designer — generates 5 tilemap JSONs with terrain + object layers |
 | `scripts/generate-music.ts` | 9-track WAV music generator (offline PCM synthesis) |
 | `scripts/generate-speech.sh` | Hindi TTS generation (macOS `say` + Lekha voice + ffmpeg MP3) |
 | `index.html` | DOM: viewport meta, #fs-btn, #rotate-prompt |
@@ -330,9 +348,14 @@ localStorage.setItem('shabd_saga_progress', JSON.stringify({languages:{hindi:{co
 
 ---
 
-## Recommended Next Task
-### Tiled Level Maps
-The biggest visual/design upgrade remaining. Create proper `.tmx` tile map files for each level with terrain, platforms, decorations, and enemy/NPC/collectible placement. Currently levels use procedural platform generation — tile maps would bring rich, hand-crafted environments.
+## Next Session: Start Here
 
-### Secondary: Screen Transitions
-Small polish item — iris wipe or dissolve between scenes instead of instant cuts. Would improve the overall feel significantly with minimal effort.
+The AI should read this file and `docs/12-progress-log.md`, then continue with the next task.
+
+### Recommended Next Task: Screen Transitions
+Add smooth cross-fade transitions between all scenes (Menu → LevelSelect → Game → Boss → dialogue pauses). The game already has some `camera.fadeOut/fadeIn` calls but they're inconsistent. Add uniform transitions and/or an iris-wipe effect. ~30-60 lines of change in scene transition code (GameConfig, or a shared transition utility). High polish payoff with minimal effort.
+
+### Secondary Tasks (in priority order)
+1. **Object Layer Integration** — Wire tilemap `objects` layer to drive entity spawning (doors, enemies, NPCs, gems, health) instead of hardcoded arrays. Tilemap JSONs already define these positions.
+2. **Tileset Visual Polish** — Current tiles are simple SVG shapes. Add shading, gradients, highlights, and patterns to the 3 tileset spritesheets for richer environments.
+3. **Mobile Testing** — Full playthrough of all 5 levels on real iPhone/Android to verify tilemap rendering and performance.
