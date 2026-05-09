@@ -23,8 +23,7 @@
       "columns": 5,
       "image": "village-tiles.png",
       "imagewidth": 320,
-      "imageheight": 256,
-      "tiles": []
+      "imageheight": 256
     }
   ],
   "layers": [
