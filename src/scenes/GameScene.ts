@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { BossData, LanguageManager } from '../systems/LanguageManager';
 import { TouchControls } from '../systems/TouchControls';
 import { AudioManager } from '../systems/AudioManager';
+import { TransitionManager } from '../systems/TransitionManager';
 
 export class GameScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -108,7 +109,7 @@ export class GameScene extends Phaser.Scene {
     if (this.levelCompleteTimer) this.levelCompleteTimer.remove();
     this.levelCompleteTimer = undefined;
 
-    this.cameras.main.fadeIn(500);
+    this.cameras.main.fadeIn(TransitionManager.FADE_DURATION);
 
     this.createTilemap();
 
@@ -847,10 +848,9 @@ export class GameScene extends Phaser.Scene {
 
         nextBtn.on('pointerdown', () => {
           AudioManager.getInstance().stopMusic();
-          this.scene.stop('UIScene');
           const worldMatch = nextLevelId.match(/world-(\d+)/);
           const worldId = worldMatch ? worldMatch[0] : `world-${this.getWorldNum()}`;
-          this.scene.restart({ worldId, levelId: nextLevelId, language: this.languageId });
+          TransitionManager.toScene(this, 'GameScene', { worldId, levelId: nextLevelId, language: this.languageId } as any);
         });
         nextBtn.on('pointerover', () => nextBtn.setColor('#88FF88'));
         nextBtn.on('pointerout', () => nextBtn.setColor('#44FF44'));
@@ -868,7 +868,7 @@ export class GameScene extends Phaser.Scene {
       menuBtn.on('pointerdown', () => {
         AudioManager.getInstance().stopMusic();
         this.scene.stop('UIScene');
-        this.scene.start('LevelSelectScene');
+        TransitionManager.toScene(this, 'LevelSelectScene');
       });
       menuBtn.on('pointerover', () => menuBtn.setColor('#FFFFFF'));
       menuBtn.on('pointerout', () => menuBtn.setColor('#AAAACC'));
@@ -1626,7 +1626,7 @@ export class GameScene extends Phaser.Scene {
     this.player.setPosition(this.lastCheckpoint.x, this.lastCheckpoint.y);
     this.player.setVelocity(0, 0);
 
-    this.cameras.main.fadeIn(500);
+    this.cameras.main.fadeIn(TransitionManager.FADE_DURATION);
 
     if (this.currentDialogue) {
       this.scene.stop('DialogueScene');

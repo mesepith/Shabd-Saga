@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { LanguageManager } from '../systems/LanguageManager';
+import { TransitionManager } from '../systems/TransitionManager';
 
 export class PreloadScene extends Phaser.Scene {
   private progressBar!: Phaser.GameObjects.Graphics;
@@ -156,7 +157,7 @@ export class PreloadScene extends Phaser.Scene {
     // LanguageManager.getInstance().loadLanguage('hindi');
 
     this.time.delayedCall(500, () => {
-      this.scene.start('MenuScene');
+      TransitionManager.toScene(this, 'MenuScene');
     });
   }
 }

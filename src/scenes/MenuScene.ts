@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { AudioManager } from '../systems/AudioManager';
+import { TransitionManager } from '../systems/TransitionManager';
 
 export class MenuScene extends Phaser.Scene {
   private titleText!: Phaser.GameObjects.Text;
@@ -18,6 +19,8 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.cameras.main.fadeIn(TransitionManager.FADE_DURATION);
+
     const { width, height } = this.cameras.main;
     const centerX = width / 2;
 
@@ -224,10 +227,7 @@ export class MenuScene extends Phaser.Scene {
     });
 
     this.playButton.on('pointerdown', () => {
-      this.cameras.main.fadeOut(500, 0, 0, 0);
-      this.cameras.main.once('camerafadeoutcomplete', () => {
-        this.scene.start('LevelSelectScene', { language: this.currentLanguage });
-      });
+      TransitionManager.toScene(this, 'LevelSelectScene', { language: this.currentLanguage } as any);
     });
   }
 

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GameScene } from './GameScene';
 import { AudioManager } from '../systems/AudioManager';
+import { TransitionManager } from '../systems/TransitionManager';
 
 export class UIScene extends Phaser.Scene {
   private gameScene!: GameScene;
@@ -269,27 +270,37 @@ export class UIScene extends Phaser.Scene {
       }
     });
 
+    const pauseElements: Phaser.GameObjects.GameObject[] = [overlay, panel, title, muteBtn];
+
     const cleanup = () => {
-      overlay.destroy(); panel.destroy(); title.destroy(); muteBtn.destroy();
+      pauseElements.forEach((el) => el.destroy());
       this.scene.resume('GameScene');
     };
 
-    this.createPauseBtn(width / 2, height / 2 - 40, '▶ Resume', cleanup);
-    this.createPauseBtn(width / 2, height / 2 + 20, '↺ Restart', () => {
-      cleanup();
-      this.scene.stop('GameScene');
-      this.scene.stop('UIScene');
-      this.scene.start('GameScene');
-    });
-    this.createPauseBtn(width / 2, height / 2 + 80, '🚪 Quit', () => {
-      cleanup();
-      this.scene.stop('GameScene');
-      this.scene.stop('UIScene');
-      this.scene.start('LevelSelectScene');
-    });
+    pauseElements.push(...this.createPauseBtn(width / 2, height / 2 - 40, '▶ Resume', cleanup));
+    pauseElements.push(...this.createPauseBtn(width / 2, height / 2 + 20, '↺ Restart', () => {
+      pauseElements.forEach((el) => el.destroy());
+      AudioManager.getInstance().stopMusic();
+      this.cameras.main.fadeOut(TransitionManager.FADE_DURATION, TransitionManager.FADE_COLOR.r, TransitionManager.FADE_COLOR.g, TransitionManager.FADE_COLOR.b);
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        this.scene.stop('GameScene');
+        this.scene.stop('UIScene');
+        this.scene.start('GameScene');
+      });
+    }));
+    pauseElements.push(...this.createPauseBtn(width / 2, height / 2 + 80, '🚪 Quit', () => {
+      pauseElements.forEach((el) => el.destroy());
+      AudioManager.getInstance().stopMusic();
+      this.cameras.main.fadeOut(TransitionManager.FADE_DURATION, TransitionManager.FADE_COLOR.r, TransitionManager.FADE_COLOR.g, TransitionManager.FADE_COLOR.b);
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        this.scene.stop('GameScene');
+        this.scene.stop('UIScene');
+        this.scene.start('LevelSelectScene');
+      });
+    }));
   }
 
-  private createPauseBtn(x: number, y: number, text: string, cb: () => void): void {
+  private createPauseBtn(x: number, y: number, text: string, cb: () => void): Phaser.GameObjects.GameObject[] {
     const w = 260, h = 44;
     const btn = this.add.rectangle(x, y, w, h, 0x334466, 1)
       .setStrokeStyle(2, 0x556688).setDepth(302).setScrollFactor(0)
@@ -303,6 +314,8 @@ export class UIScene extends Phaser.Scene {
     btn.on('pointerover', () => { btn.setFillStyle(0x445577); txt.setColor('#FFFFFF'); });
     btn.on('pointerout', () => { btn.setFillStyle(0x334466); txt.setColor('#CCCCEE'); });
     btn.on('pointerdown', cb);
+
+    return [btn, txt];
   }
 
   update(): void {

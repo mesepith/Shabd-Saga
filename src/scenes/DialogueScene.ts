@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { AudioManager } from '../systems/AudioManager';
+import { TransitionManager } from '../systems/TransitionManager';
 
 interface DialogueNode {
   id: string;
@@ -36,6 +37,8 @@ export class DialogueScene extends Phaser.Scene {
   create(data: { dialogue: DialogueNode[]; onComplete?: (finalNodeId: string) => void }): void {
     this.dialogueData = data.dialogue;
     this.onComplete = data.onComplete;
+
+    this.cameras.main.fadeIn(TransitionManager.FADE_DURATION);
 
     const { width, height } = this.cameras.main;
 
@@ -225,11 +228,15 @@ export class DialogueScene extends Phaser.Scene {
 
   private endDialogue(): void {
     const finalNodeId = this.currentNode.id;
-    this.cameras.main.fadeOut(300, 0, 0, 0);
+    this.cameras.main.fadeOut(TransitionManager.FADE_DURATION, TransitionManager.FADE_COLOR.r, TransitionManager.FADE_COLOR.g, TransitionManager.FADE_COLOR.b);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.stop('DialogueScene');
       if (this.onComplete) {
         this.onComplete(finalNodeId);
+      }
+      const gameScene = this.scene.get('GameScene');
+      if (gameScene && gameScene.scene.isActive()) {
+        gameScene.cameras.main.fadeIn(TransitionManager.FADE_DURATION);
       }
     });
   }

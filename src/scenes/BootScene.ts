@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { TransitionManager } from '../systems/TransitionManager';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -16,7 +17,6 @@ export class BootScene extends Phaser.Scene {
     // Set up any global settings
     this.scale.lockOrientation('landscape');
 
-    // Transition to preload scene
-    this.scene.start('PreloadScene');
+    TransitionManager.toScene(this, 'PreloadScene');
   }
 }

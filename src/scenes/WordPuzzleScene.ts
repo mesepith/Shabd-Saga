@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { AudioManager } from '../systems/AudioManager';
+import { TransitionManager } from '../systems/TransitionManager';
 
 export class WordPuzzleScene extends Phaser.Scene {
   private targetWord: string = '';
@@ -28,6 +29,8 @@ export class WordPuzzleScene extends Phaser.Scene {
     this.attemptCount = 0;
     this.availableContainers = [];
     this.puzzleObjects = [];
+
+    this.cameras.main.fadeIn(TransitionManager.FADE_DURATION);
 
     // Semi-transparent overlay
     const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.7);
@@ -414,18 +417,22 @@ export class WordPuzzleScene extends Phaser.Scene {
       if (this.callerSceneKey === 'GameScene') {
         AudioManager.getInstance().stopMusic();
       }
-      const callerScene = this.scene.get(this.callerSceneKey);
-      if (callerScene) {
-        this.scene.resume(this.callerSceneKey);
-        if (this.callerSceneKey === 'GameScene') {
-          this.scene.resume('UIScene');
+      this.cameras.main.fadeOut(TransitionManager.FADE_DURATION, TransitionManager.FADE_COLOR.r, TransitionManager.FADE_COLOR.g, TransitionManager.FADE_COLOR.b);
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        this.scene.stop('WordPuzzleScene');
+        const callerScene = this.scene.get(this.callerSceneKey);
+        if (callerScene) {
+          this.scene.resume(this.callerSceneKey);
+          if (this.callerSceneKey === 'GameScene') {
+            this.scene.resume('UIScene');
+          }
+          callerScene.events.emit('wordSpelled', {
+            word: this.targetWord,
+            translation: this.targetTranslation,
+          });
+          callerScene.cameras.main.fadeIn(TransitionManager.FADE_DURATION);
         }
-        callerScene.events.emit('wordSpelled', {
-          word: this.targetWord,
-          translation: this.targetTranslation,
-        });
-      }
-      this.scene.stop('WordPuzzleScene');
+      });
     });
   }
 
@@ -433,10 +440,17 @@ export class WordPuzzleScene extends Phaser.Scene {
     if (this.callerSceneKey === 'GameScene') {
       AudioManager.getInstance().stopMusic();
     }
-    this.scene.resume(this.callerSceneKey);
-    if (this.callerSceneKey === 'GameScene') {
-      this.scene.resume('UIScene');
-    }
-    this.scene.stop('WordPuzzleScene');
+    this.cameras.main.fadeOut(TransitionManager.FADE_DURATION, TransitionManager.FADE_COLOR.r, TransitionManager.FADE_COLOR.g, TransitionManager.FADE_COLOR.b);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.stop('WordPuzzleScene');
+      this.scene.resume(this.callerSceneKey);
+      if (this.callerSceneKey === 'GameScene') {
+        this.scene.resume('UIScene');
+      }
+      const callerScene = this.scene.get(this.callerSceneKey);
+      if (callerScene) {
+        callerScene.cameras.main.fadeIn(TransitionManager.FADE_DURATION);
+      }
+    });
   }
 }

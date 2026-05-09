@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { TransitionManager } from '../systems/TransitionManager';
+import { AudioManager } from '../systems/AudioManager';
 
 interface WorldNode {
   id: string;
@@ -35,7 +37,8 @@ export class LevelSelectScene extends Phaser.Scene {
     this.currentMenuObjects = [];
     this.selectedWorldId = null;
 
-    this.cameras.main.fadeIn(500);
+    this.cameras.main.fadeIn(TransitionManager.FADE_DURATION);
+    AudioManager.getInstance().startMenuMusic();
 
     // Background
     const bg = this.add.graphics();
@@ -60,7 +63,7 @@ export class LevelSelectScene extends Phaser.Scene {
     });
     backBtn.setInteractive({ useHandCursor: true });
     backBtn.on('pointerdown', () => {
-      this.scene.start('MenuScene');
+      TransitionManager.toScene(this, 'MenuScene');
     });
     backBtn.on('pointerover', () => backBtn.setColor('#FFFFFF'));
     backBtn.on('pointerout', () => backBtn.setColor('#AAAACC'));
@@ -410,13 +413,7 @@ export class LevelSelectScene extends Phaser.Scene {
   }
 
   private startLevel(levelId: string): void {
-    this.cameras.main.fadeOut(400, 0, 0, 0);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.scene.start('GameScene', {
-        levelId,
-        language: 'hindi',
-      });
-    });
+    TransitionManager.toScene(this, 'GameScene', { levelId, language: 'hindi' } as any);
   }
 
   private clearLevelMenu(): void {

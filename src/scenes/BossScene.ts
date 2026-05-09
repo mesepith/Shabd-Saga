@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { BossData, BossSentence } from '../systems/LanguageManager';
 import { TouchControls } from '../systems/TouchControls';
 import { AudioManager } from '../systems/AudioManager';
+import { TransitionManager } from '../systems/TransitionManager';
 
 interface BossSceneData {
   bossConfig: BossData;
@@ -76,6 +77,8 @@ export class BossScene extends Phaser.Scene {
     this.state = BossState.ATTACKING;
     this.stateGuard = false;
     this.interactCooldown = 0;
+
+    this.cameras.main.fadeIn(TransitionManager.FADE_DURATION);
 
     const { width, height } = this.cameras.main;
 
