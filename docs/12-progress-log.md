@@ -802,6 +802,91 @@ vite build    ✓  (2.81s, 24 modules)
 
 ---
 
+## 2026-05-08 — Audio Polish: WAV Music Files, Boss SFX, Dialogue Fixes
+
+### Completed
+- [x] Replaced runtime Web Audio music synthesis with pre-rendered WAV loops (Howler.js playback)
+- [x] `scripts/generate-music.ts` — generates 9 music WAV files (44100Hz, 10s loops, additive synthesis with bells/kicks/sparkles/pads)
+- [x] Music tracks: menu, world-1 (E minor jungle), world-2 (G major village), world-3 (Dm palace), boss-jungle (120bpm Dm), boss-village (140bpm C#m), boss-palace (160bpm Em), victory (C major celebration), puzzle (C major magical)
+- [x] Escalating boss tension: each world's boss has dedicated track with increasing tempo (120→140→160), denser percussion, faster sweeps
+- [x] Boss SFX: dual sawtooth sweep + fire crackle per shadow bolt/minion; heavy boom + noise per ground slam wave
+- [x] Victory music: plays continuously during "VICTORY!" and level complete screens until user clicks Continue/Next Level
+- [x] WordPuzzleScene: only plays puzzle music for GameScene caller, leaves boss music alone
+- [x] DialogueScene: fixed `choices` format support (JSON uses `choices[0].nextNodeId`, not `nextNodeId`)
+- [x] DialogueScene: fixed keyboard advance resetting keys every frame (now persistent key refs)
+- [x] `stopMusic()`: removed `Howler.stop()` global call that was killing speech audio mid-sentence
+- [x] `main.ts`: exposed `window.game` for console access
+- [x] GameScene: `B` key skips to boss (dev shortcut) + extracted `launchBossFight()` method
+- [x] Mute button (🔊/🔇) in pause menu
+- [x] Music volumes: 0.28 for all tracks via Howler
+- [x] Zero TypeScript errors, clean Vite build
+
+### Music Tracks — Full List
+
+| Track | File | Key | Tempo | Character |
+|-------|------|-----|-------|-----------|
+| Menu | `menu-loop.wav` | C major pent | 120 BPM | Calm pads + bell melody |
+| World 1 | `world-1-loop.wav` | E minor pent | 130 BPM | Triangle melody + rhythmic kicks |
+| World 2 | `world-2-loop.wav` | G major | 115 BPM | Warm sine melody + gentle kicks |
+| World 3 | `world-3-loop.wav` | D harm minor | 100 BPM | Bell arpeggios over pads |
+| Boss Jungle | `boss-jungle-loop.wav` | D minor | 120 BPM | Double kicks, dissonant bells, sweeps |
+| Boss Village | `boss-village-loop.wav` | C# minor | 140 BPM | Triple kicks, faster arpeggios |
+| Boss Palace | `boss-palace-loop.wav` | E minor | 160 BPM | Quad kicks, rapid arpeggios, dense sweeps |
+| Victory | `victory-loop.wav` | C major | 100 BPM | Grand fanfare + bell melody + sparkles |
+| Puzzle | `puzzle-loop.wav` | C major pent | 108 BPM | Soft twinkling bells over pad bed |
+
+### Boss SFX — Per-Attack
+
+| Attack | SFX | Technique |
+|--------|-----|-----------|
+| Shadow Bolts | `playBossAttack()` | Dual sawtooth sweep (800→200 + 600→150) + 6× crackle burst |
+| Ground Slam | `playBossSlam()` | 45Hz boom thump + white noise explosion + 200→30Hz sweep |
+| Shadow Minions | `playBossMinion()` | Sine sweep (1200→400) + triangle sweep (900→300) + crackle |
+| Per wave (slam) | `playBossAttack()` | Fires once per left/right shockwave |
+| Per bolt spawn | `playBossAttack()` | Fires 3× (once per bolt, 600ms apart) |
+| Per minion spawn | `playBossMinion()` | Fires 3× (once per minion, 400ms apart) |
+
+### Dialogue Fixes
+1. `advance()` now checks `choices[0].nextNodeId || nextNodeId` — supports owl/monkey/deer JSON format
+2. Keyboard keys (`spaceKey`, `enterKey`) created once in `create()`, not rebuilt every frame
+3. `stopMusic()` no longer calls `Howler.stop()` globally — was killing dialogue speech mid-sentence
+4. "▼ Tap to continue" hint made bright green for visibility
+
+### Decisions Made
+1. Pre-rendered WAV music over runtime synthesis — consistent quality, no oscillator leakage or timing drift
+2. 44100Hz sample rate — better quality for bell harmonics and kicks
+3. Music via Howler.js with `html5: true` — works on all browsers, loops seamlessly
+4. Escalating boss tension — different track per world with increasing tempo/density
+5. Victory/celebration music persists until user action — fanfare SFX plays once then looping celebration
+6. World music fades out during puzzles/dialogue, resumes after
+
+### Files Modified
+- `scripts/generate-music.ts` — NEW: 9-track music generator
+- `src/systems/AudioManager.ts` — complete rewrite: WAV loading via Howler, SFX via Web Audio
+- `src/scenes/BossScene.ts` — per-attack SFX, per-world boss music, victory celebration loop
+- `src/scenes/GameScene.ts` — `launchBossFight()` extracted, B-key boss skip, music stop on level complete
+- `src/scenes/DialogueScene.ts` — choices support, persistent keys, removed Howler import
+- `src/scenes/WordPuzzleScene.ts` — puzzle music only for GameScene caller
+- `src/scenes/MenuScene.ts` — AudioManager.startMenuMusic()
+- `src/scenes/UIScene.ts` — mute toggle in pause menu
+- `src/scenes/PreloadScene.ts` — removed 9 silent MP3 audio preloads
+- `src/main.ts` — simplified audio unlock, exposed `window.game`
+- `package.json` — added `generate-music` script
+- DEL: `src/systems/PronunciationEngine.ts` (dead code, ~150 lines)
+- DEL: 9 silent MP3 files (5 SFX + 4 music)
+- `docs/AI-SESSION-HANDOFF.md` — fully rewritten
+- `docs/12-progress-log.md` — this entry
+
+### Build
+```
+tsc --noEmit  ✓  (zero errors)
+vite build    ✓  (~2.8s, 24 modules)
+```
+
+### Next: NPC Dialogue Choice UI → Tiled Level Maps
+
+---
+
 ## Template for Future Entries
 
 ```
