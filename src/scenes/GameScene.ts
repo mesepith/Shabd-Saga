@@ -5,7 +5,8 @@ import { AudioManager } from '../systems/AudioManager';
 
 export class GameScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
-  private platforms!: Phaser.Physics.Arcade.StaticGroup;
+  private platforms!: Phaser.Physics.Arcade.StaticGroup | Phaser.Tilemaps.TilemapLayer;
+  private tilemap?: Phaser.Tilemaps.Tilemap;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
   private spaceBar!: Phaser.Input.Keyboard.Key;
@@ -109,24 +110,10 @@ export class GameScene extends Phaser.Scene {
 
     this.cameras.main.fadeIn(500);
 
-    this.createParallaxBackground();
-    this.platforms = this.physics.add.staticGroup();
-
-    // Ground
-    const ground = this.add.rectangle(width / 2, height - 40, width * 3, 80, 0x2D5A27);
-    this.physics.add.existing(ground, true);
-    this.platforms.add(ground);
-
-    // Staircase platforms
-    this.createFloatingPlatform(250, 540, 180, 20);
-    this.createFloatingPlatform(480, 460, 180, 20);
-    this.createFloatingPlatform(710, 380, 180, 20);
-    this.createFloatingPlatform(940, 300, 180, 20);
-    this.createFloatingPlatform(1170, 240, 180, 20);
-    this.createFloatingPlatform(600, 560, 120, 20);
+    this.createTilemap();
 
     // Player
-    this.player = this.physics.add.sprite(100, height - 150, 'player-placeholder');
+    this.player = this.physics.add.sprite(100, 570, 'player-placeholder');
     this.player.setBounce(0.1);
     this.player.setCollideWorldBounds(true);
     this.player.setDepth(10);
@@ -135,10 +122,13 @@ export class GameScene extends Phaser.Scene {
     playerBody.setOffset(16, 16);
 
     // Camera
-    this.cameras.main.setBounds(0, 0, 1600, height);
+    if (!this.tilemap) {
+      this.cameras.main.setBounds(0, 0, 1600, height);
+    }
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
     this.cameras.main.setDeadzone(50, 50);
 
+    // Collider works with both TilemapLayer and StaticGroup
     this.physics.add.collider(this.player, this.platforms);
 
     // Groups
@@ -207,6 +197,98 @@ export class GameScene extends Phaser.Scene {
 
     // Spawn letters from level data
     this.loadLevelData();
+  }
+
+  private createTilemap(): void {
+    try {
+      const tilemapKey = this.levelId;
+      const w = this.getWorldNum();
+      const tilesetKey = w === 1 ? 'jungle-tiles' : w === 2 ? 'village-tiles' : 'palace-tiles';
+      const tilesetName = w === 1 ? 'jungle' : w === 2 ? 'village' : 'palace';
+
+      console.log(`[GameScene] Tilemap attempt: key=${tilemapKey} tileset=${tilesetName} texture=${tilesetKey}`);
+
+      // Try to get tilemap data from cache (loaded by PreloadScene)
+      const tilemapData = this.cache.tilemap.get(tilemapKey);
+      console.log(`[GameScene] Cache has tilemap data:`, !!tilemapData);
+      console.log(`[GameScene] Cache has texture:`, this.textures.exists(tilesetKey));
+      console.log(`[GameScene] All tilemap cache keys:`, this.cache.tilemap.getKeys());
+
+      if (!tilemapData) {
+        console.warn('[GameScene] Tilemap not in cache, falling back to procedural');
+        this.createProceduralLevel();
+        return;
+      }
+
+      if (!this.textures.exists(tilesetKey)) {
+        console.warn('[GameScene] Tileset texture not loaded, falling back to procedural');
+        this.createProceduralLevel();
+        return;
+      }
+
+      const map = this.make.tilemap({ key: tilemapKey, insertNull: true });
+      if (!map) {
+        console.warn('[GameScene] make.tilemap returned null, falling back');
+        this.createProceduralLevel();
+        return;
+      }
+
+      const tileset = map.addTilesetImage(tilesetName, tilesetKey, 64, 64, 0, 0, 1);
+      console.log(`[GameScene] addTilesetImage result:`, !!tileset);
+      if (!tileset) { this.createProceduralLevel(); return; }
+
+      const skyLayer = map.createLayer('sky', tileset, 0, 0);
+      if (skyLayer) { skyLayer.setScrollFactor(0); skyLayer.setDepth(-10); }
+
+      const mountainsLayer = map.createLayer('mountains', tileset, 0, 0);
+      if (mountainsLayer) { mountainsLayer.setScrollFactor(0.1); mountainsLayer.setDepth(-9); }
+
+      const decoBgLayer = map.createLayer('decoration-bg', tileset, 0, 0);
+      if (decoBgLayer) { decoBgLayer.setScrollFactor(0.3); decoBgLayer.setDepth(-8); }
+
+      const platformsLayer = map.createLayer('platforms', tileset, 0, 0);
+      if (!platformsLayer) { this.createProceduralLevel(); return; }
+      platformsLayer.setDepth(0);
+      platformsLayer.setCollisionByExclusion([-1]);
+
+      const decoFgLayer = map.createLayer('decoration-fg', tileset, 0, 0);
+      if (decoFgLayer) { decoFgLayer.setScrollFactor(1); decoFgLayer.setDepth(5); }
+
+      this.tilemap = map;
+      this.platforms = platformsLayer;
+
+      const objectLayer = map.getObjectLayer('objects');
+      if (objectLayer) {
+        const camObj = objectLayer.objects.find((o: any) => o.type === 'camera-bounds');
+        if (camObj) {
+          this.cameras.main.setBounds(camObj.x!, camObj.y!, camObj.width!, camObj.height!);
+        }
+      }
+
+      console.log('[GameScene] ✅ TILEMAP LOADED — visual layers active:', this.levelId);
+    } catch (e) {
+      console.error('[GameScene] Tilemap error:', e);
+      this.createProceduralLevel();
+    }
+  }
+
+  private createProceduralLevel(): void {
+    const { width, height } = this.cameras.main;
+    this.tilemap = undefined;
+
+    this.createParallaxBackground();
+    this.platforms = this.physics.add.staticGroup();
+
+    const ground = this.add.rectangle(width / 2, height - 40, width * 3, 80, 0x2D5A27);
+    this.physics.add.existing(ground, true);
+    (this.platforms as Phaser.Physics.Arcade.StaticGroup).add(ground);
+
+    this.createFloatingPlatform(250, 540, 180, 20);
+    this.createFloatingPlatform(480, 460, 180, 20);
+    this.createFloatingPlatform(710, 380, 180, 20);
+    this.createFloatingPlatform(940, 300, 180, 20);
+    this.createFloatingPlatform(1170, 240, 180, 20);
+    this.createFloatingPlatform(600, 560, 120, 20);
   }
 
   private async loadLevelData(): Promise<void> {
@@ -933,7 +1015,7 @@ export class GameScene extends Phaser.Scene {
     platform.setStrokeStyle(2, 0xA0522D);
     const grassTop = this.add.rectangle(x, y - height / 2 - 3, width, 6, 0x228B22);
     this.physics.add.existing(platform, true);
-    this.platforms.add(platform);
+    (this.platforms as Phaser.Physics.Arcade.StaticGroup).add(platform);
   }
 
   private setupInput(): void {

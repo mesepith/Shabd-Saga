@@ -118,6 +118,18 @@ export class PreloadScene extends Phaser.Scene {
     // Checkpoint flag
     this.load.image('gem-icon', 'assets/ui/gem-icon.png');
 
+    // Tilemap JSON files (5 levels across 3 worlds)
+    this.load.tilemapTiledJSON('world-1-level-1', 'assets/tilesets/world-1-level-1.json');
+    this.load.tilemapTiledJSON('world-1-level-2', 'assets/tilesets/world-1-level-2.json');
+    this.load.tilemapTiledJSON('world-2-level-1', 'assets/tilesets/world-2-level-1.json');
+    this.load.tilemapTiledJSON('world-2-level-2', 'assets/tilesets/world-2-level-2.json');
+    this.load.tilemapTiledJSON('world-3-level-1', 'assets/tilesets/world-3-level-1.json');
+
+    // Tileset images (one per world)
+    this.load.image('jungle-tiles', 'assets/tilesets/jungle-tiles.png');
+    this.load.image('village-tiles', 'assets/tilesets/village-tiles.png');
+    this.load.image('palace-tiles', 'assets/tilesets/palace-tiles.png');
+
     // Audio: SFX and music are generated at runtime via Web Audio API (AudioManager).
     // No MP3 files to load — zero download, instant, consistent across all browsers.
   }

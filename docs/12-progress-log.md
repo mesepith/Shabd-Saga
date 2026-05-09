@@ -974,6 +974,68 @@ vite build    ✓  (~3s, 24 modules)
 
 ---
 
+## 2026-05-09 — Tiled Level Maps: 5 Tilemap JSONs, 3 Tilesets, Phaser Integration
+
+### Completed
+- [x] `scripts/generate-tilesets.ts` — Complete rewrite: generates 3 world-specific tileset spritesheets (320×256, 5×4 grid of 64×64 tiles, 20 tiles each)
+  - Jungle (world 1): grass-ground, dirt-ground, grass-platform, rock, bush, vine, flower, tree-trunk, sky, cloud, mountain, grass-tuft, corner tiles
+  - Village (world 2): cobble-ground, road-edge, wood-plank-h/v, house-wall/roof, window, door, fence-h/v, market, straw-bale, chimney
+  - Palace (world 3): marble-floor, pillar-shaft/capital/base, stone-wall, carpet, curtain, candle, star, moon, throne, gold-trim
+- [x] `scripts/generate-tilemaps.ts` — NEW: programmatic level designer generates 5 tilemap JSONs (60×12 grid, 3840×768px)
+  - Each tilemap has 6 layers: sky (sf=0), mountains (sf=0.1), decoration-bg (sf=0.3), platforms (sf=1), decoration-fg (sf=1), objects
+  - Level designs: world-1-1 (tutorial path), world-1-2 (boss, gaps), world-2-1 (village), world-2-2 (village boss), world-3-1 (palace boss)
+  - Object layers define entity positions (player-spawn, doors, letters, npcs, enemies, checkpoints, gems, health, camera-bounds)
+- [x] `PreloadScene.ts` — Added loading of 5 tilemap JSONs + 3 tileset PNGs
+- [x] `GameScene.ts` — Major refactor:
+  - `platforms` field type changed to `StaticGroup | TilemapLayer` + new `tilemap?: Tilemap` field
+  - `createTilemap()` method: loads tilemap via `this.make.tilemap()`, creates 6 layers with parallax scroll factors, sets platform collision via `setCollisionByExclusion([-1])`, parses camera-bounds object
+  - `createProceduralLevel()`: fallback using old procedural approach (rectangles + `createParallaxBackground`)
+  - `createFloatingPlatform()`: updated to cast `this.platforms` for type safety
+  - `create()` flow: calls `createTilemap()` before player creation; camera bounds set conditionally (from tilemap or default 1600×720); collider set once for both paths
+  - Graceful degradation: if tilemap or tileset not found in cache, automatically falls back to procedural level
+- [x] Zero TypeScript errors, clean Vite build (24 modules, ~2.9s)
+- [x] `docs/AI-SESSION-HANDOFF.md` — Updated status, added Tilemap Architecture section
+- [x] `docs/12-progress-log.md` — This entry
+
+### Architecture Decisions
+1. **Tilemap format**: Tiled JSON (not XML/TMX) — natively supported by Phaser's `load.tilemapTiledJSON()` without plugins. JSON files are generated programmatically, no Tiled editor dependency.
+2. **Tileset per world**: One 320×256 spritesheet per world theme (5×4 grid of 64×64 tiles). Each level in that world shares the same tileset.
+3. **Parallax via scrollFactor**: Each visual layer (sky=0, mountains=0.1, deco-bg=0.3) uses `setScrollFactor()` — same parallax effect as old colored-rectangle approach but with tile graphics.
+4. **Collision on platforms layer only**: `setCollisionByExclusion([-1])` makes all non-zero gid tiles solid. Decorative layers pass through player.
+5. **Fallback path**: `createTilemap()` wraps everything in try/catch + cache-exists checks. On failure, falls back to original `createParallaxBackground()` + rectangle platforms. Zero-risk deployment.
+6. **Object layers unused for now**: The tilemaps include object layer definitions for all entity positions, but entities still spawn from JSON data + hardcoded positions. Object layer provides scaffolding for future data-driven spawning.
+7. **Hybrid type for platforms**: `StaticGroup | TilemapLayer` with single `physics.add.collider()` call works for both paths — Phaser's Arcade physics accepts both types as collider targets.
+
+### Cross-Browser / Cross-Device
+- **Tilemap rendering**: Phaser's TilemapLayer uses WebGL/Canvas rendering — same pipeline as all other sprites.
+- **Scale.FIT**: Tilemaps rendered within same 1280×720 canvas → `Scale.FIT` handles all viewport sizes.
+- **Physics**: `arcade.collider()` with TilemapLayer uses Phaser's internal tile collision — same physics engine.
+- **Mobile**: Tilemap textures are lightweight (3 PNGs ≈ 150KB total). Tilemap JSONs are ~5KB each. Total additional load: ~175KB.
+- **Fallback safety**: If tilemaps fail to load, procedural fallback ensures game remains playable with original visual quality.
+
+### Files Modified
+- `scripts/generate-tilesets.ts` — Rewrite: 3 world-specific tileset spritesheets
+- `scripts/generate-tilemaps.ts` — NEW: generates 5 tilemap JSONs
+- `public/assets/tilesets/jungle-tiles.png` — NEW
+- `public/assets/tilesets/village-tiles.png` — NEW
+- `public/assets/tilesets/palace-tiles.png` — NEW
+- `public/assets/tilesets/world-*-level-*.json` — 5 NEW tilemap files
+- `src/scenes/PreloadScene.ts` — 8 new load calls
+- `src/scenes/GameScene.ts` — ~110 lines: `createTilemap()`, `createProceduralLevel()`, union type, type cast
+- `docs/AI-SESSION-HANDOFF.md` — Updated status + Tilemap Architecture section
+- `docs/12-progress-log.md` — This entry
+
+### Build
+```
+tsc --noEmit  ✓  (zero errors)
+vite build    ✓  (2.93s, 24 modules)
+```
+
+### Next: Screen Transitions (small polish item)
+Iris wipe or dissolve between scenes — improves overall feel with minimal effort.
+
+---
+
 ## Template for Future Entries
 
 ```

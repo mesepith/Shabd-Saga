@@ -3,7 +3,7 @@
 > **READ THIS FIRST** when starting a new AI session on Shabd Saga.
 > The AI should also read `docs/12-progress-log.md` for full history.
 
-## Quick Status (May 2026) — Dialogue System Complete: Choice UI, Dynamic NPC Hints, Full Audio
+## Quick Status (May 2026) — Tiled Level Maps Complete: Rich visual environments, 5 levels across 3 worlds
 
 ### Mobile Testing Results (iPhone 12 iOS 18.7.8 + OnePlus Nord CE3 Android 15)
 | Feature | iPhone | Android Phone | Status |
@@ -18,8 +18,9 @@
 | Sound (letter pronunciation) | ✓ | ✓ | Done |
 | Landscape lock + rotate prompt | ✓ | ✓ | Done |
 | Bottom crop / blank space | ✓ No crop | ✓ No crop | Done |
+| Tiled level maps | ⌛ Pending test | ⌛ Pending test | Done (code + assets) |
 
-### NEXT: Tiled Level Maps
+### NEXT: Screen Transitions
 | Order | Task | Why |
 |-------|------|-----|
 | ~~1~~ | ~~Enemy difficulty balancing~~ ✓ | Per-level speed/cooldown config |
@@ -27,7 +28,8 @@
 | ~~3~~ | ~~Real audio assets~~ ✓ | 9 WAV tracks + synthesized SFX |
 | ~~4~~ | ~~NPC dialogue choice UI~~ ✓ | Choice buttons + game-state-aware dynamic hints |
 | ~~5~~ | ~~Dialogue audio~~ ✓ | 5 monkey, 3 owl, 2 deer voice MP3s (Lekha TTS) |
-| 6 | Tiled level maps | Biggest visual upgrade remaining |
+| ~~6~~ | ~~Tiled level maps~~ ✓ | 5 levels × 3 worlds, proper tileset spritesheets, parallax backgrounds |
+| 7 | Screen transitions | Iris wipe / dissolve between scenes — small effort, big polish |
 
 ### What's Working
 - All 9 Phaser scenes load and function
@@ -35,6 +37,7 @@
 - WordPuzzle overlay with drag-to-spell + caller param for boss integration
 - Doors + guards + letter consumption flow
 - Level completion → stars → save
+- **Tiled level maps**: 5 tilemap JSONs with structured terrain, parallax background layers, tile-based collision. Procedural rectangle-based platform fallback on tilemap load failure.
 - **NPC dialogue with choice UI**: 2+ choice nodes render tappable gold-bordered buttons in dialogue box. Space/Enter blocked during choices to prevent accidental auto-pick
 - **Dynamic NPC hints**: Monkey, Wise Owl, and Deer Mother each give **game-state-aware hints** after their initial interaction — they inspect `activeDoors`, `activeGuards`, and `defeatedGuards` at runtime to tell the player exactly which doors remain, which have guards, and what letters to collect
 - **Dialogue audio**: All NPC dialogue nodes have high-quality Hindi TTS audio (macOS Lekha voice, 140 wpm, MP3). 5 monkey nodes, 3 owl nodes, 2 deer nodes
@@ -209,7 +212,70 @@ On any boss level, press **B** key to skip directly to the boss fight. Calls `la
 - [x] NPC dynamic hints: Monkey, Owl, Deer give game-state-aware hints — DONE
 - [x] Typewriter timer race condition: old timer cancelled before new — fixed
 - [x] Monkey gem reward: permanent NPC state change, no stale hints — fixed
-- [ ] Tiled level maps not created
+- [x] Tiled level maps — DONE (5 levels, 3 world-specific tilesets, parallax layers, procedural fallback)
+- [ ] Tilemap mobile testing — pending
+- [ ] Screen transitions — pending (small polish item)
+
+---
+
+## Tilemap Architecture (May 2026)
+
+### Overview
+Replaced hardcoded procedural platforms (rectangles) and procedural parallax backgrounds (colored rectangles + Graphics primitives) with **Tiled JSON tilemaps** loaded via Phaser's built-in `load.tilemapTiledJSON()` API.
+
+### Tilesets
+3 world-specific spritesheet images (320×256px, 5×4 grid of 64×64 tiles):
+| World | Tileset File | Tile Count | Key Tiles |
+|-------|-------------|------------|-----------|
+| Jungle (world 1) | `jungle-tiles.png` | 20 | grass-ground, dirt-ground, grass-platform, rock, bush, vine, flower, tree-trunk, sky, cloud, mountain, grass-tuft |
+| Village (world 2) | `village-tiles.png` | 20 | cobble-ground, wood-plank, house-wall, house-roof, window, door, fence, market, straw-bale, chimney |
+| Palace (world 3) | `palace-tiles.png` | 20 | marble-floor, pillar-shaft/capital/base, stone-wall, carpet, curtain, candle, star, moon, throne |
+
+### Tilemap JSONs
+5 tilemap JSON files (one per level), each 60×12 tiles (3840×768px):
+| File | Level | Theme | Terrain Features |
+|------|-------|-------|-----------------|
+| `world-1-level-1.json` | Jungle Path (tutorial) | Jungle | Full ground, 5-step staircase, bushes/flowers/rocks |
+| `world-1-level-2.json` | Jungle Challenge (boss) | Jungle | Ground with 2 gaps, 7 platforms, complex jumps |
+| `world-2-level-1.json` | Village Journey | Village | Cobblestone ground, wood platforms, houses, fences |
+| `world-2-level-2.json` | Village Challenge (boss) | Village | Ground with gap, 7 platforms, market decor |
+| `world-3-level-1.json` | Royal Palace (boss) | Palace | Marble ground, pillar platforms, curtains, red carpet |
+
+### Layer Structure (per tilemap)
+| Layer | Type | ScrollFactor | Purpose |
+|-------|------|-------------|---------|
+| `sky` | tilelayer | 0 | Far background (sky gradient + clouds/stars) |
+| `mountains` | tilelayer | 0.1 | Distant scenery (mountains, hills, palace silhouette) |
+| `decoration-bg` | tilelayer | 0.3 | Midground (bushes, vines, houses, pillars) |
+| `platforms` | tilelayer | 1.0 | **Physics collision layer** — ground + floating platforms |
+| `decoration-fg` | tilelayer | 1.0 | Foreground details (grass tufts, carpet) |
+| `objects` | objectgroup | N/A | Entity positions (future use) |
+
+### Loading Flow
+1. **PreloadScene**: `this.load.tilemapTiledJSON(levelId, 'path.json')` + `this.load.image('jungle-tiles', 'path.png')` for all 5 levels + 3 tilesets
+2. **GameScene.create()**: Calls `createTilemap()` before player creation
+3. **createTilemap()**: `this.make.tilemap({ key: levelId })` → `addTilesetImage()` → `createLayer()` for each layer with scroll factors → `platformsLayer.setCollisionByExclusion([-1])` → `this.platforms = platformsLayer`
+4. **Fallback**: If tilemap/tileset not found, calls `createProceduralLevel()` which uses the old rectangle-based approach
+
+### Collision
+- `this.platforms` type: `Phaser.Physics.Arcade.StaticGroup | Phaser.Tilemaps.TilemapLayer`
+- Player and letters group collide with `this.platforms` regardless of which type it is
+- `physics.add.collider()` accepts both StaticGroup and TilemapLayer
+
+### Regeneration
+```bash
+npx tsx scripts/generate-tilesets.ts   # Generates 3 tileset PNGs
+npx tsx scripts/generate-tilemaps.ts   # Generates 5 tilemap JSONs
+npm run build                           # TypeScript + Vite with updated PreloadScene
+```
+
+### File Index (updated)
+| File | Purpose |
+|------|---------|
+| `scripts/generate-tilesets.ts` | Generates 3 world-specific tileset spritesheets (20 tiles each, 320×256) |
+| `scripts/generate-tilemaps.ts` | Programmatic level designer — generates 5 tilemap JSONs with terrain + object layers |
+| `public/assets/tilesets/*.png` | 3 tileset sprite sheets (jungle, village, palace) |
+| `public/assets/tilesets/*.json` | 5 Tiled JSON tilemaps (one per level) |
 
 ---
 
