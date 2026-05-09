@@ -68,6 +68,7 @@ export class GameScene extends Phaser.Scene {
 
   private gemsCollected: number = 0;
   private monkeyGemGiven: boolean = false;
+  private owlTaught: boolean = false;
   private completedDoorWords: Set<string> = new Set();
   private deathsThisLevel: number = 0;
   private levelCompleteGuard: boolean = false;
@@ -96,6 +97,7 @@ export class GameScene extends Phaser.Scene {
     this.currentDialogue = null;
     this.gemsCollected = 0;
     this.monkeyGemGiven = false;
+    this.owlTaught = false;
     this.completedDoorWords = new Set();
     this.deathsThisLevel = 0;
     this.levelBoss = null;
@@ -1617,6 +1619,10 @@ export class GameScene extends Phaser.Scene {
       const hintNode = this.buildMonkeyHintNode();
       if (hintNode) dialogues = [hintNode];
     }
+    if (npcData.id === 'wise_owl' && this.owlTaught) {
+      const hintNode = this.buildOwlHintNode();
+      if (hintNode) dialogues = [hintNode];
+    }
 
     this.scene.launch('DialogueScene', {
       dialogue: dialogues,
@@ -1630,6 +1636,9 @@ export class GameScene extends Phaser.Scene {
         if (finalNodeId === 'monkey_help' && !this.monkeyGemGiven) {
           this.spawnMonkeyGem();
           this.monkeyGemGiven = true;
+        }
+        if (finalNodeId === 'owl_teach' && !this.owlTaught) {
+          this.owlTaught = true;
         }
       },
     });
@@ -1727,6 +1736,82 @@ export class GameScene extends Phaser.Scene {
       text: hindiText,
       textEnglish: englishText,
       audioPath: 'assets/audio/speech/hindi/dialogue/monkey_hint.mp3',
+      choices: [],
+      nextNodeId: null,
+    };
+  }
+
+  private buildOwlHintNode(): any {
+    const guardedWords: Set<string> = new Set();
+    this.activeGuards.forEach((guard, id) => {
+      if (!this.defeatedGuards.has(id)) {
+        guardedWords.add((guard as any).guardWordId);
+      }
+    });
+
+    const remaining = this.activeDoors.map((d) => d.wordId);
+
+    if (remaining.length === 0) {
+      return {
+        id: 'owl_hint_done',
+        speaker: 'गुरु उल्लू',
+        text: 'शाबाश! तुमने सब दरवाज़े खोल दिए! तुम बहुत अच्छे विद्यार्थी हो!',
+        textEnglish: "Excellent! You've opened all the doors! You are a very good student!",
+        audioPath: 'assets/audio/speech/hindi/dialogue/owl_teach.mp3',
+        choices: [],
+        nextNodeId: null,
+      };
+    }
+
+    let hindiText = '';
+    let englishText = '';
+
+    if (remaining.length === 1) {
+      const wordId = remaining[0];
+      const word = this.levelWords.find((w: any) => w.id === wordId);
+      if (!word) {
+        hindiText = 'अगला दरवाज़ा खोलो!';
+        englishText = 'Open the next door!';
+      } else if (guardedWords.has(wordId)) {
+        const letters = (word.splitLetters || []).join(', ');
+        hindiText = `${word.script} का दरवाज़ा खोलने के लिए पहले रक्षक को हराओ। '${letters}' इकट्ठा करो और '${word.script}' बनाओ!`;
+        englishText = `To open the ${word.translation} door, first defeat the guard. Collect '${letters}' and spell '${word.translation}'!`;
+      } else {
+        hindiText = `अब ${word.script} के अक्षर इकट्ठा करो और दरवाज़ा खोलो। तुम कर सकते हो!`;
+        englishText = `Now collect ${word.translation}'s letters and open the door. You can do it!`;
+      }
+    } else if (remaining.length === 2) {
+      hindiText = 'बचे हुए दरवाज़े: ';
+      englishText = 'Remaining doors: ';
+      remaining.forEach((wordId, i) => {
+        const word = this.levelWords.find((w: any) => w.id === wordId);
+        if (!word) return;
+        if (i > 0) { hindiText += ' और '; englishText += ' and '; }
+        hindiText += guardedWords.has(wordId) ? `${word.script} (रक्षक)` : word.script;
+        englishText += guardedWords.has(wordId) ? `${word.translation} (guard)` : word.translation;
+      });
+      const hasGuard = remaining.some((w) => guardedWords.has(w));
+      hindiText += hasGuard ? ' — पहले रक्षक को हराओ!' : ' — दोनों खोलो!';
+      englishText += hasGuard ? ' — defeat the guard first!' : ' — open both!';
+    } else {
+      const guardedCount = remaining.filter((w) => guardedWords.has(w)).length;
+      hindiText = `${remaining.length} दरवाज़े और बचे हैं। `;
+      englishText = `${remaining.length} doors remain. `;
+      if (guardedCount > 0) {
+        hindiText += `${guardedCount} के पास रक्षक हैं — पहले उन्हें हराओ!`;
+        englishText += `${guardedCount} have guards — defeat them first!`;
+      } else {
+        hindiText += 'अक्षर इकट्ठा करो और सब खोलो!';
+        englishText += 'Collect letters and open them all!';
+      }
+    }
+
+    return {
+      id: 'owl_hint',
+      speaker: 'गुरु उल्लू',
+      text: hindiText,
+      textEnglish: englishText,
+      audioPath: 'assets/audio/speech/hindi/dialogue/owl_hint.mp3',
       choices: [],
       nextNodeId: null,
     };
