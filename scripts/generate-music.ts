@@ -290,61 +290,104 @@ function composePuzzle(buf: Float32Array, dur: number): void {
   }
 }
 
-function composeBoss(buf: Float32Array, dur: number): void {
-  const BEAT = 60 / 130; // fast, urgent tempo
-  // Dark chord progression: Dm - Bb - Gm - A (tension never resolves)
-  const darkPads: [string, string, string][] = [
-    ['D3','F3','A3'], ['Bb2','D3','F3'], ['G2','Bb2','D3'], ['A2','C3','E3'],
-    ['D3','F3','Ab3'], ['Bb2','Db3','F3'], ['G2','Bb2','Db3'], ['A2','C#3','E3'],
+// ── Boss tracks — escalating tension per world ──
+
+function composeBossJungle(buf: Float32Array, dur: number): void {
+  const B = 60 / 120;
+  const pads: [string,string,string][] = [
+    ['D3','F3','A3'],['Bb2','D3','F3'],['G2','Bb2','D3'],['A2','C#3','G3'],
+    ['D3','F3','Ab3'],['Bb2','Db3','F3'],['G2','Bb2','Db3'],['A2','C3','E3'],
   ];
-  // Bass line — driving, urgent, heavy
-  const bass = ['D2','D2','Bb1','Bb1','G1','G1','A1','A1',
-                'D2','D2','F2','F2','G1','G1','A1','A1'];
-
-  // Layer 1: Dark pad chords — more aggressive attack
+  const bass = ['D2','D2','Bb1','Bb1','G1','G1','A1','A1','D2','D2','F2','F2','G1','G1','A1','A1'];
+  // Dark pads
   for (let t = 0; t < dur; t += 1) {
-    const c = darkPads[Math.floor(t / 1) % darkPads.length];
+    const c = pads[Math.floor(t/1) % pads.length];
     pad(buf, c, t, 0.9, 0.06);
-    // Sub rumble
-    tone(buf, freq(c[0].replace(/\d/, m => String(Number(m) - 2))), t, 0.9, 0.04, 'sine', 0.15, 0.5);
+    tone(buf, freq(c[0].replace(/\d/,m=>String(Number(m)-2))), t, 0.9, 0.04, 'sine', 0.15, 0.5);
   }
-
-  // Layer 2: Heavy percussion — double kick + sharp click on every beat
-  for (let t = 0; t < dur; t += BEAT) {
-    const n = bass[Math.floor(t / BEAT) % bass.length];
-    tone(buf, freq(n), t, BEAT * 0.45, 0.1, 'sawtooth', 0.003, 0.1);
-    kick(buf, t, 0.12);
-    kick(buf, t + 0.08, 0.09);
-    click(buf, t + BEAT / 2, 0.04);
-    click(buf, t + BEAT / 4, 0.03);
-    click(buf, t + BEAT * 3 / 4, 0.03);
-    // Extra heavy accent every 4th beat
-    if (Math.floor(t / BEAT) % 4 === 0) {
-      kick(buf, t, 0.18);
-      tone(buf, freq('D1'), t, 0.3, 0.15, 'sine', 0.002, 0.2);
-    }
+  // Percussion
+  for (let t = 0; t < dur; t += B) {
+    const n = bass[Math.floor(t/B) % bass.length];
+    tone(buf, freq(n), t, B*0.45, 0.1, 'sawtooth', 0.003, 0.1);
+    kick(buf, t, 0.12); kick(buf, t+0.08, 0.09);
+    click(buf, t+B/2, 0.04); click(buf, t+B/4, 0.03); click(buf, t+B*3/4, 0.03);
+    if (Math.floor(t/B)%4===0) { kick(buf, t, 0.18); tone(buf, freq('D1'), t, 0.3, 0.15, 'sine', 0.002, 0.2); }
   }
-
-  // Layer 3: Fast, aggressive bell arpeggio — insistent, driving
-  const urgentMelody = ['D5','F5','A5','F5','D5','A4','G5','F5',
-                         'D5','Bb4','F5','D5','G5','D5','A5','G5'];
-  for (let t = 0; t < dur; t += BEAT / 3) {
-    const i = Math.floor(t / (BEAT / 3)) % urgentMelody.length;
-    bell(buf, freq(urgentMelody[i]), t, 0.23, 0.055);
+  // Melody
+  const mel = ['D5','F5','A5','F5','D5','A4','G5','F5','D5','Bb4','F5','D5','G5','D5','A5','G5'];
+  for (let t = 0; t < dur; t += B/3) {
+    bell(buf, freq(mel[Math.floor(t/(B/3)) % mel.length]), t, 0.23, 0.055);
   }
-
-  // Layer 4: Ominous high dissonant bell — every 2 beats
-  const dissonant = ['D6','Ab5','G6','Db6','F6','A5','E6','Bb5'];
-  for (let t = 0; t < dur; t += BEAT * 2) {
-    const i = Math.floor(t / (BEAT * 2)) % dissonant.length;
-    bell(buf, freq(dissonant[i]), t, 0.5, 0.04);
+  // Dissonant bells
+  const dis = ['D6','Ab5','G6','Db6','F6','A5','E6','Bb5'];
+  for (let t = 0; t < dur; t += B*2) {
+    bell(buf, freq(dis[Math.floor(t/(B*2)) % dis.length]), t, 0.5, 0.04);
   }
+  // Sweeps
+  for (let t = 1; t < dur; t += 4) {
+    toneSweep(buf, freq('D2'), freq('D3'), t, 1.8, 0.04, 'sawtooth');
+  }
+}
 
-  // Layer 5: Rising tension sweeps — sawtooth pitch bends every 4 seconds
-  for (let t = 1; t < dur; t += 3.5) {
-    const startF = freq('D2');
-    const endF = freq('D3');
-    toneSweep(buf, startF, endF, t, 1.8, 0.04, 'sawtooth');
+function composeBossVillage(buf: Float32Array, dur: number): void {
+  const B = 60 / 140;
+  const pads: [string,string,string][] = [
+    ['C#3','E3','G#3'],['A2','C#3','E3'],['F#2','A2','C#3'],['G#2','C3','D#3'],
+    ['C#3','E3','G3'],['A2','C3','E3'],['F#2','A2','C3'],['G#2','C#3','D#3'],
+  ];
+  const bass = ['C#2','C#2','A1','A1','F#1','F#1','G#1','G#1','C#2','C#2','E2','E2','F#1','F#1','G#1','G#1'];
+  for (let t = 0; t < dur; t += 0.8) {
+    const c = pads[Math.floor(t/0.8) % pads.length];
+    pad(buf, c, t, 0.72, 0.07);
+    tone(buf, freq(c[0].replace(/\d/,m=>String(Number(m)-2))), t, 0.72, 0.05, 'sawtooth', 0.08, 0.4);
+  }
+  for (let t = 0; t < dur; t += B) {
+    tone(buf, freq(bass[Math.floor(t/B)%bass.length]), t, B*0.38, 0.12, 'sawtooth', 0.002, 0.08);
+    kick(buf, t, 0.15); kick(buf, t+0.06, 0.11); kick(buf, t+0.12, 0.08);
+    click(buf, t+B/3, 0.05); click(buf, t+B*2/3, 0.05);
+    if (Math.floor(t/B)%2===0) { kick(buf, t, 0.2); tone(buf, freq('C#1'), t, 0.25, 0.18, 'square', 0.001, 0.15); }
+  }
+  const mel = ['C#5','E5','G#5','E5','C#5','G#4','F#5','E5','C#5','A4','E5','C#5','F#5','C#5','G#5','F#5'];
+  for (let t = 0; t < dur; t += B/4) {
+    bell(buf, freq(mel[Math.floor(t/(B/4))%mel.length]), t, 0.18, 0.06);
+  }
+  const dis = ['C#6','G5','F#6','C6','E6','G#5','D#6','A5'];
+  for (let t = 0; t < dur; t += B*1.5) {
+    bell(buf, freq(dis[Math.floor(t/(B*1.5))%dis.length]), t, 0.4, 0.045);
+  }
+  for (let t = 0.5; t < dur; t += 2.8) {
+    toneSweep(buf, freq('C#2'), freq('C#3'), t, 1.4, 0.05, 'sawtooth');
+  }
+}
+
+function composeBossPalace(buf: Float32Array, dur: number): void {
+  const B = 60 / 160;
+  const pads: [string,string,string][] = [
+    ['E3','G3','B3'],['C3','E3','G3'],['A2','C3','E3'],['B2','D#3','F#3'],
+    ['E3','G3','Bb3'],['C3','Eb3','G3'],['A2','C3','Eb3'],['B2','D3','F#3'],
+  ];
+  const bass = ['E2','E2','C2','C2','A1','A1','B1','B1','E2','E2','G2','G2','A1','A1','B1','B1'];
+  for (let t = 0; t < dur; t += 0.6) {
+    const c = pads[Math.floor(t/0.6) % pads.length];
+    pad(buf, c, t, 0.55, 0.08);
+    tone(buf, freq(c[0].replace(/\d/,m=>String(Number(m)-3))), t, 0.55, 0.06, 'sawtooth', 0.03, 0.3);
+  }
+  for (let t = 0; t < dur; t += B) {
+    tone(buf, freq(bass[Math.floor(t/B)%bass.length]), t, B*0.32, 0.14, 'square', 0.001, 0.06);
+    kick(buf, t, 0.18); kick(buf, t+0.05, 0.14); kick(buf, t+0.1, 0.1); kick(buf, t+0.15, 0.07);
+    click(buf, t+B/4, 0.06); click(buf, t+B/2, 0.06); click(buf, t+B*3/4, 0.06);
+    if (Math.floor(t/B)%1===0) { kick(buf, t, 0.24); tone(buf, freq('E1'), t, 0.22, 0.2, 'square', 0.001, 0.12); }
+  }
+  const mel = ['E5','G5','B5','G5','E5','B4','A5','G5','E5','C5','G5','E5','A5','E5','B5','A5'];
+  for (let t = 0; t < dur; t += B/6) {
+    bell(buf, freq(mel[Math.floor(t/(B/6))%mel.length]), t, 0.13, 0.065);
+  }
+  const dis = ['E6','Bb5','A6','C#6','G6','B5','F#6','C6'];
+  for (let t = 0; t < dur; t += B) {
+    bell(buf, freq(dis[Math.floor(t/B)%dis.length]), t, 0.3, 0.05);
+  }
+  for (let t = 0.3; t < dur; t += 2.2) {
+    toneSweep(buf, freq('E2'), freq('E3'), t, 1.1, 0.06, 'sawtooth');
   }
 }
 
@@ -378,8 +421,16 @@ render(`${dir}/puzzle-loop.wav`, 10, b => composePuzzle(b, 10));
 kb = Math.round(fs.statSync(`${dir}/puzzle-loop.wav`).size / 1024);
 console.log('  ✓ puzzle-loop.wav (%d KB)', kb);
 
-render(`${dir}/boss-loop.wav`, 10, b => composeBoss(b, 10));
-kb = Math.round(fs.statSync(`${dir}/boss-loop.wav`).size / 1024);
-console.log('  ✓ boss-loop.wav (%d KB)', kb);
+render(`${dir}/boss-jungle-loop.wav`, 10, b => composeBossJungle(b, 10));
+kb = Math.round(fs.statSync(`${dir}/boss-jungle-loop.wav`).size / 1024);
+console.log('  ✓ boss-jungle-loop.wav (%d KB)', kb);
+
+render(`${dir}/boss-village-loop.wav`, 10, b => composeBossVillage(b, 10));
+kb = Math.round(fs.statSync(`${dir}/boss-village-loop.wav`).size / 1024);
+console.log('  ✓ boss-village-loop.wav (%d KB)', kb);
+
+render(`${dir}/boss-palace-loop.wav`, 10, b => composeBossPalace(b, 10));
+kb = Math.round(fs.statSync(`${dir}/boss-palace-loop.wav`).size / 1024);
+console.log('  ✓ boss-palace-loop.wav (%d KB)', kb);
 
 console.log('Done!');

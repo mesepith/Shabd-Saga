@@ -212,7 +212,10 @@ export class AudioManager {
   startWorldMusic(w: number): void { this.playMusicLoop(this.musicKey(w)); }
   startPuzzleMusic(): void  { this.playMusicLoop('puzzle-loop'); }
   startVictoryMusic(): void { this.playMusicLoop('victory-loop'); }
-  startBossMusic(): void    { this.playMusicLoop('boss-loop'); }
+  startBossMusic(world: number = 1): void {
+    const key = `boss-${['','jungle','village','palace'][world]}-loop`;
+    this.playMusicLoop(key);
+  }
 
   stopMusic(): void {
     if (this.musicHowl) {

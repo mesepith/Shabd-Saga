@@ -210,8 +210,8 @@ export class BossScene extends Phaser.Scene {
     // Camera
     this.cameras.main.setBounds(0, 0, width, height);
 
-    // Start boss arena music
-    AudioManager.getInstance().startBossMusic();
+    // Start boss arena music (escalating per world)
+    AudioManager.getInstance().startBossMusic(this.getBossWorld());
 
     // Start attack cycle
     this.startAttackCycle();
