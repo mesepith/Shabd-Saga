@@ -274,38 +274,38 @@ buildTilemap(1, 1, JUNGLE, (sky, mountains, decoBg, plat, decoFg) => {
     });
   });
 
-  // 20 letter positions
+  // 20 letter positions — tutorial: all near ground level
   const letterPositions = [
-    { x: 200, y: 530 }, { x: 300, y: 500 }, { x: 400, y: 460 },
-    { x: 500, y: 420 }, { x: 600, y: 380 }, { x: 700, y: 340 },
-    { x: 800, y: 300 }, { x: 900, y: 260 }, { x: 1000, y: 220 },
-    { x: 1100, y: 200 }, { x: 350, y: 560 }, { x: 480, y: 550 },
-    { x: 650, y: 500 }, { x: 780, y: 450 }, { x: 880, y: 400 },
-    { x: 980, y: 350 }, { x: 1080, y: 300 }, { x: 1150, y: 260 },
-    { x: 250, y: 450 }, { x: 550, y: 560 },
+    { x: 200, y: 550 }, { x: 300, y: 540 }, { x: 400, y: 530 },
+    { x: 500, y: 520 }, { x: 600, y: 540 }, { x: 700, y: 530 },
+    { x: 800, y: 520 }, { x: 900, y: 540 }, { x: 1000, y: 530 },
+    { x: 1100, y: 520 }, { x: 350, y: 560 }, { x: 480, y: 550 },
+    { x: 650, y: 560 }, { x: 780, y: 550 }, { x: 880, y: 560 },
+    { x: 980, y: 550 }, { x: 1080, y: 560 }, { x: 1150, y: 550 },
+    { x: 250, y: 570 }, { x: 550, y: 570 },
   ];
   letterPositions.forEach((p, i) => {
     objs.push({ name: `letter_${i}`, type: 'letter', x: p.x, y: p.y });
   });
 
-  // Enemies: 2 creepers + 1 guard
-  objs.push({ name: 'creeper_1', type: 'enemy-creeper', x: 600, y: 630, properties: [prop('patrolRange', 150), prop('speed', 65), prop('contactCooldown', 1800)] });
-  objs.push({ name: 'creeper_2', type: 'enemy-creeper', x: 850, y: 410, properties: [prop('patrolRange', 120), prop('speed', 70), prop('contactCooldown', 1800)] });
+  // Enemies: 2 creepers + 1 guard — slowest, most forgiving
+  objs.push({ name: 'creeper_1', type: 'enemy-creeper', x: 600, y: 630, properties: [prop('patrolRange', 150), prop('speed', 60), prop('contactCooldown', 2000)] });
+  objs.push({ name: 'creeper_2', type: 'enemy-creeper', x: 850, y: 410, properties: [prop('patrolRange', 120), prop('speed', 65), prop('contactCooldown', 2000)] });
   objs.push({ name: 'guard_1', type: 'enemy-guard', x: 1100, y: 550, properties: [prop('guardWordId', 'ped')] });
 
-  // Checkpoint
+  // Checkpoint: 1 (start only — tutorial doesn't need more)
   objs.push({ name: 'checkpoint_start', type: 'checkpoint', x: 100, y: 450, properties: [prop('id', 'start'), prop('activated', true)] });
 
-  // Health pickups
-  objs.push({ name: 'health_1', type: 'health-pickup', x: 500, y: 590 });
-  objs.push({ name: 'health_2', type: 'health-pickup', x: 800, y: 430 });
+  // Health pickups: near start area, easy to reach
+  objs.push({ name: 'health_1', type: 'health-pickup', x: 350, y: 580 });
+  objs.push({ name: 'health_2', type: 'health-pickup', x: 650, y: 570 });
 
-  // Gems
-  objs.push({ name: 'gem_1', type: 'gem', x: 350, y: 590 });
-  objs.push({ name: 'gem_2', type: 'gem', x: 650, y: 440 });
-  objs.push({ name: 'gem_3', type: 'gem', x: 900, y: 360 });
-  objs.push({ name: 'gem_4', type: 'gem', x: 1050, y: 280 });
-  objs.push({ name: 'gem_5', type: 'gem', x: 550, y: 580 });
+  // Gems: all at ground level, clearly visible
+  objs.push({ name: 'gem_1', type: 'gem', x: 300, y: 580 });
+  objs.push({ name: 'gem_2', type: 'gem', x: 500, y: 570 });
+  objs.push({ name: 'gem_3', type: 'gem', x: 700, y: 560 });
+  objs.push({ name: 'gem_4', type: 'gem', x: 900, y: 550 });
+  objs.push({ name: 'gem_5', type: 'gem', x: 550, y: 530 });
 
   // Camera bounds
   objs.push({ name: 'camera', type: 'camera-bounds', x: 0, y: 0, width: 1600, height: 720 });
@@ -351,34 +351,39 @@ buildTilemap(1, 2, JUNGLE, (sky, mountains, decoBg, plat, decoFg) => {
     objs.push({ name: `door_${wid}`, type: 'door', x: doorXs[i], y: 625, width: 56, height: 84, properties: [prop('wordId', wid)] });
   });
 
-  // Letters - same spread
+  // Letters: ground spread + platform spread (all reachable within 100px above nearest surface)
   const lps = [
-    { x: 200, y: 530 }, { x: 300, y: 500 }, { x: 400, y: 460 },
-    { x: 500, y: 420 }, { x: 600, y: 380 }, { x: 700, y: 340 },
-    { x: 800, y: 300 }, { x: 900, y: 260 }, { x: 1000, y: 220 },
-    { x: 1100, y: 200 }, { x: 350, y: 560 }, { x: 480, y: 550 },
-    { x: 650, y: 500 }, { x: 780, y: 450 }, { x: 880, y: 400 },
-    { x: 980, y: 350 }, { x: 1080, y: 300 }, { x: 1150, y: 260 },
-    { x: 250, y: 450 }, { x: 550, y: 560 },
+    // Ground cluster (10 letters, x=180-700, y=550-570)
+    { x: 200, y: 560 }, { x: 300, y: 550 }, { x: 400, y: 560 },
+    { x: 500, y: 570 }, { x: 600, y: 550 }, { x: 700, y: 560 },
+    { x: 250, y: 570 }, { x: 350, y: 555 }, { x: 480, y: 565 },
+    { x: 650, y: 555 },
+    // Platform cluster (10 letters, above row-8 (y=512) and row-7 (y=448) platforms within 100px)
+    { x: 420, y: 440 }, { x: 460, y: 420 }, { x: 520, y: 450 },
+    { x: 840, y: 380 }, { x: 880, y: 360 }, { x: 920, y: 400 },
+    { x: 580, y: 430 }, { x: 850, y: 390 }, { x: 960, y: 410 },
+    { x: 1000, y: 370 },
   ];
   lps.forEach((p, i) => objs.push({ name: `letter_${i}`, type: 'letter', x: p.x, y: p.y }));
 
-  objs.push({ name: 'creeper_1', type: 'enemy-creeper', x: 400, y: 630, properties: [prop('patrolRange', 200), prop('speed', 85), prop('contactCooldown', 1400)] });
-  objs.push({ name: 'creeper_2', type: 'enemy-creeper', x: 750, y: 410, properties: [prop('patrolRange', 180), prop('speed', 90), prop('contactCooldown', 1400)] });
-  objs.push({ name: 'creeper_3', type: 'enemy-creeper', x: 1000, y: 330, properties: [prop('patrolRange', 150), prop('speed', 95), prop('contactCooldown', 1400)] });
+  objs.push({ name: 'creeper_1', type: 'enemy-creeper', x: 350, y: 630, properties: [prop('patrolRange', 220), prop('speed', 90), prop('contactCooldown', 1400)] });
+  objs.push({ name: 'creeper_2', type: 'enemy-creeper', x: 750, y: 410, properties: [prop('patrolRange', 180), prop('speed', 95), prop('contactCooldown', 1300)] });
+  objs.push({ name: 'creeper_3', type: 'enemy-creeper', x: 1050, y: 330, properties: [prop('patrolRange', 160), prop('speed', 100), prop('contactCooldown', 1300)] });
   objs.push({ name: 'guard_1', type: 'enemy-guard', x: 1120, y: 560, properties: [prop('guardWordId', 'ghaas')] });
 
   objs.push({ name: 'checkpoint_start', type: 'checkpoint', x: 100, y: 450, properties: [prop('id', 'start'), prop('activated', true)] });
   objs.push({ name: 'checkpoint_mid', type: 'checkpoint', x: 800, y: 350, properties: [prop('id', 'mid'), prop('activated', false)] });
 
-  objs.push({ name: 'health_1', type: 'health-pickup', x: 500, y: 590 });
-  objs.push({ name: 'health_2', type: 'health-pickup', x: 800, y: 430 });
+  // Health: 1 ground + 1 above platform
+  objs.push({ name: 'health_1', type: 'health-pickup', x: 400, y: 580 });
+  objs.push({ name: 'health_2', type: 'health-pickup', x: 850, y: 400 });
 
-  objs.push({ name: 'gem_1', type: 'gem', x: 350, y: 590 });
-  objs.push({ name: 'gem_2', type: 'gem', x: 650, y: 440 });
-  objs.push({ name: 'gem_3', type: 'gem', x: 900, y: 360 });
-  objs.push({ name: 'gem_4', type: 'gem', x: 1050, y: 280 });
-  objs.push({ name: 'gem_5', type: 'gem', x: 550, y: 580 });
+  // Gems: 2 ground + 3 above platforms (all reachable)
+  objs.push({ name: 'gem_1', type: 'gem', x: 300, y: 580 });
+  objs.push({ name: 'gem_2', type: 'gem', x: 500, y: 570 });
+  objs.push({ name: 'gem_3', type: 'gem', x: 420, y: 450 });   // above col6 row8 platform
+  objs.push({ name: 'gem_4', type: 'gem', x: 820, y: 390 });   // above col13 row7 platform
+  objs.push({ name: 'gem_5', type: 'gem', x: 900, y: 430 });   // above col13 row7 platform
 
   objs.push({ name: 'camera', type: 'camera-bounds', x: 0, y: 0, width: 1600, height: 720 });
 
@@ -427,31 +432,41 @@ buildTilemap(2, 1, VILLAGE, (sky, mountains, decoBg, plat, decoFg) => {
     objs.push({ name: `door_${wid}`, type: 'door', x: doorXs[i], y: 625, width: 56, height: 84, properties: [prop('wordId', wid)] });
   });
 
+  // Letters: wider horizontal spread, all reachable (ground-reachable or above a known platform)
+  // Platforms at col4 row8 (x=256-512, y=512), col10 row7 (x=640-832, y=448), col16 row6 (x=1024-1280, y=384)
   const lps = [
-    { x: 200, y: 530 }, { x: 300, y: 500 }, { x: 400, y: 460 },
-    { x: 500, y: 420 }, { x: 600, y: 380 }, { x: 700, y: 340 },
-    { x: 800, y: 300 }, { x: 900, y: 260 }, { x: 1000, y: 220 },
-    { x: 1100, y: 200 }, { x: 350, y: 560 }, { x: 480, y: 550 },
-    { x: 650, y: 500 }, { x: 780, y: 450 }, { x: 880, y: 400 },
-    { x: 980, y: 350 }, { x: 1080, y: 300 }, { x: 1150, y: 260 },
-    { x: 250, y: 450 }, { x: 550, y: 560 },
+    // Ground-reachable (10 letters, y=550-570)
+    { x: 200, y: 560 }, { x: 320, y: 550 }, { x: 440, y: 565 },
+    { x: 580, y: 555 }, { x: 720, y: 560 }, { x: 860, y: 550 },
+    { x: 1000, y: 565 }, { x: 1120, y: 555 }, { x: 260, y: 570 },
+    { x: 680, y: 570 },
+    // Above col4 row8 platform (x=256-512, y=512, reach y>=380)
+    { x: 300, y: 410 }, { x: 380, y: 450 }, { x: 460, y: 430 },
+    // Above col10 row7 platform (x=640-832, y=448, reach y>=300)
+    { x: 660, y: 350 }, { x: 720, y: 380 }, { x: 800, y: 340 },
+    // Above col16 row6 platform (x=1024-1280, y=384, reach y>=240)
+    { x: 1060, y: 300 }, { x: 1120, y: 340 }, { x: 1200, y: 290 },
+    // Near col22 row5 platform (x=1408-1600, y=320, reach y>=170) — far right but reachable
+    { x: 1470, y: 250 },
   ];
   lps.forEach((p, i) => objs.push({ name: `letter_${i}`, type: 'letter', x: p.x, y: p.y }));
 
-  objs.push({ name: 'creeper_1', type: 'enemy-creeper', x: 500, y: 630, properties: [prop('patrolRange', 180), prop('speed', 75), prop('contactCooldown', 1700)] });
-  objs.push({ name: 'creeper_2', type: 'enemy-creeper', x: 800, y: 410, properties: [prop('patrolRange', 150), prop('speed', 80), prop('contactCooldown', 1700)] });
+  objs.push({ name: 'creeper_1', type: 'enemy-creeper', x: 500, y: 630, properties: [prop('patrolRange', 180), prop('speed', 80), prop('contactCooldown', 1600)] });
+  objs.push({ name: 'creeper_2', type: 'enemy-creeper', x: 800, y: 410, properties: [prop('patrolRange', 150), prop('speed', 85), prop('contactCooldown', 1600)] });
   objs.push({ name: 'guard_1', type: 'enemy-guard', x: 1020, y: 560, properties: [prop('guardWordId', 'doodh')] });
 
   objs.push({ name: 'checkpoint_start', type: 'checkpoint', x: 100, y: 450, properties: [prop('id', 'start'), prop('activated', true)] });
 
-  objs.push({ name: 'health_1', type: 'health-pickup', x: 500, y: 590 });
-  objs.push({ name: 'health_2', type: 'health-pickup', x: 800, y: 430 });
+  // Health: spread across level, all reachable
+  objs.push({ name: 'health_1', type: 'health-pickup', x: 600, y: 570 });
+  objs.push({ name: 'health_2', type: 'health-pickup', x: 1060, y: 340 });
 
-  objs.push({ name: 'gem_1', type: 'gem', x: 350, y: 590 });
-  objs.push({ name: 'gem_2', type: 'gem', x: 650, y: 440 });
-  objs.push({ name: 'gem_3', type: 'gem', x: 900, y: 360 });
-  objs.push({ name: 'gem_4', type: 'gem', x: 1050, y: 280 });
-  objs.push({ name: 'gem_5', type: 'gem', x: 550, y: 580 });
+  // Gems: mix of ground and above-platform, all reachable
+  objs.push({ name: 'gem_1', type: 'gem', x: 250, y: 570 });
+  objs.push({ name: 'gem_2', type: 'gem', x: 550, y: 560 });
+  objs.push({ name: 'gem_3', type: 'gem', x: 720, y: 390 });    // above col10 row7 platform
+  objs.push({ name: 'gem_4', type: 'gem', x: 1060, y: 320 });   // above col16 row6 platform
+  objs.push({ name: 'gem_5', type: 'gem', x: 380, y: 470 });    // above col4 row8 platform
 
   objs.push({ name: 'camera', type: 'camera-bounds', x: 0, y: 0, width: 1600, height: 720 });
 
@@ -488,31 +503,44 @@ buildTilemap(2, 2, VILLAGE, (sky, mountains, decoBg, plat, decoFg) => {
     objs.push({ name: `door_${wid}`, type: 'door', x: doorXs[i], y: 625, width: 56, height: 84, properties: [prop('wordId', wid)] });
   });
 
+  // Letters: most on platforms, few on ground — all reachable from nearest surface
+  // Platforms: col5 row8 (x=320-576, y=512), col11 row7 (x=704-896, y=448),
+  //            col18 row8 (x=1152-1344, y=512), col24 row7 (x=1536-1664, y=448)
   const lps = [
-    { x: 200, y: 530 }, { x: 300, y: 500 }, { x: 400, y: 460 },
-    { x: 500, y: 420 }, { x: 600, y: 380 }, { x: 700, y: 340 },
-    { x: 800, y: 300 }, { x: 900, y: 260 }, { x: 1000, y: 220 },
-    { x: 1100, y: 200 }, { x: 350, y: 560 }, { x: 480, y: 550 },
-    { x: 650, y: 500 }, { x: 780, y: 450 }, { x: 880, y: 400 },
-    { x: 980, y: 350 }, { x: 1080, y: 300 }, { x: 1150, y: 260 },
-    { x: 250, y: 450 }, { x: 550, y: 560 },
+    // Ground-reachable (6 letters, y=550-570)
+    { x: 200, y: 560 }, { x: 350, y: 555 }, { x: 500, y: 565 },
+    { x: 600, y: 550 }, { x: 280, y: 570 }, { x: 450, y: 570 },
+    // Above col5 row8 platform (x=320-576, y=512, reach y>=380)
+    { x: 340, y: 420 }, { x: 420, y: 450 }, { x: 500, y: 400 }, { x: 380, y: 480 },
+    // Above col11 row7 platform (x=704-896, y=448, reach y>=300)
+    { x: 730, y: 350 }, { x: 800, y: 380 }, { x: 870, y: 330 },
+    // Above col18 row8 platform (x=1152-1344, y=512, reach y>=380)
+    { x: 1180, y: 420 }, { x: 1250, y: 450 }, { x: 1320, y: 400 },
+    // Above col24 row7 platform (x=1536-1664, y=448, reach y>=300)
+    { x: 1550, y: 350 }, { x: 1600, y: 380 }, { x: 1630, y: 340 },
+    // Near gap area (between platforms, but ground-reachable y=555)
+    { x: 950, y: 555 },
   ];
   lps.forEach((p, i) => objs.push({ name: `letter_${i}`, type: 'letter', x: p.x, y: p.y }));
 
-  objs.push({ name: 'creeper_1', type: 'enemy-creeper', x: 450, y: 630, properties: [prop('patrolRange', 220), prop('speed', 95), prop('contactCooldown', 1350)] });
-  objs.push({ name: 'creeper_2', type: 'enemy-creeper', x: 800, y: 410, properties: [prop('patrolRange', 160), prop('speed', 100), prop('contactCooldown', 1300)] });
+  objs.push({ name: 'creeper_1', type: 'enemy-creeper', x: 420, y: 630, properties: [prop('patrolRange', 240), prop('speed', 100), prop('contactCooldown', 1300)] });
+  objs.push({ name: 'creeper_2', type: 'enemy-creeper', x: 850, y: 410, properties: [prop('patrolRange', 180), prop('speed', 105), prop('contactCooldown', 1200)] });
   objs.push({ name: 'guard_1', type: 'enemy-guard', x: 1050, y: 560, properties: [prop('guardWordId', 'phal')] });
 
+  // Checkpoints: 2 for fairness on hard level
   objs.push({ name: 'checkpoint_start', type: 'checkpoint', x: 100, y: 450, properties: [prop('id', 'start'), prop('activated', true)] });
+  objs.push({ name: 'checkpoint_mid', type: 'checkpoint', x: 700, y: 350, properties: [prop('id', 'mid'), prop('activated', false)] });
 
-  objs.push({ name: 'health_1', type: 'health-pickup', x: 500, y: 590 });
-  objs.push({ name: 'health_2', type: 'health-pickup', x: 800, y: 430 });
+  // Health: 1 near gap (risky but reachable), 1 above platform
+  objs.push({ name: 'health_1', type: 'health-pickup', x: 550, y: 630 });
+  objs.push({ name: 'health_2', type: 'health-pickup', x: 1180, y: 430 });
 
-  objs.push({ name: 'gem_1', type: 'gem', x: 350, y: 590 });
-  objs.push({ name: 'gem_2', type: 'gem', x: 650, y: 440 });
-  objs.push({ name: 'gem_3', type: 'gem', x: 900, y: 360 });
-  objs.push({ name: 'gem_4', type: 'gem', x: 1050, y: 280 });
-  objs.push({ name: 'gem_5', type: 'gem', x: 550, y: 580 });
+  // Gems: all reachable from ground or platform
+  objs.push({ name: 'gem_1', type: 'gem', x: 350, y: 570 });
+  objs.push({ name: 'gem_2', type: 'gem', x: 740, y: 390 });    // above col11 row7 platform
+  objs.push({ name: 'gem_3', type: 'gem', x: 1250, y: 430 });   // above col18 row8 platform
+  objs.push({ name: 'gem_4', type: 'gem', x: 1560, y: 380 });   // above col24 row7 platform
+  objs.push({ name: 'gem_5', type: 'gem', x: 440, y: 440 });    // above col5 row8 platform
 
   objs.push({ name: 'camera', type: 'camera-bounds', x: 0, y: 0, width: 1600, height: 720 });
 
@@ -572,31 +600,42 @@ buildTilemap(3, 1, PALACE, (sky, mountains, decoBg, plat, decoFg) => {
     objs.push({ name: `door_${wid}`, type: 'door', x: doorXs[i], y: 625, width: 56, height: 84, properties: [prop('wordId', wid)] });
   });
 
+  // Letters: pillar-platform heavy — each letter reachable from nearest surface
+  // Platforms: col4 row8 (x=256-448, y=512), col10 row7 (x=640-832, y=448),
+  //            col16 row6 (x=1024-1280, y=384), col22 row5 (x=1408-1600, y=320)
   const lps = [
-    { x: 200, y: 530 }, { x: 300, y: 500 }, { x: 400, y: 460 },
-    { x: 500, y: 420 }, { x: 600, y: 380 }, { x: 700, y: 340 },
-    { x: 800, y: 300 }, { x: 900, y: 260 }, { x: 1000, y: 220 },
-    { x: 1100, y: 200 }, { x: 350, y: 560 }, { x: 480, y: 550 },
-    { x: 650, y: 500 }, { x: 780, y: 450 }, { x: 880, y: 400 },
-    { x: 980, y: 350 }, { x: 1080, y: 300 }, { x: 1150, y: 260 },
-    { x: 250, y: 450 }, { x: 550, y: 560 },
+    // Ground-reachable (4 letters, y=555-570)
+    { x: 200, y: 560 }, { x: 300, y: 555 }, { x: 380, y: 570 },
+    { x: 450, y: 565 },
+    // Above col4 row8 platform (x=256-448, y=512, reach y>=380)
+    { x: 280, y: 420 }, { x: 340, y: 450 }, { x: 400, y: 410 }, { x: 440, y: 470 },
+    // Above col10 row7 platform (x=640-832, y=448, reach y>=300)
+    { x: 660, y: 360 }, { x: 720, y: 390 }, { x: 780, y: 340 }, { x: 820, y: 370 },
+    // Above col16 row6 platform (x=1024-1280, y=384, reach y>=240)
+    { x: 1060, y: 290 }, { x: 1120, y: 320 }, { x: 1180, y: 270 }, { x: 1240, y: 310 },
+    // Above col22 row5 platform (x=1408-1600, y=320, reach y>=170)
+    { x: 1440, y: 230 }, { x: 1500, y: 260 }, { x: 1560, y: 220 }, { x: 1590, y: 280 },
   ];
   lps.forEach((p, i) => objs.push({ name: `letter_${i}`, type: 'letter', x: p.x, y: p.y }));
 
-  objs.push({ name: 'creeper_1', type: 'enemy-creeper', x: 530, y: 630, properties: [prop('patrolRange', 200), prop('speed', 110), prop('contactCooldown', 1200)] });
-  objs.push({ name: 'creeper_2', type: 'enemy-creeper', x: 900, y: 410, properties: [prop('patrolRange', 150), prop('speed', 120), prop('contactCooldown', 1100)] });
+  objs.push({ name: 'creeper_1', type: 'enemy-creeper', x: 480, y: 630, properties: [prop('patrolRange', 250), prop('speed', 120), prop('contactCooldown', 1100)] });
+  objs.push({ name: 'creeper_2', type: 'enemy-creeper', x: 950, y: 410, properties: [prop('patrolRange', 200), prop('speed', 130), prop('contactCooldown', 1000)] });
   objs.push({ name: 'guard_1', type: 'enemy-guard', x: 1150, y: 500, properties: [prop('guardWordId', 'neela')] });
 
+  // Checkpoints: 2 for fairness (mid checkpoint near pillar section)
   objs.push({ name: 'checkpoint_start', type: 'checkpoint', x: 100, y: 450, properties: [prop('id', 'start'), prop('activated', true)] });
+  objs.push({ name: 'checkpoint_mid', type: 'checkpoint', x: 700, y: 350, properties: [prop('id', 'mid'), prop('activated', false)] });
 
-  objs.push({ name: 'health_1', type: 'health-pickup', x: 500, y: 590 });
-  objs.push({ name: 'health_2', type: 'health-pickup', x: 800, y: 430 });
+  // Health: 1 ground-level, 1 above platform — both reachable
+  objs.push({ name: 'health_1', type: 'health-pickup', x: 400, y: 580 });
+  objs.push({ name: 'health_2', type: 'health-pickup', x: 1120, y: 340 });
 
-  objs.push({ name: 'gem_1', type: 'gem', x: 350, y: 590 });
-  objs.push({ name: 'gem_2', type: 'gem', x: 650, y: 440 });
-  objs.push({ name: 'gem_3', type: 'gem', x: 900, y: 360 });
-  objs.push({ name: 'gem_4', type: 'gem', x: 1050, y: 280 });
-  objs.push({ name: 'gem_5', type: 'gem', x: 550, y: 580 });
+  // Gems: all reachable from ground or platform
+  objs.push({ name: 'gem_1', type: 'gem', x: 250, y: 570 });
+  objs.push({ name: 'gem_2', type: 'gem', x: 720, y: 400 });    // above col10 row7 platform
+  objs.push({ name: 'gem_3', type: 'gem', x: 1060, y: 320 });   // above col16 row6 platform
+  objs.push({ name: 'gem_4', type: 'gem', x: 1500, y: 250 });   // above col22 row5 platform
+  objs.push({ name: 'gem_5', type: 'gem', x: 340, y: 470 });    // above col4 row8 platform
 
   objs.push({ name: 'camera', type: 'camera-bounds', x: 0, y: 0, width: 1600, height: 720 });
 

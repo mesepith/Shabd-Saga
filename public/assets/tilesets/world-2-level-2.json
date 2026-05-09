@@ -10,7 +10,7 @@
   "version": 1.1,
   "tiledversion": "1.11.0",
   "nextlayerid": 7,
-  "nextobjectid": 39,
+  "nextobjectid": 40,
   "tilesets": [
     {
       "firstgid": 1,
@@ -3785,155 +3785,132 @@
           "name": "letter_0",
           "type": "letter",
           "x": 200,
-          "y": 530
+          "y": 560
         },
         {
           "name": "letter_1",
           "type": "letter",
-          "x": 300,
-          "y": 500
+          "x": 350,
+          "y": 555
         },
         {
           "name": "letter_2",
           "type": "letter",
-          "x": 400,
-          "y": 460
+          "x": 500,
+          "y": 565
         },
         {
           "name": "letter_3",
           "type": "letter",
-          "x": 500,
-          "y": 420
+          "x": 600,
+          "y": 550
         },
         {
           "name": "letter_4",
           "type": "letter",
-          "x": 600,
-          "y": 380
+          "x": 280,
+          "y": 570
         },
         {
           "name": "letter_5",
           "type": "letter",
-          "x": 700,
-          "y": 340
+          "x": 450,
+          "y": 570
         },
         {
           "name": "letter_6",
           "type": "letter",
-          "x": 800,
-          "y": 300
+          "x": 340,
+          "y": 420
         },
         {
           "name": "letter_7",
           "type": "letter",
-          "x": 900,
-          "y": 260
+          "x": 420,
+          "y": 450
         },
         {
           "name": "letter_8",
           "type": "letter",
-          "x": 1000,
-          "y": 220
+          "x": 500,
+          "y": 400
         },
         {
           "name": "letter_9",
           "type": "letter",
-          "x": 1100,
-          "y": 200
+          "x": 380,
+          "y": 480
         },
         {
           "name": "letter_10",
           "type": "letter",
-          "x": 350,
-          "y": 560
+          "x": 730,
+          "y": 350
         },
         {
           "name": "letter_11",
           "type": "letter",
-          "x": 480,
-          "y": 550
+          "x": 800,
+          "y": 380
         },
         {
           "name": "letter_12",
           "type": "letter",
-          "x": 650,
-          "y": 500
+          "x": 870,
+          "y": 330
         },
         {
           "name": "letter_13",
           "type": "letter",
-          "x": 780,
-          "y": 450
+          "x": 1180,
+          "y": 420
         },
         {
           "name": "letter_14",
           "type": "letter",
-          "x": 880,
-          "y": 400
+          "x": 1250,
+          "y": 450
         },
         {
           "name": "letter_15",
           "type": "letter",
-          "x": 980,
-          "y": 350
+          "x": 1320,
+          "y": 400
         },
         {
           "name": "letter_16",
           "type": "letter",
-          "x": 1080,
-          "y": 300
+          "x": 1550,
+          "y": 350
         },
         {
           "name": "letter_17",
           "type": "letter",
-          "x": 1150,
-          "y": 260
+          "x": 1600,
+          "y": 380
         },
         {
           "name": "letter_18",
           "type": "letter",
-          "x": 250,
-          "y": 450
+          "x": 1630,
+          "y": 340
         },
         {
           "name": "letter_19",
           "type": "letter",
-          "x": 550,
-          "y": 560
+          "x": 950,
+          "y": 555
         },
         {
           "name": "creeper_1",
           "type": "enemy-creeper",
-          "x": 450,
+          "x": 420,
           "y": 630,
           "properties": [
             {
               "name": "patrolRange",
               "type": "int",
-              "value": 220
-            },
-            {
-              "name": "speed",
-              "type": "int",
-              "value": 95
-            },
-            {
-              "name": "contactCooldown",
-              "type": "int",
-              "value": 1350
-            }
-          ]
-        },
-        {
-          "name": "creeper_2",
-          "type": "enemy-creeper",
-          "x": 800,
-          "y": 410,
-          "properties": [
-            {
-              "name": "patrolRange",
-              "type": "int",
-              "value": 160
+              "value": 240
             },
             {
               "name": "speed",
@@ -3944,6 +3921,29 @@
               "name": "contactCooldown",
               "type": "int",
               "value": 1300
+            }
+          ]
+        },
+        {
+          "name": "creeper_2",
+          "type": "enemy-creeper",
+          "x": 850,
+          "y": 410,
+          "properties": [
+            {
+              "name": "patrolRange",
+              "type": "int",
+              "value": 180
+            },
+            {
+              "name": "speed",
+              "type": "int",
+              "value": 105
+            },
+            {
+              "name": "contactCooldown",
+              "type": "int",
+              "value": 1200
             }
           ]
         },
@@ -3979,46 +3979,64 @@
           ]
         },
         {
+          "name": "checkpoint_mid",
+          "type": "checkpoint",
+          "x": 700,
+          "y": 350,
+          "properties": [
+            {
+              "name": "id",
+              "type": "string",
+              "value": "mid"
+            },
+            {
+              "name": "activated",
+              "type": "string",
+              "value": false
+            }
+          ]
+        },
+        {
           "name": "health_1",
           "type": "health-pickup",
-          "x": 500,
-          "y": 590
+          "x": 550,
+          "y": 630
         },
         {
           "name": "health_2",
           "type": "health-pickup",
-          "x": 800,
+          "x": 1180,
           "y": 430
         },
         {
           "name": "gem_1",
           "type": "gem",
           "x": 350,
-          "y": 590
+          "y": 570
         },
         {
           "name": "gem_2",
           "type": "gem",
-          "x": 650,
-          "y": 440
+          "x": 740,
+          "y": 390
         },
         {
           "name": "gem_3",
           "type": "gem",
-          "x": 900,
-          "y": 360
+          "x": 1250,
+          "y": 430
         },
         {
           "name": "gem_4",
           "type": "gem",
-          "x": 1050,
-          "y": 280
+          "x": 1560,
+          "y": 380
         },
         {
           "name": "gem_5",
           "type": "gem",
-          "x": 550,
-          "y": 580
+          "x": 440,
+          "y": 440
         },
         {
           "name": "camera",

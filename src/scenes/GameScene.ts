@@ -149,6 +149,7 @@ export class GameScene extends Phaser.Scene {
     if (!this.tilemap) {
       this.cameras.main.setBounds(0, 0, 1600, height);
     }
+    this.physics.world.setBounds(0, 0, 1600, height);
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
     this.cameras.main.setDeadzone(50, 50);
 
@@ -444,15 +445,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private spawnLetters(words: any[], tilemapLetters?: { x: number; y: number }[]): void {
-    const defaultPositions = [
-      { x: 200, y: 530 }, { x: 300, y: 500 }, { x: 400, y: 460 },
-      { x: 500, y: 420 }, { x: 600, y: 380 }, { x: 700, y: 340 },
-      { x: 800, y: 300 }, { x: 900, y: 260 }, { x: 1000, y: 220 },
-      { x: 1100, y: 200 }, { x: 350, y: 560 }, { x: 480, y: 550 },
-      { x: 650, y: 500 }, { x: 780, y: 450 }, { x: 880, y: 400 },
-      { x: 980, y: 350 }, { x: 1080, y: 300 }, { x: 1150, y: 260 },
-      { x: 250, y: 450 }, { x: 550, y: 560 },
-    ];
+    const defaultPositions = this.getLetterDefaultPositions();
     const positions = tilemapLetters && tilemapLetters.length > 0 ? tilemapLetters : defaultPositions;
 
     let letterIndex = 0;
@@ -526,6 +519,124 @@ export class GameScene extends Phaser.Scene {
       },
       undefined, this
     );
+  }
+
+  private getLetterDefaultPositions(): { x: number; y: number }[] {
+    switch (this.levelId) {
+      case 'world-1-level-1':
+        return [
+          { x: 200, y: 550 }, { x: 300, y: 540 }, { x: 400, y: 530 },
+          { x: 500, y: 520 }, { x: 600, y: 540 }, { x: 700, y: 530 },
+          { x: 800, y: 520 }, { x: 900, y: 540 }, { x: 1000, y: 530 },
+          { x: 1100, y: 520 }, { x: 350, y: 560 }, { x: 480, y: 550 },
+          { x: 650, y: 560 }, { x: 780, y: 550 }, { x: 880, y: 560 },
+          { x: 980, y: 550 }, { x: 1080, y: 560 }, { x: 1150, y: 550 },
+          { x: 250, y: 570 }, { x: 550, y: 570 },
+        ];
+      case 'world-1-level-2':
+        return [
+          { x: 200, y: 560 }, { x: 300, y: 550 }, { x: 400, y: 560 },
+          { x: 500, y: 570 }, { x: 600, y: 550 }, { x: 700, y: 560 },
+          { x: 250, y: 570 }, { x: 350, y: 555 }, { x: 480, y: 565 },
+          { x: 650, y: 555 },
+          { x: 420, y: 440 }, { x: 460, y: 420 }, { x: 520, y: 450 },
+          { x: 840, y: 380 }, { x: 880, y: 360 }, { x: 920, y: 400 },
+          { x: 580, y: 430 }, { x: 850, y: 390 }, { x: 960, y: 410 },
+          { x: 1000, y: 370 },
+        ];
+      case 'world-2-level-1':
+        return [
+          { x: 200, y: 560 }, { x: 320, y: 550 }, { x: 440, y: 565 },
+          { x: 580, y: 555 }, { x: 720, y: 560 }, { x: 860, y: 550 },
+          { x: 1000, y: 565 }, { x: 1120, y: 555 }, { x: 260, y: 570 },
+          { x: 680, y: 570 },
+          { x: 300, y: 410 }, { x: 380, y: 450 }, { x: 460, y: 430 },
+          { x: 660, y: 350 }, { x: 720, y: 380 }, { x: 800, y: 340 },
+          { x: 1060, y: 300 }, { x: 1120, y: 340 }, { x: 1200, y: 290 },
+          { x: 1470, y: 250 },
+        ];
+      case 'world-2-level-2':
+        return [
+          { x: 200, y: 560 }, { x: 350, y: 555 }, { x: 500, y: 565 },
+          { x: 600, y: 550 }, { x: 280, y: 570 }, { x: 450, y: 570 },
+          { x: 340, y: 420 }, { x: 420, y: 450 }, { x: 500, y: 400 }, { x: 380, y: 480 },
+          { x: 730, y: 350 }, { x: 800, y: 380 }, { x: 870, y: 330 },
+          { x: 1180, y: 420 }, { x: 1250, y: 450 }, { x: 1320, y: 400 },
+          { x: 1550, y: 350 }, { x: 1600, y: 380 }, { x: 1630, y: 340 },
+          { x: 950, y: 555 },
+        ];
+      case 'world-3-level-1':
+        return [
+          { x: 200, y: 560 }, { x: 300, y: 555 }, { x: 380, y: 570 },
+          { x: 450, y: 565 },
+          { x: 280, y: 420 }, { x: 340, y: 450 }, { x: 400, y: 410 }, { x: 440, y: 470 },
+          { x: 660, y: 360 }, { x: 720, y: 390 }, { x: 780, y: 340 }, { x: 820, y: 370 },
+          { x: 1060, y: 290 }, { x: 1120, y: 320 }, { x: 1180, y: 270 }, { x: 1240, y: 310 },
+          { x: 1440, y: 230 }, { x: 1500, y: 260 }, { x: 1560, y: 220 }, { x: 1590, y: 280 },
+        ];
+      default:
+        return [
+          { x: 200, y: 530 }, { x: 300, y: 500 }, { x: 400, y: 460 },
+          { x: 500, y: 420 }, { x: 600, y: 380 }, { x: 700, y: 340 },
+          { x: 800, y: 300 }, { x: 900, y: 260 }, { x: 1000, y: 220 },
+          { x: 1100, y: 200 }, { x: 350, y: 560 }, { x: 480, y: 550 },
+          { x: 650, y: 500 }, { x: 780, y: 450 }, { x: 880, y: 400 },
+          { x: 980, y: 350 }, { x: 1080, y: 300 }, { x: 1150, y: 260 },
+          { x: 250, y: 450 }, { x: 550, y: 560 },
+        ];
+    }
+  }
+
+  private getHealthDefaultPositions(): { x: number; y: number }[] {
+    switch (this.levelId) {
+      case 'world-1-level-1':
+        return [{ x: 350, y: 580 }, { x: 650, y: 570 }];
+      case 'world-1-level-2':
+        return [{ x: 400, y: 580 }, { x: 850, y: 400 }];
+      case 'world-2-level-1':
+        return [{ x: 600, y: 570 }, { x: 1060, y: 340 }];
+      case 'world-2-level-2':
+        return [{ x: 550, y: 630 }, { x: 1180, y: 430 }];
+      case 'world-3-level-1':
+        return [{ x: 400, y: 580 }, { x: 1120, y: 340 }];
+      default:
+        return [{ x: 500, y: 590 }, { x: 800, y: 430 }];
+    }
+  }
+
+  private getGemDefaultPositions(): { x: number; y: number }[] {
+    switch (this.levelId) {
+      case 'world-1-level-1':
+        return [
+          { x: 300, y: 580 }, { x: 500, y: 570 }, { x: 700, y: 560 },
+          { x: 900, y: 550 }, { x: 550, y: 530 },
+        ];
+      case 'world-1-level-2':
+        return [
+          { x: 300, y: 580 }, { x: 500, y: 570 }, { x: 420, y: 450 },
+          { x: 820, y: 390 }, { x: 900, y: 430 },
+        ];
+      case 'world-2-level-1':
+        return [
+          { x: 250, y: 570 }, { x: 550, y: 560 }, { x: 720, y: 390 },
+          { x: 1060, y: 320 }, { x: 380, y: 470 },
+        ];
+      case 'world-2-level-2':
+        return [
+          { x: 350, y: 570 }, { x: 740, y: 390 }, { x: 1250, y: 430 },
+          { x: 1560, y: 380 }, { x: 440, y: 440 },
+        ];
+      case 'world-3-level-1':
+        return [
+          { x: 250, y: 570 }, { x: 720, y: 400 }, { x: 1060, y: 320 },
+          { x: 1500, y: 250 }, { x: 340, y: 470 },
+        ];
+      default:
+        return [
+          { x: 350, y: 590 }, { x: 650, y: 440 }, { x: 900, y: 360 },
+          { x: 1050, y: 280 }, { x: 550, y: 580 },
+        ];
+    }
   }
 
   private spawnDoors(words: any[], tilemapDoors?: { x: number; y: number; wordId: string }[]): void {
@@ -1254,19 +1365,34 @@ export class GameScene extends Phaser.Scene {
     } else {
       if (this.levelId === 'world-1-level-1') {
         creeperConfigs = [
-          { id: 'creeper_1', type: 'shadow-creeper', position: { x: 550, y: height - 90 }, patrolRange: 200 },
-          { id: 'creeper_2', type: 'shadow-creeper', position: { x: 720, y: 410 }, patrolRange: 140 },
+          { id: 'creeper_1', type: 'shadow-creeper', position: { x: 600, y: height - 90 }, patrolRange: 150, speed: 60, contactCooldown: 2000 },
+          { id: 'creeper_2', type: 'shadow-creeper', position: { x: 850, y: 410 }, patrolRange: 120, speed: 65, contactCooldown: 2000 },
         ];
       } else if (this.levelId === 'world-1-level-2') {
         creeperConfigs = [
-          { id: 'creeper_1', type: 'shadow-creeper', position: { x: 400, y: height - 90 }, patrolRange: 240 },
-          { id: 'creeper_2', type: 'shadow-creeper', position: { x: 750, y: height - 90 }, patrolRange: 200 },
-          { id: 'creeper_3', type: 'shadow-creeper', position: { x: 1050, y: 410 }, patrolRange: 160 },
+          { id: 'creeper_1', type: 'shadow-creeper', position: { x: 350, y: height - 90 }, patrolRange: 220, speed: 90, contactCooldown: 1400 },
+          { id: 'creeper_2', type: 'shadow-creeper', position: { x: 750, y: 410 }, patrolRange: 180, speed: 95, contactCooldown: 1300 },
+          { id: 'creeper_3', type: 'shadow-creeper', position: { x: 1050, y: 330 }, patrolRange: 160, speed: 100, contactCooldown: 1300 },
+        ];
+      } else if (this.levelId === 'world-2-level-1') {
+        creeperConfigs = [
+          { id: 'creeper_1', type: 'shadow-creeper', position: { x: 500, y: height - 90 }, patrolRange: 180, speed: 80, contactCooldown: 1600 },
+          { id: 'creeper_2', type: 'shadow-creeper', position: { x: 800, y: 410 }, patrolRange: 150, speed: 85, contactCooldown: 1600 },
+        ];
+      } else if (this.levelId === 'world-2-level-2') {
+        creeperConfigs = [
+          { id: 'creeper_1', type: 'shadow-creeper', position: { x: 420, y: height - 90 }, patrolRange: 240, speed: 100, contactCooldown: 1300 },
+          { id: 'creeper_2', type: 'shadow-creeper', position: { x: 850, y: 410 }, patrolRange: 180, speed: 105, contactCooldown: 1200 },
+        ];
+      } else if (this.levelId === 'world-3-level-1') {
+        creeperConfigs = [
+          { id: 'creeper_1', type: 'shadow-creeper', position: { x: 480, y: height - 90 }, patrolRange: 250, speed: 120, contactCooldown: 1100 },
+          { id: 'creeper_2', type: 'shadow-creeper', position: { x: 950, y: 410 }, patrolRange: 200, speed: 130, contactCooldown: 1000 },
         ];
       } else {
         creeperConfigs = [
-          { id: 'creeper_1', type: 'shadow-creeper', position: { x: 500, y: height - 90 }, patrolRange: 200 },
-          { id: 'creeper_2', type: 'shadow-creeper', position: { x: 850, y: 410 }, patrolRange: 160 },
+          { id: 'creeper_1', type: 'shadow-creeper', position: { x: 500, y: height - 90 }, patrolRange: 200, speed: 80, contactCooldown: 1500 },
+          { id: 'creeper_2', type: 'shadow-creeper', position: { x: 850, y: 410 }, patrolRange: 160, speed: 85, contactCooldown: 1500 },
         ];
       }
     }
@@ -1524,7 +1650,24 @@ export class GameScene extends Phaser.Scene {
     } else if (checkpoints && checkpoints.length > 0) {
       cpConfigs = checkpoints;
     } else {
-      cpConfigs = [{ id: 'start', x: 100, y: 450, activated: true }];
+      if (this.levelId === 'world-1-level-2') {
+        cpConfigs = [
+          { id: 'start', x: 100, y: 450, activated: true },
+          { id: 'mid', x: 800, y: 350, activated: false },
+        ];
+      } else if (this.levelId === 'world-2-level-2') {
+        cpConfigs = [
+          { id: 'start', x: 100, y: 450, activated: true },
+          { id: 'mid', x: 700, y: 350, activated: false },
+        ];
+      } else if (this.levelId === 'world-3-level-1') {
+        cpConfigs = [
+          { id: 'start', x: 100, y: 450, activated: true },
+          { id: 'mid', x: 700, y: 350, activated: false },
+        ];
+      } else {
+        cpConfigs = [{ id: 'start', x: 100, y: 450, activated: true }];
+      }
     }
 
     cpConfigs.forEach((cp: any) => {
@@ -1579,9 +1722,7 @@ export class GameScene extends Phaser.Scene {
   private spawnHealthPickups(tilemapHealth?: { x: number; y: number }[]): void {
     this.healthPickupsGroup.clear(true, true);
 
-    const defaultPositions = [
-      { x: 500, y: 590 }, { x: 800, y: 430 },
-    ];
+    const defaultPositions = this.getHealthDefaultPositions();
     const positions = tilemapHealth && tilemapHealth.length > 0 ? tilemapHealth : defaultPositions;
 
     positions.forEach((pos) => {
@@ -1627,10 +1768,7 @@ export class GameScene extends Phaser.Scene {
   private spawnGems(tilemapGems?: { x: number; y: number }[]): void {
     this.gemsGroup.clear(true, true);
 
-    const defaultPositions = [
-      { x: 350, y: 590 }, { x: 650, y: 440 }, { x: 900, y: 360 },
-      { x: 1050, y: 280 }, { x: 550, y: 580 },
-    ];
+    const defaultPositions = this.getGemDefaultPositions();
     const positions = tilemapGems && tilemapGems.length > 0 ? tilemapGems : defaultPositions;
 
     positions.forEach((pos) => {

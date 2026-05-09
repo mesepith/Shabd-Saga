@@ -3818,61 +3818,61 @@
           "name": "letter_0",
           "type": "letter",
           "x": 200,
-          "y": 530
+          "y": 550
         },
         {
           "name": "letter_1",
           "type": "letter",
           "x": 300,
-          "y": 500
+          "y": 540
         },
         {
           "name": "letter_2",
           "type": "letter",
           "x": 400,
-          "y": 460
+          "y": 530
         },
         {
           "name": "letter_3",
           "type": "letter",
           "x": 500,
-          "y": 420
+          "y": 520
         },
         {
           "name": "letter_4",
           "type": "letter",
           "x": 600,
-          "y": 380
+          "y": 540
         },
         {
           "name": "letter_5",
           "type": "letter",
           "x": 700,
-          "y": 340
+          "y": 530
         },
         {
           "name": "letter_6",
           "type": "letter",
           "x": 800,
-          "y": 300
+          "y": 520
         },
         {
           "name": "letter_7",
           "type": "letter",
           "x": 900,
-          "y": 260
+          "y": 540
         },
         {
           "name": "letter_8",
           "type": "letter",
           "x": 1000,
-          "y": 220
+          "y": 530
         },
         {
           "name": "letter_9",
           "type": "letter",
           "x": 1100,
-          "y": 200
+          "y": 520
         },
         {
           "name": "letter_10",
@@ -3890,49 +3890,49 @@
           "name": "letter_12",
           "type": "letter",
           "x": 650,
-          "y": 500
+          "y": 560
         },
         {
           "name": "letter_13",
           "type": "letter",
           "x": 780,
-          "y": 450
+          "y": 550
         },
         {
           "name": "letter_14",
           "type": "letter",
           "x": 880,
-          "y": 400
+          "y": 560
         },
         {
           "name": "letter_15",
           "type": "letter",
           "x": 980,
-          "y": 350
+          "y": 550
         },
         {
           "name": "letter_16",
           "type": "letter",
           "x": 1080,
-          "y": 300
+          "y": 560
         },
         {
           "name": "letter_17",
           "type": "letter",
           "x": 1150,
-          "y": 260
+          "y": 550
         },
         {
           "name": "letter_18",
           "type": "letter",
           "x": 250,
-          "y": 450
+          "y": 570
         },
         {
           "name": "letter_19",
           "type": "letter",
           "x": 550,
-          "y": 560
+          "y": 570
         },
         {
           "name": "creeper_1",
@@ -3948,12 +3948,12 @@
             {
               "name": "speed",
               "type": "int",
-              "value": 65
+              "value": 60
             },
             {
               "name": "contactCooldown",
               "type": "int",
-              "value": 1800
+              "value": 2000
             }
           ]
         },
@@ -3971,12 +3971,12 @@
             {
               "name": "speed",
               "type": "int",
-              "value": 70
+              "value": 65
             },
             {
               "name": "contactCooldown",
               "type": "int",
-              "value": 1800
+              "value": 2000
             }
           ]
         },
@@ -4014,44 +4014,44 @@
         {
           "name": "health_1",
           "type": "health-pickup",
-          "x": 500,
-          "y": 590
+          "x": 350,
+          "y": 580
         },
         {
           "name": "health_2",
           "type": "health-pickup",
-          "x": 800,
-          "y": 430
+          "x": 650,
+          "y": 570
         },
         {
           "name": "gem_1",
           "type": "gem",
-          "x": 350,
-          "y": 590
+          "x": 300,
+          "y": 580
         },
         {
           "name": "gem_2",
           "type": "gem",
-          "x": 650,
-          "y": 440
+          "x": 500,
+          "y": 570
         },
         {
           "name": "gem_3",
           "type": "gem",
-          "x": 900,
-          "y": 360
+          "x": 700,
+          "y": 560
         },
         {
           "name": "gem_4",
           "type": "gem",
-          "x": 1050,
-          "y": 280
+          "x": 900,
+          "y": 550
         },
         {
           "name": "gem_5",
           "type": "gem",
           "x": 550,
-          "y": 580
+          "y": 530
         },
         {
           "name": "camera",
