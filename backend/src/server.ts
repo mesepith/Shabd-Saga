@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { resolve } from 'path';
 import { config } from './config/env.js';
 import { connectDB } from './config/db.js';
 import progressRoutes from './routes/progress.js';
@@ -24,7 +25,7 @@ app.get('/api/health', (_req, res) => {
 
 // Serve static game files in production
 if (config.nodeEnv === 'production') {
-  app.use(express.static('../../dist'));
+  app.use(express.static(resolve(import.meta.dirname, '../../dist')));
 }
 
 // Connect to DB and start server
