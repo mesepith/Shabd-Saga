@@ -564,6 +564,51 @@ vite build    ✓  (2.83s, 24 modules)
 
 ---
 
+## 2026-05-09 — Screen Transitions Complete
+
+### Completed
+- [x] Created `src/systems/TransitionManager.ts` — static utility with `toScene()`, `FADE_DURATION = 600ms`, `FADE_COLOR = { r: 0x1a, g: 0x1a, b: 0x2e }` (branded deep blue to match game background)
+- [x] All 11 scene transitions unified — consistent 600ms branded fades at every scene boundary
+- [x] BootScene → PreloadScene: added fade (was raw jump)
+- [x] PreloadScene → MenuScene: added fade (was raw jump with delay)
+- [x] LevelSelectScene → MenuScene (Back button): added fade (was raw jump)
+- [x] GameScene → LevelSelectScene (level complete quit): added fade + `stopMusic()`
+- [x] GameScene → GameScene (Next Level): replaced `scene.restart()` with `scene.start()` via TransitionManager (restart kills camera mid-fade)
+- [x] UIScene pause menu Restart/Quit: fixed — now fades UIScene's own camera (GameScene is paused, so its camera tweens won't animate). Pause elements properly destroyed via tracked array. Added `stopMusic()` before transitions.
+- [x] WordPuzzleScene close (both `closePuzzle()` and `showSuccess()`): fade out WordPuzzle camera → resume caller → fade in caller camera (smooth cross-fade)
+- [x] DialogueScene close (`endDialogue()`): branded fade color + fade in GameScene on resume
+- [x] All scenes now fade-in on create: MenuScene, BossScene, DialogueScene, WordPuzzleScene (were missing)
+- [x] LevelSelectScene now calls `startMenuMusic()` on create — ensures music plays when arriving from Quit (where music was stopped). No-op when menu music already playing (same-key check in `playMusicLoop`).
+- [x] Pause menu button ghosting bug fixed — `createPauseBtn` returns `[btn, txt]`, `pauseElements` array tracks all menu objects, all destroyed on any action
+
+### Architecture Notes
+1. **UIScene pause menu uses its own camera** for fade — GameScene is paused during pause menu, its camera tweens don't animate
+2. **`scene.restart()` → `scene.start('GameScene')`** — restart kills the camera mid-fade; scene.start cleanly shuts down old scene and creates new one that fades in from TransitionManager callback
+3. **Overlay close pattern**: fade out overlay camera → stop overlay → resume caller → fade in caller camera. Creates smooth dissolve effect.
+4. **All transitions use `TransitionManager.toScene()` or the same constants** — no hardcoded durations/colors anywhere
+5. **Music stop on Restart/Quit** — UIScene pause menu buttons call `stopMusic()` before transition, matching GameScene-level complete buttons
+6. **LevelSelectScene music** — calls `startMenuMusic()` which is idempotent (same-key check); preserves music when coming from MenuScene, starts fresh when coming from Quit
+
+### Files Modified
+- `src/systems/TransitionManager.ts` — NEW: 13-line static utility
+- `src/scenes/GameScene.ts` — import TM, use `toScene()` for Next Level + Level Select quit, `FADE_DURATION` for fadeIn
+- `src/scenes/UIScene.ts` — Rewrote Restart/Quit: UIScene camera fade, element tracking array, `stopMusic()`, `createPauseBtn` returns objects
+- `src/scenes/BootScene.ts` — `TransitionManager.toScene()` instead of raw `scene.start`
+- `src/scenes/PreloadScene.ts` — `TransitionManager.toScene()` instead of raw `scene.start`
+- `src/scenes/MenuScene.ts` — `fadeIn` on create, Play button uses `TransitionManager.toScene()`
+- `src/scenes/LevelSelectScene.ts` — `TransitionManager.toScene()` for all 3 transitions, `startMenuMusic()` on create
+- `src/scenes/BossScene.ts` — `fadeIn` on create
+- `src/scenes/DialogueScene.ts` — Branded fade color + fade in GameScene on close, `fadeIn` on create
+- `src/scenes/WordPuzzleScene.ts` — `fadeIn` on create, cross-fade on close/success
+
+### Build
+```
+tsc --noEmit  ✓  (zero errors)
+vite build    ✓  (2.83s, 25 modules)
+```
+
+---
+
 ## Template for Future Entries
 
 ```

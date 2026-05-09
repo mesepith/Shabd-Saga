@@ -3,7 +3,7 @@
 > **READ THIS FIRST** when starting a new AI session on Shabd Saga.
 > The AI should also read `docs/12-progress-log.md` for full history.
 
-## Quick Status (May 2026) — Tiled Level Maps Complete & Verified: Rich visual environments, 5 levels across 3 worlds, working on Phaser 3.90
+## Quick Status (May 2026) — Screen Transitions Complete: Smooth branded fades (600ms, #1a1a2e) between all scenes. Tiled maps verified on Phaser 3.90.
 
 ### Mobile Testing Results (iPhone 12 iOS 18.7.8 + OnePlus Nord CE3 Android 15)
 | Feature | iPhone | Android Phone | Status |
@@ -20,7 +20,7 @@
 | Bottom crop / blank space | ✓ No crop | ✓ No crop | Done |
 | Tiled level maps | ✓ Verified | ✓ Verified | Done |
 
-### NEXT: Screen Transitions
+### NEXT: Object Layer Integration
 | Order | Task | Why |
 |-------|------|-----|
 | ~~1~~ | ~~Enemy difficulty balancing~~ ✓ | Per-level speed/cooldown config |
@@ -29,7 +29,7 @@
 | ~~4~~ | ~~NPC dialogue choice UI~~ ✓ | Choice buttons + game-state-aware dynamic hints |
 | ~~5~~ | ~~Dialogue audio~~ ✓ | 5 monkey, 3 owl, 2 deer voice MP3s (Lekha TTS) |
 | ~~6~~ | ~~Tiled level maps~~ ✓ | 5 levels × 3 worlds, proper tileset spritesheets, parallax backgrounds |
-| 7 | Screen transitions | Iris wipe / dissolve between scenes — small effort, big polish |
+| ~~7~~ | ~~Screen transitions~~ ✓ | Unified 600ms branded fades, overlay close transitions, pause menu fix |
 | 8 | Object layer integration | Wire tilemap object layers to entity spawning |
 | 9 | Tileset visual polish | Add shading, highlights, patterns to 20 tiles per world |
 
@@ -59,6 +59,49 @@
 - Audio unlock for iOS Safari (silent buffer + Howler context resume)
 - **B** key = skip to boss (dev shortcut on boss levels)
 - **`window.game`** exposed for console access
+- **Screen transitions**: Unified `TransitionManager` — 600ms branded fades (#1a1a2e), all 11 scene transitions consistent (Boot→Preload→Menu→LevelSelect→Game, pause menu restart/quit, overlay open/close)
+
+---
+
+## Transition Architecture (May 2026 — Complete)
+
+### TransitionManager (`src/systems/TransitionManager.ts`)
+Static utility class. Single source of truth for all scene transition timing and color.
+
+| Constant | Value | Meaning |
+|----------|-------|---------|
+| `FADE_DURATION` | 600ms | All full-scene and overlay transitions |
+| `FADE_COLOR` | `{ r: 0x1a, g: 0x1a, b: 0x2e }` | Game's branded deep blue (#1a1a2e) — matches background |
+
+| Method | Used When |
+|--------|-----------|
+| `toScene(from, target, data?)` | Fade out → scene.start (full page transitions) |
+
+### Scene Transition Map
+| From | To | Method | Duration |
+|------|----|--------|----------|
+| BootScene | PreloadScene | `TransitionManager.toScene()` | 600ms |
+| PreloadScene | MenuScene | `TransitionManager.toScene()` | 600ms |
+| MenuScene | LevelSelectScene | `TransitionManager.toScene()` | 600ms |
+| LevelSelectScene | MenuScene (back) | `TransitionManager.toScene()` | 600ms |
+| LevelSelectScene | GameScene | `TransitionManager.toScene()` | 600ms |
+| GameScene | LevelSelectScene (quit) | `TransitionManager.toScene()` | 600ms |
+| GameScene | GameScene (next level) | `TransitionManager.toScene()` | 600ms |
+| UIScene pause | Restart/Quit | UIScene camera fade + scene.start | 600ms |
+| WordPuzzleScene | Caller (close) | FadeOut WordPuzzle + fadeIn caller | 600ms |
+| WordPuzzleScene | Caller (success) | FadeOut WordPuzzle + fadeIn caller | 600ms |
+| DialogueScene | GameScene (close) | FadeOut Dialogue + fadeIn GameScene | 600ms |
+| GameScene | BossScene (launch) | BossScene.fadeIn() on create | 600ms |
+| GameScene | WordPuzzleScene (launch) | WordPuzzleScene.fadeIn() on create | 600ms |
+| GameScene | DialogueScene (launch) | DialogueScene.fadeIn() on create | 600ms |
+
+### Key Design Decisions
+1. **UIScene pause menu uses UIScene's own camera** for fade (not GameScene's — GameScene is paused, so its camera tweens don't animate)
+2. **`scene.restart()` replaced with `scene.start('GameScene')`** for Next Level — restart kills the camera mid-fade; scene.start cleanly shuts down old scene and creates new one that fades in
+3. **Overlay close → fade out overlay camera, then fade in caller camera** — smooth cross-fade effect
+4. **Pause menu buttons tracked in array** — all destroyed on Resume/Restart/Quit; `createPauseBtn` returns objects for cleanup
+5. **LevelSelectScene starts menu music in `create()`** — `playMusicLoop` is a no-op when same track already playing, so it only kicks in when arriving from Quit (where music was stopped)
+6. **All fade durations unified at 600ms** with branded #1a1a2e color — feels intentional, matches game palette
 
 ---
 
@@ -215,8 +258,8 @@ On any boss level, press **B** key to skip directly to the boss fight. Calls `la
 - [x] Typewriter timer race condition: old timer cancelled before new — fixed
 - [x] Monkey gem reward: permanent NPC state change, no stale hints — fixed
 - [x] Tiled level maps — DONE (5 levels, 3 world-specific tilesets, parallax layers, procedural fallback)
+- [x] Screen transitions — DONE (unified TransitionManager, 600ms branded fades, all 11 scene transitions, overlay open/close fades, pause menu fix, music stop on quit)
 - [ ] Tilemap mobile testing — pending
-- [ ] Screen transitions — pending (small polish item)
 
 ---
 
@@ -325,6 +368,7 @@ localStorage.setItem('shabd_saga_progress', JSON.stringify({languages:{hindi:{co
 | `src/scenes/PreloadScene.ts` | Asset loading — 5 tilemap JSONs + 3 tileset PNGs + sprites/UI |
 | `src/systems/TouchControls.ts` | Left-half joystick + right-half jump zone + dynamic interact button |
 | `src/systems/AudioManager.ts` | Unified audio: Web Audio SFX synthesis + Howler WAV music + Howler speech cache |
+| `src/systems/TransitionManager.ts` | Screen transitions: `toScene()`, 600ms branded fades (#1a1a2e), FADE_DURATION/FADE_COLOR constants |
 | `src/systems/LanguageManager.ts` | Fetches /data/hindi.json, getWord() cross-level |
 | `src/systems/SaveManager.ts` | localStorage progress |
 | `src/config/GameConfig.ts` | Phaser config, Scale.FIT, activePointers:3 |
@@ -352,10 +396,10 @@ localStorage.setItem('shabd_saga_progress', JSON.stringify({languages:{hindi:{co
 
 The AI should read this file and `docs/12-progress-log.md`, then continue with the next task.
 
-### Recommended Next Task: Screen Transitions
-Add smooth cross-fade transitions between all scenes (Menu → LevelSelect → Game → Boss → dialogue pauses). The game already has some `camera.fadeOut/fadeIn` calls but they're inconsistent. Add uniform transitions and/or an iris-wipe effect. ~30-60 lines of change in scene transition code (GameConfig, or a shared transition utility). High polish payoff with minimal effort.
+### Recommended Next Task: Object Layer Integration
+Wire tilemap `objects` layer to drive entity spawning (doors, enemies, NPCs, gems, health) instead of hardcoded arrays in GameScene. Tilemap JSONs already define these positions in their `objects` layer — they just need to be read at runtime. Medium effort, high impact — removes hardcoded coordinates, makes levels data-driven.
 
 ### Secondary Tasks (in priority order)
-1. **Object Layer Integration** — Wire tilemap `objects` layer to drive entity spawning (doors, enemies, NPCs, gems, health) instead of hardcoded arrays. Tilemap JSONs already define these positions.
-2. **Tileset Visual Polish** — Current tiles are simple SVG shapes. Add shading, gradients, highlights, and patterns to the 3 tileset spritesheets for richer environments.
-3. **Mobile Testing** — Full playthrough of all 5 levels on real iPhone/Android to verify tilemap rendering and performance.
+1. **Tileset Visual Polish** — Current tiles are simple SVG shapes. Add shading, gradients, highlights, and patterns to the 3 tileset spritesheets for richer environments.
+2. **Tilemap Mobile Testing** — Full playthrough of all 5 levels on real iPhone/Android to verify tilemap rendering and performance.
+3. **Mobile Testing** — Run `npm run dev` and test full game flow (all scenes, transitions, music) on iPhone 12 (iOS 18.7.8) + OnePlus Nord CE3 (Android 15).
